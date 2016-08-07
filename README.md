@@ -18,14 +18,18 @@ These are implementations of the multi-precision `BigInteger` and `BigDecimal` t
 
 ##Directory structure
 
- - DataGenerators
-    - BigDecimals
-       - BigDecimalTestDataGenerator / ... --- Test data generator in Java; open with NetBeans 8
-    - BigIntegers
-       - BigIntegerTestGenerator /... --- Test data generator in C#; open with Visual Studio 2010 (Express) or newer
- - Source -- Sources for units and for bases.inc generator
- - Tests
-    - BigDecimals -- Sources for DUnit tests for BigDecimals
-    - BigIntegers -- Sources for DUnit tests for BigIntegers
+```
+BigNumbers
+   DataGenerators
+      BigDecimals
+         BigDecimalTestDataGenerator / ...   --- Test data generator in Java; open with NetBeans 8
+      BigIntegers
+         BigIntegerTestGenerator /...        --- Test data generator in C#; open with 
+                                                 Visual Studio 2010 (Express) or newer
+   Source                                    --- Sources for units and for bases.inc generator
+   Tests
+      BigDecimals                            --- Sources for DUnit tests for BigDecimals
+      BigIntegers                            --- Sources for DUnit tests for BigIntegers
+```
 
 
