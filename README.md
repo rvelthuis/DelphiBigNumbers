@@ -15,3 +15,17 @@ These are implementations of the multi-precision `BigInteger` and `BigDecimal` t
 `BigDecimal` is a multi-precision decimal floating point type. It can have an almost unlimited precision.
 
 `BigDecimal` is equally built for ease of use and reliability. It builds on top of BigInteger: the internal representation is a BigInteger for the significant digits, and a scale to indicate the decimals. It also offers overloaded operators and all the usual functions. This is modelled after the `BigDecimal` type in Java, but the interface is more in line with Delphi. More information about this type can be found on the [BigDecimals unit](http://www.rvelthuis.de/programs/bigdecimals.html) page on my website.
+
+##Directory structure
+
+ - DataGenerators
+    - BigDecimals
+       - BigDecimalTestDataGenerator / ... --- Test data generator in Java; open with NetBeans 8
+    - BigIntegers
+       - BigIntegerTestGenerator /... --- Test data generator in C#; open with Visual Studio 2010 (Express) or newer
+ - Source -- Sources for units and for bases.inc generator
+ - Tests
+    - BigDecimals -- Sources for DUnit tests for BigDecimals
+    - BigIntegers -- Sources for DUnit tests for BigIntegers
+
+
