@@ -1,0 +1,9 @@
+You can run the project from NetBeans 8.
+
+* Start NetBeans
+* Navigate to this directory
+* Open the BigDecimalTestDataGenerator project
+* Run menu -> Set Main Project... and select this project.
+* Run menu -> Run Project (BigDecimalTestDataGenerator)
+
+Now the file will generate BigDecimalTestData.inc in the <>\BigNumbers\Tests\BigDecimals directory.
