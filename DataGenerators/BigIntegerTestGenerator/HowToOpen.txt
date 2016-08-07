@@ -1,3 +1,0 @@
-You can open this project by (double-)clicking the BigIntegerTestGenerator.sln file
-
-This requires Visual Studio or Visual C# 2010 Express or better.
