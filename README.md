@@ -24,7 +24,7 @@ BigNumbers
       BigDecimals
          BigDecimalTestDataGenerator / ...   --- Test data generator in Java; open with NetBeans 8
       BigIntegers
-         BigIntegerTestGenerator /...        --- Test data generator in C#; open with 
+         BigIntegerTestGenerator /...        --- Test data generator in C#; open .sln file with 
                                                  Visual Studio 2010 (Express) or newer
    Source                                    --- Sources for units and for bases.inc generator
    Tests
