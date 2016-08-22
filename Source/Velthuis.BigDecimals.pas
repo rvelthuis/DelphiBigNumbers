@@ -80,14 +80,6 @@
 {                                                                           }
 {---------------------------------------------------------------------------}
 
-{---------------------------------------------------------------------------}
-{ Updates:                                                                  }
-{                                                                           }
-{   2016-02-13: Added SetDefaultPrecision and SetDefaultRoundingMode,       }
-{               which notify listeners about the change.                    }
-{---------------------------------------------------------------------------}
-
-
 unit Velthuis.BigDecimals;
 
 {$IF CompilerVersion >= 24.0}
@@ -157,8 +149,6 @@ type
         rmUnnecessary           // Do not round, because operation has exact result
       );
 
-      Listener = reference to procedure(APrecision: Integer; ARoundingMode: RoundingMode);
-
     const
       /// <summary>Maximum value a BigDecimal's scale can have</summary>
       MaxScale = MaxInt div SizeOf(Velthuis.BigIntegers.TLimb);
@@ -187,11 +177,6 @@ type
 
       // Default precision (number of significant digits) used for e.g. division.
       FDefaultPrecision: Integer;
-
-      // Listeners for notifications of default precision or rounding mode changes.
-      FListeners: TArray<Listener>;
-
-      FListenerCount: Integer;
 
       // Default character used to indicate exponent in scientific notation output. Either 'E' or 'e'. Default 'e'.
       FExponentDelimiter: Char;
@@ -254,12 +239,6 @@ type
 
     // Checks if the NewScale value is a valid scale value. If so, simply returns NewScale.
     class function RangeCheckedScale(NewScale: Int32): Integer; static;
-
-    // Sets default precision, and if it changed, notifies listeners.
-    class procedure SetDefaultPrecision(Value: Integer); static;
-
-    // Sets default rounding mode, and if it changed, notifies listeners.
-    class procedure SetDefaultRoundingMode(Value: RoundingMode); static;
 
     // Only allows 'e' or 'E' as exponent delimiter for scientific notation output.
     class procedure SetExponentDelimiter(const Value: Char); static;
@@ -712,12 +691,12 @@ type
     // -- Class properties --
 
     /// <summary>The rounding mode to be used if no specific mode is given.</summary>
-    class property DefaultRoundingMode: RoundingMode read FDefaultRoundingMode write SetDefaultRoundingMode;
+    class property DefaultRoundingMode: RoundingMode read FDefaultRoundingMode write FDefaultRoundingMode;
 
     /// <summary>The (maximum) precision to be used for e.g. division if the operation would otherwise result in a
     /// non-terminating decimal expansion, i.e. if there is no exact representable decimal result, e.g. when
     /// dividing <code>     BigDecimal(1) / BigDecimal(3) (= 0.3333333...)</code></summary>
-    class property DefaultPrecision: Integer read FDefaultPrecision write SetDefaultPrecision;
+    class property DefaultPrecision: Integer read FDefaultPrecision write FDefaultPrecision;
 
     /// <summary>The string to be used to delimit the exponent part in scientific notation output.</summary>
     /// <remarks>Currently, only 'e' and 'E' are allowed. Setting any other value will be ignored. The default is 'e',
@@ -1804,30 +1783,6 @@ begin
   else
     Result.FValue := Self.FValue;
   Result.FScale := NewScale;
-end;
-
-class procedure BigDecimal.SetDefaultPrecision(Value: Integer);
-var
-  I: Integer;
-begin
-  if Value <> FDefaultPrecision then
-  begin
-    FDefaultPrecision := Value;
-    for I := 0 to FListenerCount - 1 do
-      FListeners[I](FDefaultPrecision, FDefaultRoundingMode);
-  end;
-end;
-
-class procedure BigDecimal.SetDefaultRoundingMode(Value: RoundingMode);
-var
-  I: Integer;
-begin
-  if Value <> FDefaultRoundingMode then
-  begin
-    FDefaultRoundingMode := Value;
-    for I := 0 to FListenerCount - 1 do
-      FListeners[I](FDefaultPrecision, FDefaultRoundingMode);
-  end;
 end;
 
 class procedure BigDecimal.SetExponentDelimiter(const Value: Char);
