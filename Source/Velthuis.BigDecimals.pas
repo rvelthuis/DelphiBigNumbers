@@ -1575,8 +1575,8 @@ var
   NewScale: Integer;
 begin
   NewScale := Scale - Digits;
-  if NewScale > MaxScale then
-    Error(ecUnderflow, []);
+  if NewScale < MinScale then
+    Error(ecOverflow, []);
   Result := BigDecimal.Create(FValue, NewScale);
   if Result.FScale < 0 then
     Result.FScale := 0;
