@@ -678,16 +678,6 @@ type
     function ToString(const Settings: TFormatSettings): string; overload;
 
 
-    // -- Notifications --
-
-    /// <summary>Adds a listener to the list of receivers of notifications on changes in default precision or
-    /// rounding mode changes.</summary>
-    class procedure AddListener(const AListener: Listener); static;
-
-    /// <summary>Removes the given listener from the receiver list.</summary>
-    class procedure RemoveListener(const AListener: Listener); static;
-
-
     // -- Class properties --
 
     /// <summary>The rounding mode to be used if no specific mode is given.</summary>
