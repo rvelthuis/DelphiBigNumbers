@@ -615,6 +615,12 @@ type
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     function RoundToPrecision(APrecision: Integer): BigDecimal; overload;
 
+    /// <summary>Returns a new BigDecimal with the decimal point shifted to the left by the given number of positions</summary>
+    function MovePointLeft(Digits: Integer): BigDecimal;
+
+    /// <summary>Returns a new BigDecimal with the decimal point shifted to the right by the given number of positions</summary>
+    function MovePointRight(Digits: Integer): BigDecimal;
+
     /// <summary>Returns a value with any fraction (digits after the decimal point) removed from the current
     /// BigDecimal.</summary>
     /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('1234').</remarks>.
@@ -840,14 +846,6 @@ end;
 class operator BigDecimal.Add(const Left, Right: BigDecimal): BigDecimal;
 begin
   Result := Add(Left, Right);
-end;
-
-class procedure BigDecimal.AddListener(const AListener: Listener);
-begin
-  if FListenerCount = Length(FListeners) then
-    SetLength(FListeners, Length(FListeners) + 4);
-  FListeners[FListenerCount] := AListener;
-  Inc(FListenerCount);
 end;
 
 ////////////////////////////////////////////////////
@@ -1488,8 +1486,6 @@ begin
   // however contain functions to determine them to a given precision.                         //
   ///////////////////////////////////////////////////////////////////////////////////////////////
 
-  SetLength(FListeners, 4);
-  FListenerCount := 0;
 end;
 
 function BigDecimal.Int: BigDecimal;
@@ -1560,6 +1556,30 @@ end;
 class operator BigDecimal.Modulus(const Left, Right: BigDecimal): BigDecimal;
 begin
   Result := Remainder(Left, Right);
+end;
+
+function BigDecimal.MovePointLeft(Digits: Integer): BigDecimal;
+var
+  NewScale: Integer;
+begin
+  NewScale := Scale + Digits;
+  if NewScale > MaxScale then
+    Error(ecUnderflow, []);
+  Result := BigDecimal.Create(FValue, NewScale);
+  if Result.FScale < 0 then
+    Result.FScale := 0;
+end;
+
+function BigDecimal.MovePointRight(Digits: Integer): BigDecimal;
+var
+  NewScale: Integer;
+begin
+  NewScale := Scale - Digits;
+  if NewScale > MaxScale then
+    Error(ecUnderflow, []);
+  Result := BigDecimal.Create(FValue, NewScale);
+  if Result.FScale < 0 then
+    Result.FScale := 0;
 end;
 
 class operator BigDecimal.Multiply(const Left, Right: BigDecimal): BigDecimal;
@@ -1663,21 +1683,6 @@ begin
   Result.Init;
   LQuotient := Left div Right;
   Result := Left - LQuotient * Right;
-end;
-
-class procedure BigDecimal.RemoveListener(const AListener: Listener);
-var
-  I, J: Integer;
-begin
-  for I := 0 to FListenerCount - 1 do
-    if Listener(FListeners[I]) = Listener(AListener) then
-    begin
-      FListeners[I] := nil;
-      for J := I to FListenerCount - 2 do
-        FListeners[J] := FListeners[J + 1];
-      Dec(FListenerCount);
-      Break;
-    end;
 end;
 
 function BigDecimal.RemoveTrailingZeros(TargetScale: Integer): BigDecimal;
