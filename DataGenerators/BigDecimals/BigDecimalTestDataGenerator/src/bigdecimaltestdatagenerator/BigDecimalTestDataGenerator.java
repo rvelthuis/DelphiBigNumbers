@@ -96,7 +96,6 @@ public class BigDecimalTestDataGenerator
         try
         {
             File outfile = new File("..\\..\\..\\Tests\\BigDecimals\\BigDecimalTestData.inc");
-            FileWriter fw = new FileWriter(outfile);
             BufferedWriter bw = new BufferedWriter(new FileWriter(outfile));
             println("Writing file " + outfile.getCanonicalPath());
             println();
