@@ -98,6 +98,10 @@
 {                                                                            }
 {   2016-02-03: Added operator Explicit(BigInteger): string, which simply    }
 {               calls ToString to generate the result.                       }
+{                                                                            }
+{   2016-08-23: Changed Remainder(... UInt32) and Remainder(... UInt16).     }
+{               InternalDivMod32 did not return True, and on False,          }
+{               Remainder gave wrong error message                           }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -814,7 +818,7 @@ type
   private
   {$REGION 'private constants, types and variables'}
     type
-      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidArg, ecOverflow);
+      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg);
       TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
       FData: TMagnitude;                        // The limbs of the magnitude, least significant limb at lowest address.
@@ -1088,6 +1092,7 @@ resourcestring
   SConversionFailed       = 'BigInteger value too large for conversion to %s';
   SOverflow               = 'Double parameter may not be NaN or +/- Infinity';
   SInvalidArgumentBase    = 'Base parameter must be in the range 2..36.';
+  SInvalidArgumentFmt     = 'Invalid Argument: %s';
   SSqrtBigInteger         = 'Negative values not allowed for Sqrt';
 
 {$RANGECHECKS OFF}
@@ -4860,7 +4865,7 @@ var
   LBaseInfo: TNumberBaseInfo;
 begin
   if not Base in [2..36] then
-    Error(ecInvalidArg);
+    Error(ecInvalidBase);
 
   if FData = nil then
     Exit('0');
@@ -4914,7 +4919,7 @@ var
   LSize: Integer;
 begin
   if not Base in [2..36] then
-    Error(ecInvalidArg);
+    Error(ecInvalidBase);
   if FData = nil then
   begin
     Result := '0';
@@ -5295,7 +5300,7 @@ begin
         Q.MakeSize(LSize - RSize + 1);
         R.MakeSize(RSize);
         if not InternalDivMod(PLimb(Left.FData), PLimb(Right.FData), PLimb(Q.FData), PLimb(R.FData), LSize, RSize) then
-          Error(ecInvalidArg);
+          Error(ecInvalidBase);
         Q.Compact;
         R.Compact;
 
@@ -5604,6 +5609,8 @@ asm
 
 @Exit:
 
+        MOV     EAX,1
+
         POP     EBX
         POP     EDI
         POP     ESI
@@ -5669,6 +5676,8 @@ asm
         MOV     [R9],EDX
 
 @Exit:
+
+        MOV     EAX,1
 
 end;
 {$ENDIF}
@@ -6714,8 +6723,10 @@ begin
       raise EConvertError.CreateFmt(SConversionFailed, [ErrorInfo]);
     ecOverflow:
       raise EOverflow.Create(SOverflow);
-    ecInvalidArg:
+    ecInvalidBase:
       raise EInvalidArgument.Create(SInvalidArgumentBase);
+    ecInvalidArg:
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, [ErrorInfo]);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
@@ -9300,8 +9311,7 @@ begin
     Error(ecDivByZero);
   Result.MakeSize(1);
   SetLength(LQuotient, (Left.FSize and SizeMask));
-  if not InternalDivMod32(PLimb(Left.FData), Right, PLimb(LQuotient), PLimb(Result.FData), (Left.FSize and SizeMask)) then
-    Error(ecInvalidArg);
+  InternalDivMod32(PLimb(Left.FData), Right, PLimb(LQuotient), PLimb(Result.FData), (Left.FSize and SizeMask));
   Result.Compact;
   if Result.FSize <> 0 then
     Result.FSize := (Result.FSize and SizeMask) or SignBitOf(Left.FSize);
@@ -9315,8 +9325,7 @@ begin
     Error(ecDivByZero);
   Result.MakeSize(1);
   SetLength(LQuotient, (Left.FSize and SizeMask));
-  if not InternalDivMod32(PLimb(Left.FData), Right, PLimb(LQuotient), PLimb(Result.FData), (Left.FSize and SizeMask)) then
-    Error(ecInvalidArg);
+  InternalDivMod32(PLimb(Left.FData), Right, PLimb(LQuotient), PLimb(Result.FData), (Left.FSize and SizeMask));
   Result.Compact;
   if Result.FSize <> 0 then
     Result.FSize := (Result.FSize and SizeMask) or SignBitOf(Left.FSize);
