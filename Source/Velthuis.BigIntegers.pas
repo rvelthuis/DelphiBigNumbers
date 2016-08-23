@@ -1086,14 +1086,14 @@ end;
 {$ENDIF !PUREPASCAL}
 
 resourcestring
-  SErrorBigIntegerParsing = '''%s'' is not a valid big integer value';
-  SDivisionByZero         = 'Division by zero';
-  SInvalidOperation       = 'Invalid operation';
-  SConversionFailed       = 'BigInteger value too large for conversion to %s';
-  SOverflow               = 'Double parameter may not be NaN or +/- Infinity';
-  SInvalidArgumentBase    = 'Base parameter must be in the range 2..36.';
-  SInvalidArgumentFmt     = 'Invalid Argument: %s';
-  SSqrtBigInteger         = 'Negative values not allowed for Sqrt';
+  SErrorBigIntegerParsingFmt = '''%s'' is not a valid big integer value';
+  SDivisionByZero            = 'Division by zero';
+  SInvalidOperation          = 'Invalid operation';
+  SConversionFailedFmt       = 'BigInteger value too large for conversion to %s';
+  SOverflow                  = 'Double parameter may not be NaN or +/- Infinity';
+  SInvalidArgumentBase       = 'Base parameter must be in the range 2..36.';
+  SInvalidArgumentFmt        = 'Invalid Argument: %s';
+  SSqrtBigInteger            = 'Negative values not allowed for Sqrt';
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
@@ -6716,11 +6716,11 @@ class procedure BigInteger.Error(ErrorCode: TErrorCode; const ErrorInfo: string)
 begin
   case ErrorCode of
     ecParse:
-      raise EConvertError.CreateFmt(SErrorBigIntegerParsing, [ErrorInfo]);
+      raise EConvertError.CreateFmt(SErrorBigIntegerParsingFmt, [ErrorInfo]);
     ecDivbyZero:
       raise EZeroDivide.Create(SDivisionByZero);
     ecConversion:
-      raise EConvertError.CreateFmt(SConversionFailed, [ErrorInfo]);
+      raise EConvertError.CreateFmt(SConversionFailedFmt, [ErrorInfo]);
     ecOverflow:
       raise EOverflow.Create(SOverflow);
     ecInvalidBase:
