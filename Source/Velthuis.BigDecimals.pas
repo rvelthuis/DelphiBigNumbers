@@ -1562,9 +1562,7 @@ function BigDecimal.MovePointLeft(Digits: Integer): BigDecimal;
 var
   NewScale: Integer;
 begin
-  NewScale := Scale + Digits;
-  if NewScale > MaxScale then
-    Error(ecUnderflow, []);
+  NewScale := RangeCheckedscale(Scale + Digits);
   Result := BigDecimal.Create(FValue, NewScale);
   if Result.FScale < 0 then
     Result.FScale := 0;
@@ -1574,9 +1572,7 @@ function BigDecimal.MovePointRight(Digits: Integer): BigDecimal;
 var
   NewScale: Integer;
 begin
-  NewScale := Scale - Digits;
-  if NewScale < MinScale then
-    Error(ecOverflow, []);
+  NewScale := RangeCheckedScale(Scale - Digits);
   Result := BigDecimal.Create(FValue, NewScale);
   if Result.FScale < 0 then
     Result.FScale := 0;
@@ -1592,7 +1588,7 @@ end;
 //  Multiplication is the easiest: multiply the unscaled values and add the scales.  //
 //                                                                                   //
 ///////////////////////////////////////////////////////////////////////////////////////
-///
+
 class function BigDecimal.Multiply(const Left, Right: BigDecimal): BigDecimal;
 begin
   Result.Init;
