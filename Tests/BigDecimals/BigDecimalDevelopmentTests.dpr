@@ -24,7 +24,8 @@ uses
   Velthuis.RandomNumbers in '..\..\Source\Velthuis.RandomNumbers.pas',
   Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas',
   Velthuis.Loggers in '..\..\Source\Velthuis.Loggers.pas',
-  Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas';
+  Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas',
+  Velthuis.BigDecimals.Math in '..\..\Source\Velthuis.BigDecimals.Math.pas';
 
 {$R *.RES}
 
