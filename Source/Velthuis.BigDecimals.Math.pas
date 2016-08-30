@@ -5,6 +5,8 @@ interface
 uses
   Velthuis.BigIntegers, Velthuis.BigDecimals;
 
+// Perhaps we first need BigRational to delay the evaluation of items.
+
 type
   BigDecimalMath = class
   private
@@ -139,6 +141,8 @@ end;
 // the number of factorials we calculate here. Large factorials can easily change precision by 2 or 3.
 // How to handle that?
 
+// Solution: use a TList<BigInteger> and not a TArray<BigInteger>.
+
 procedure BigDecimalMath.InitFactorials(Precision: Integer);
 var
   I: Integer;
@@ -176,6 +180,10 @@ function BigDecimalMath.Sin(const X: BigDecimal; Precision: Integer): BigDecimal
 begin
 
 end;
+
+(*
+
+*)
 
 end.
 
