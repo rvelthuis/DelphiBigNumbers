@@ -2723,7 +2723,7 @@ var
   Limbs: TMagnitude;
   Negative: Boolean;
 begin
-  Negative := Bytes[High(Bytes)] >= $80;
+  Negative := Bytes[High(Bytes)] > Byte(High(Shortint));
   SetLength(Limbs, (Length(Bytes) + 3) div 4);
   if Negative then
     Limbs[High(Limbs)] := TLimb(-1);
@@ -2740,11 +2740,15 @@ var
   LSize: Integer;
 begin
   LSize := Length(Limbs);
-  MakeSize(LSize);
-  FSize := LSize or (Ord(Negative) * SignMask);
   if LSize > 0 then
+  begin
+    MakeSize(LSize);
+    FSize := LSize or (Ord(Negative) * SignMask);
     CopyLimbs(@Limbs[0], PLimb(FData), LSize);
-  Compact;
+    Compact;
+  end
+  else
+    FSize := 0;
 end;
 
 constructor BigInteger.Create(const Value: Int64);
@@ -8914,10 +8918,35 @@ begin
   FSize := (FSize and SignMask) or RequiredSize;
 end;
 
-procedure BigInteger.MakeSize(RequiredSize: Integer);
+type
+  PDynArrayRec = ^TDynArrayRec;
+  TDynArrayRec = packed record
+  {$IFDEF CPU64BITS}
+    _Padding: Integer; // Make 16 byte align for payload..
+  {$ENDIF}
+    RefCnt: Integer;
+    Length: NativeInt;
+  end;
+
+procedure MakeLength(var FData: Pointer; RequiredSize: Integer); inline;
+var
+  NewData: PByte;
+  NewSize: Integer;
 begin
-  SetLength(FData, (RequiredSize + 4) and CapacityMask);
-  FillChar(FData[0], Length(FData) * CLimbSize, 0);
+  NewSize := (RequiredSize + 4) and BigInteger.CapacityMask;
+  NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
+  PDynArrayRec(NewData).RefCnt := 1;
+  PDynArrayRec(NewData).Length := NewSize;
+  FData := NewData + SizeOf(TDynArrayRec);
+end;
+
+procedure BigInteger.MakeSize(RequiredSize: Integer);
+var
+  NewData: PByte;
+  NewSize: Integer;
+begin
+  FData := nil;
+  MakeLength(Pointer(FData), RequiredSize);
   FSize := (FSize and SignMask) or RequiredSize;
 end;
 
