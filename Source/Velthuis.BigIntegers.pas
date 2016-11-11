@@ -6176,7 +6176,7 @@ asm
         .PUSHNV RDI
         .PUSHNV RBX
 
-        // To avoid reference count problems with Delphi's dynamic array types, we do or own,
+        // To avoid reference count problems with Delphi's dynamic array types, we do our own,
         // "old school" dynarrays, using GetMem and FreeMem.
 
         XOR     EBX,EBX                 // Set "dynarrays" to nil, so FreeMem calls won't fail.
@@ -8942,7 +8942,6 @@ end;
 
 procedure BigInteger.MakeSize(RequiredSize: Integer);
 var
-  NewData: PByte;
   NewSize: Integer;
 begin
   FData := nil;
