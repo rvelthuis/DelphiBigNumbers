@@ -5236,12 +5236,33 @@ end;
 class procedure BigInteger.DivMod(const Dividend, Divisor: BigInteger; var Quotient, Remainder: BigInteger);
 var
   LSize, RSize: Integer;
+  UI64Quotient, UI64Remainder: UInt64;
 begin
   if Divisor.FData = nil then
     Error(ecDivByZero);
 
   LSize := Dividend.FSize and SizeMask;
   RSize := Divisor.FSize and SizeMask;
+
+  // TODO: extra case for LSize = RSize = 1?
+//  if (LSize = 1) and (RSize = 1) then
+//  begin
+//    System.Math.DivMod(Dividend.FData[0], Divisor.FData[0], UI64Quotient, UI64Remainder);
+//    if UI64Quotient = 0 then
+//      ShallowCopy(Zero, Quotient)
+//    else
+//      Quotient := Cardinal(UI64Quotient);
+//    if UI64Remainder = 0 then
+//      ShallowCopy(Zero, Remainder)
+//    else
+//      Remainder := Cardinal(UI64Remainder);
+//    if Dividend.IsNegative <> Divisor.IsNegative then
+//    begin
+//      Quotient := -Quotient;
+//      Remainder := -Remainder;
+//    end;
+//    Exit;
+//  end;
 
   case InternalCompare(PLimb(Dividend.FData), PLimb(Divisor.FData), LSize, RSize) of
     -1:
