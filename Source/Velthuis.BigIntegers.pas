@@ -109,6 +109,15 @@ unit Velthuis.BigIntegers;
 // TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc.
 // TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
 //       bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time.
+
+{ TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time. Should I do my own
+        memory management? If so, how?
+
+        @DynArrayAsg:    40.46%
+        @DynArrayClear:  18.34%
+        @CopyRecord:     12.64%
+}
+
 interface
 
 uses
@@ -749,6 +758,10 @@ type
     /// <summary>Returns the smaller of two specified values.</summary>
     class function Min(const Left, Right: BigInteger): BigInteger; static;
 
+    /// <summary>Returns the modular inverse of Value mod Modulus.</summary>
+    /// <exception>Returns an exception if there is no modular inverse.</exception>
+    class function ModInverse(const Value, Modulus: BigInteger): BigInteger; static;
+
     /// <summary>Returns the specified modulus value of the specified value raised to the specified power.</summary>
     class function ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger; static;
 
@@ -818,7 +831,7 @@ type
   private
   {$REGION 'private constants, types and variables'}
     type
-      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg);
+      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse);
       TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
       FData: TMagnitude;                        // The limbs of the magnitude, least significant limb at lowest address.
@@ -1091,9 +1104,10 @@ resourcestring
   SInvalidOperation          = 'Invalid operation';
   SConversionFailedFmt       = 'BigInteger value too large for conversion to %s';
   SOverflow                  = 'Double parameter may not be NaN or +/- Infinity';
-  SInvalidArgumentBase       = 'Base parameter must be in the range 2..36.';
+  SInvalidArgumentBase       = 'Base parameter must be in the range 2..36';
   SInvalidArgumentFmt        = 'Invalid Argument: %s';
   SSqrtBigInteger            = 'Negative values not allowed for Sqrt';
+  SNoInverse                 = 'No modular inverse possible';
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
@@ -1149,6 +1163,55 @@ const
 
 var
   CBasePowers: array[TNumberBase] of TArray<BigInteger>;
+
+function FindSize(Limb: PLimb; Size: Integer): Integer;
+{$IFDEF PUREPASCAL}
+begin
+  while (Size > 0) and (Limb[Size - 1] = 0) do
+    Dec(Size);
+  Result := Size;
+end;
+{$ELSE}
+{$IFDEF WIN32}
+asm
+
+        LEA     EAX,[EAX + EDX * CLimbSize - CLimbSize]
+        XOR     ECX,ECX
+
+@Loop:
+
+        CMP     [EAX],ECX
+        JNE     @Exit
+        LEA     EAX,[EAX - CLimbSize]
+        DEC     EDX
+        JNE     @Loop
+
+@Exit:
+
+        MOV     EAX,EDX
+
+end;
+{$ELSE !WIN32}
+asm
+
+        LEA     RAX,[RCX + RDX * CLimbSize - CLimbSize]
+        XOR     ECX,ECX
+
+@Loop:
+
+        CMP     [RAX],ECX
+        JNE     @Exit
+        LEA     RAX,[RAX - CLimbSize]
+        DEC     EDX
+        JNE     @Loop
+
+@Exit:
+
+        MOV     EAX,EDX
+
+end;
+{$ENDIF !WIN32}
+{$ENDIF}
 
 function IntMax(Left, Right: UInt32): UInt32;
 {$IFNDEF PUREPASCAL}
@@ -1268,47 +1331,43 @@ var
   SignBit: Integer;
   Comparison: TValueSign;
 begin
-  if Left.FData = nil then
+  if Pointer(Left.FData) = nil then
   begin
     ShallowCopy(Right, Result);
     Exit;
   end
-  else if Right.FData = nil then
+  else if Pointer(Right.FData) = nil then
   begin
     ShallowCopy(Left, Result);
     Exit;
   end;
 
-  LSize := SizeBitsOf(Left.FSize);
-  RSize := SizeBitsOf(Right.FSize);
+  LSize := Left.FSize and SizeMask;
+  RSize := Right.FSize and SizeMask;
   Res.MakeSize(IntMax(LSize, RSize) + 1);
 
   if ((Left.FSize xor Right.FSize) and SignMask) = 0 then
   begin
     // Same sign: add both magnitudes and transfer sign.
     FInternalAdd(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
-    SignBit := SignBitOf(Left.FSize);
+    SignBit := Left.FSize and SignMask;
   end
   else
   begin
     Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask, Right.FSize and SizeMask);
-    case Comparison of
-      -1: // Left < Right
-        begin
-          FInternalSubtract(PLimb(Right.FData), PLimb(Left.FData), PLimb(Res.FData), RSize, LSize);
-          SignBit := SignBitOf(Right.FSize);
-        end;
-      1: // Left > Right
-        begin
-          FInternalSubtract(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
-          SignBit := SignBitOf(Left.FSize);
-        end;
-      else // Left = Right
-        begin
-          // Left and Right have equal magnitude but different sign, so return 0.
-          ShallowCopy(Zero, Result);
-          Exit;
-        end;
+
+    if Comparison = 0 then
+      Exit(Zero);
+
+    if Comparison < 0 then
+    begin
+      FInternalSubtract(PLimb(Right.FData), PLimb(Left.FData), PLimb(Res.FData), RSize, LSize);
+      SignBit := Right.FSize and SignMask;
+    end
+    else
+    begin
+      FInternalSubtract(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
+      SignBit := Left.FSize and SignMask;
     end;
   end;
   Res.FSize := (Res.FSize and SizeMask) or SignBit;
@@ -2474,54 +2533,6 @@ begin
   DeepCopy(Self, Result);
 end;
 
-function FindSize(Limb: PLimb; Size: Integer): Integer;
-{$IFDEF PUREPASCAL}
-begin
-  while (Size > 0) and (Limb[Size - 1] = 0) do
-    Dec(Size);
-  Result := Size;
-end;
-{$ELSE}
-{$IFDEF WIN32}
-asm
-
-        LEA     EAX,[EAX + EDX * CLimbSize - CLimbSize]
-        XOR     ECX,ECX
-
-@Loop:
-
-        CMP     [EAX],ECX
-        JNE     @Exit
-        LEA     EAX,[EAX - CLimbSize]
-        DEC     EDX
-        JNE     @Loop
-
-@Exit:
-
-        MOV     EAX,EDX
-
-end;
-{$ELSE !WIN32}
-asm
-
-        LEA     RAX,[RCX + RDX * CLimbSize - CLimbSize]
-        XOR     ECX,ECX
-
-@Loop:
-
-        CMP     [RAX],ECX
-        JNE     @Exit
-        LEA     RAX,[RAX - CLimbSize]
-        DEC     EDX
-        JNE     @Loop
-
-@Exit:
-
-        MOV     EAX,EDX
-
-end;
-{$ENDIF !WIN32}
-{$ENDIF}
 
 procedure BigInteger.Compact;
 var
@@ -3036,7 +3047,6 @@ asm
 
         SUB     EDX,ECX
         PUSH    EDX
-        XOR     EDX,EDX
 
         XOR     EAX,EAX
 
@@ -5236,33 +5246,12 @@ end;
 class procedure BigInteger.DivMod(const Dividend, Divisor: BigInteger; var Quotient, Remainder: BigInteger);
 var
   LSize, RSize: Integer;
-  UI64Quotient, UI64Remainder: UInt64;
 begin
   if Divisor.FData = nil then
     Error(ecDivByZero);
 
   LSize := Dividend.FSize and SizeMask;
   RSize := Divisor.FSize and SizeMask;
-
-  // TODO: extra case for LSize = RSize = 1?
-//  if (LSize = 1) and (RSize = 1) then
-//  begin
-//    System.Math.DivMod(Dividend.FData[0], Divisor.FData[0], UI64Quotient, UI64Remainder);
-//    if UI64Quotient = 0 then
-//      ShallowCopy(Zero, Quotient)
-//    else
-//      Quotient := Cardinal(UI64Quotient);
-//    if UI64Remainder = 0 then
-//      ShallowCopy(Zero, Remainder)
-//    else
-//      Remainder := Cardinal(UI64Remainder);
-//    if Dividend.IsNegative <> Divisor.IsNegative then
-//    begin
-//      Quotient := -Quotient;
-//      Remainder := -Remainder;
-//    end;
-//    Exit;
-//  end;
 
   case InternalCompare(PLimb(Dividend.FData), PLimb(Divisor.FData), LSize, RSize) of
     -1:
@@ -5273,7 +5262,7 @@ begin
       end;
     0:
       begin
-        if SignBitOf(Dividend.FSize) = SignBitOf(Divisor.FSize) then
+        if (Dividend.FSize xor Divisor.FSize) and SignMask = 0 then
           ShallowCopy(One, Quotient)
         else
           ShallowCopy(MinusOne, Quotient);
@@ -5299,8 +5288,8 @@ begin
   if Right.FData = nil then
     Error(ecDivByZero);
 
-  LSign := SignBitOf(Left.FSize);
-  RSign := SignBitOf(Right.FSize);
+  LSign := Left.FSize and SignMask;
+  RSign := Right.FSize and SignMask;
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
 
@@ -5309,7 +5298,7 @@ begin
       begin
         ShallowCopy(Left, Remainder);
         ShallowCopy(Zero, Quotient);
-        Exit; // $$RV
+        Exit;
       end;
     0:
       begin
@@ -5318,7 +5307,7 @@ begin
           ShallowCopy(One, Quotient)
         else
           ShallowCopy(MinusOne, Quotient);
-        Exit; // $$RV
+        Exit;
       end
     else
       begin
@@ -6752,6 +6741,8 @@ begin
       raise EInvalidArgument.Create(SInvalidArgumentBase);
     ecInvalidArg:
       raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, [ErrorInfo]);
+    ecNoInverse:
+      raise EInvalidArgument.Create(SNoInverse);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
@@ -8160,6 +8151,39 @@ begin
     ShallowCopy(Right, Result);
 end;
 
+class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
+var
+  NewResult, Rem, NewRem, Temp, Quot: BigInteger;
+begin
+  Result := Zero;
+  Rem := Abs(Modulus);
+  if (Rem = One) or (Rem = Zero) then
+    Error(ecNoInverse, '');
+  if Value.IsNegative then
+    NewRem := Remainder(Subtract(Rem, Remainder(-Value, Rem)), Rem)
+  else
+    NewRem := Remainder(Value, Rem);
+  Result := Zero;
+  NewResult := One;
+  while not NewRem.IsZero do
+  begin
+    Quot := Divide(Rem, NewRem);
+    Temp := NewResult;
+    NewResult := Subtract(Result, Multiply(Quot, NewResult));
+    Result := Temp;
+    Temp := NewRem;
+    NewRem := Subtract(Rem, Multiply(Quot, NewRem));
+    Rem := Temp;
+  end;
+  if Rem > One then
+    Error(ecNoInverse);
+  if Result.IsPositive <> Value.IsPositive then
+    if Result.IsNegative then
+      Result := Add(Result, Abs(Modulus))
+    else
+      Result := Subtract(Result, Abs(Modulus));
+end;
+
 // http://stackoverflow.com/questions/8496182/calculating-powa-b-mod-n
 class function BigInteger.ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger;
 var
@@ -8949,7 +8973,8 @@ type
     Length: NativeInt;
   end;
 
-procedure MakeLength(var FData: Pointer; RequiredSize: Integer); inline;
+// Replacement for SetLength() only for TMagnitudes, i.e. dynamic arrays of TLimb.
+procedure AllocNewMagnitude(var FData: Pointer; RequiredSize: Integer); //inline;
 var
   NewData: PByte;
   NewSize: Integer;
@@ -8962,12 +8987,10 @@ begin
 end;
 
 procedure BigInteger.MakeSize(RequiredSize: Integer);
-var
-  NewSize: Integer;
 begin
   FData := nil;
-  MakeLength(Pointer(FData), RequiredSize);
-  FSize := (FSize and SignMask) or RequiredSize;
+  AllocNewMagnitude(Pointer(FData), RequiredSize);
+  FSize := RequiredSize;
 end;
 
 // In Win32, we keep what we have. In Win64, we switch, depending on Size. At 25 limbs or above, the unrolled loop version is faster.
