@@ -42,6 +42,9 @@ function BitCount(U: UInt32): Integer; overload;
 function BitLength(S: Int32): Integer; overload;
 function BitLength(U: UInt32): Integer; overload;
 
+function DigitCount(S: Int32): Int32; overload;
+function DigitCount(U: UInt32): UInt32; overload;
+
 function HighestOneBit(S: Int32): Int32; overload;
 function HighestOneBit(U: UInt32): UInt32; overload;
 
@@ -241,6 +244,36 @@ end;
 function BitLength(U: UInt32): Integer;
 begin
   Result := 32 - NumberOfLeadingZeros(U);
+end;
+
+function DigitCount(S: Int32): Int32; overload;
+begin
+  if S <> (-MaxInt - 1) then
+    Result := DigitCount(UInt32(Abs(S)))
+  else
+    Result := 9;
+end;
+
+function DigitCount(U: UInt32): UInt32; overload;
+begin
+  Result := 1;
+  if U >= 100000000 then
+  begin
+    Inc(Result, 8);
+    U := U div 100000000;
+  end;
+  if U >= 10000 then
+  begin
+    Inc(Result, 4);
+    U := U div 10000;
+  end;
+  if U >= 100  then
+  begin
+    Inc(Result, 2);
+    U := U div 100;
+  end;
+  if U >= 10 then
+    Inc(Result);
 end;
 
 function IsPowerOfTwo(S: Int32): Boolean;
