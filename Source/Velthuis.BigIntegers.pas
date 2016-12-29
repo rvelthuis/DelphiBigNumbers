@@ -38,6 +38,8 @@
 {                http://www.hackersdelight.org/basics2.pdf                   }
 {             6. Wikipedia                                                   }
 {                https://en.wikipedia.org                                    }
+{             7. Rosetta Code                                                }
+{                http://rosettacode.org/wiki/Rosetta_Code                    }
 {                                                                            }
 { -------------------------------------------------------------------------- }
 {                                                                            }
@@ -101,7 +103,14 @@
 {                                                                            }
 {   2016-08-23: Changed Remainder(... UInt32) and Remainder(... UInt16).     }
 {               InternalDivMod32 did not return True, and on False,          }
-{               Remainder gave wrong error message                           }
+{               Remainder gave wrong error message.                          }
+{                                                                            }
+{   2016-12-27: Added ModInverse.                                            }
+{               Optimized and renamed MakeLength to AllocNewMagnitude.       }
+{                                                                            }
+{   2016-12-29: Changed return type of Compare() to Integer. Using           }
+{               TValueSign made inlining several comparison operators        }
+{               harder, since that required System.Math.                     }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -110,12 +119,14 @@ unit Velthuis.BigIntegers;
 // TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
 //       bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time.
 
-{ TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time. Should I do my own
-        memory management? If so, how?
+{ TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time.
+  Should I do my own memory management? If so, how?
 
-        @DynArrayAsg:    40.46%
-        @DynArrayClear:  18.34%
-        @CopyRecord:     12.64%
+    @DynArrayAsg:    40.46%
+    @DynArrayClear:  18.34%
+    @CopyRecord:     12.64%
+
+  See BigIntSpeedTest.dpr
 }
 
 interface
@@ -461,13 +472,13 @@ type
     // -- Arithmetic operators --
 
     /// <summary>Adds two BigIntegers.</summary>
-    class operator Add(const Left, Right: BigInteger): BigInteger;
+    class operator Add(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Subtracts the second BigInteger from the first.</summary>
-    class operator Subtract(const Left, Right: BigInteger): BigInteger;
+    class operator Subtract(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Multiplies two BigIntegers.</summary>
-    class operator Multiply(const Left, Right: BigInteger): BigInteger;
+    class operator Multiply(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Multiplies the specified BigInteger with the specified Word value.</summary>
     class operator Multiply(const Left: BigInteger; Right: Word): BigInteger; inline;
@@ -476,25 +487,25 @@ type
     class operator Multiply(Left: Word; const Right: BigInteger): BigInteger; inline;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left, Right: BigInteger): BigInteger;
+    class operator IntDivide(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left: BigInteger; Right: UInt16): BigInteger;
+    class operator IntDivide(const Left: BigInteger; Right: UInt16): BigInteger; inline;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left: BigInteger; Right: UInt32): BigInteger;
+    class operator IntDivide(const Left: BigInteger; Right: UInt32): BigInteger; inline;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left, Right: BigInteger): BigInteger;
+    class operator Modulus(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left: BigInteger; Right: UInt32): BigInteger;
+    class operator Modulus(const Left: BigInteger; Right: UInt32): BigInteger; inline;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger;
+    class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger; inline;
 
     /// <summary>Unary minus. Negates the value of the specified BigInteger.</summary>
-    class operator Negative(const Value: BigInteger): BigInteger;
+    class operator Negative(const Value: BigInteger): BigInteger; inline;
 
 {$IFDEF BIGINTEGERIMMUTABLE}
   private
@@ -567,49 +578,49 @@ type
     // -- Implicit conversion operators --
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Integer to a BigInteger.</summary>
-    class operator Implicit(const Value: Integer): BigInteger;
+    class operator Implicit(const Value: Integer): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Cardinal to a BigInteger.</summary>
-    class operator Implicit(const Value: Cardinal): BigInteger;
+    class operator Implicit(const Value: Cardinal): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Int64 to a BigInteger.</summary>
-    class operator Implicit(const Value: Int64): BigInteger;
+    class operator Implicit(const Value: Int64): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified UInt64 to a BigInteger.</summary>
-    class operator Implicit(const Value: UInt64): BigInteger;
+    class operator Implicit(const Value: UInt64): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified string to a BigInteger. The BigInteger is the
     ///   result of a call to Parse(Value).</summary>
-    class operator Implicit(const Value: string): BigInteger;
+    class operator Implicit(const Value: string): BigInteger; inline;
 
 
     // -- Explicit conversion operators --
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Integer. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Integer;
+    class operator Explicit(const Value: BigInteger): Integer; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Cardinal. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Cardinal;
+    class operator Explicit(const Value: BigInteger): Cardinal; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Int64. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Int64;
+    class operator Explicit(const Value: BigInteger): Int64; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an UInt64. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): UInt64;
+    class operator Explicit(const Value: BigInteger): UInt64; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Double.</summary>
-    class operator Explicit(const Value: BigInteger): Double;
+    class operator Explicit(const Value: BigInteger): Double; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified Double to a BigInteger.</summary>
-    class operator Explicit(const Value: Double): BigInteger;
+    class operator Explicit(const Value: Double): BigInteger; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a string.</summary>
     /// <remarks>Calls Value.ToString to generate the result.</remarks>
-    class operator Explicit(const Value: BigInteger): string;
+    class operator Explicit(const Value: BigInteger): string; inline;
 
     // -- Conversion functions --
 
@@ -735,7 +746,7 @@ type
 
     /// <summary>Returns +1 if the value in Left is greater than the value in Right, 0 if they are equal and
     ///   1 if it is lesser.</summary>
-    class function Compare(const Left, Right: BigInteger): TValueSign; static;
+    class function Compare(const Left, Right: BigInteger): Integer; static;
 
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
@@ -858,7 +869,7 @@ type
     class procedure InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     class procedure InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
   {$ENDIF}
-    class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): TValueSign; static;
+    class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer; static;
     class procedure InternalAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     class procedure InternalOr(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     class procedure InternalXor(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
@@ -1329,7 +1340,7 @@ var
   Res: BigInteger;
   LSize, RSize: Integer;
   SignBit: Integer;
-  Comparison: TValueSign;
+  Comparison: Integer;
 begin
   if Pointer(Left.FData) = nil then
   begin
@@ -2562,7 +2573,7 @@ begin
   end;
 end;
 
-class function BigInteger.Compare(const Left, Right: BigInteger): TValueSign;
+class function BigInteger.Compare(const Left, Right: BigInteger): Integer;
 type
   PInteger = ^Integer;
 begin
@@ -5564,6 +5575,10 @@ end;
 {$ELSE !PUREPASCAL}
 {$IFDEF WIN32}
 asm
+
+// Note: in some versions of Delphi, DIV EBX generates the wrong opcode, while DIV EAX,EBX doesn't. The same for
+//       MUL EBX and MUL EAX,EBX.
+
         PUSH    ESI
         PUSH    EDI
         PUSH    EBX
@@ -5583,15 +5598,19 @@ asm
         MOV     EAX,[ESI]
         DIV     EAX,EBX
         MOV     [ECX],EAX
+
         MOV     EAX,[ESI - CLimbSize]
         DIV     EAX,EBX
         MOV     [ECX - CLimbSize],EAX
+
         MOV     EAX,[ESI - 2 * CLimbSize]
         DIV     EAX,EBX
         MOV     [ECX - 2 * CLimbSize],EAX
+
         MOV     EAX,[ESI - 3 * CLimbSize]
         DIV     EAX,EBX
         MOV     [ECX - 3 * CLimbSize],EAX
+
         LEA     ESI,[ESI - 4 * CLimbSize]
         LEA     ECX,[ECX - 4 * CLimbSize]
         DEC     EDI
@@ -6969,7 +6988,7 @@ begin
   end;
 end;
 
-class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): TValueSign;
+class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer;
 {$IFDEF PUREPASCAL}
 var
   L, R: PLimb;
@@ -8907,7 +8926,7 @@ const
 var
   Largest, Smallest: PBigInteger;
   InternalResult: BigInteger;
-  Comparison: TValueSign;
+  Comparison: Integer;
 begin
   if Left.FData = nil then
   begin
@@ -9604,7 +9623,7 @@ end;
 function BigInteger.Add(const Other: BigInteger): PBigInteger;
 var
   SelfSize, OtherSize: Integer;
-  Comparison: TValueSign;
+  Comparison: Integer;
 begin
   Result := @Self;
   if Other.IsZero then
