@@ -37,6 +37,14 @@
 
 unit Velthuis.FloatUtils;
 
+{ Note: in newer versions of Delphi, most of these functions are superceded by functions in the
+        record helpers for floating point types. This unit is made to make provide the
+        functions for several older versions as well.
+
+        If record helpers are available, these are used. Otherwise, they are
+        emulated. See NORECORDHELPERS define.
+}
+
 interface
 
 uses
@@ -96,9 +104,9 @@ implementation
 
 uses
   System.SysUtils;
-//{$IF NOT DECLARED(TSingleHelper)}
+{$IF NOT DECLARED(TSingleHelper)}
   {$DEFINE NORECORDHELPERS}
-//{$IFEND}
+{$IFEND}
 
 {$IF CompilerVersion >= 24.0}
   {$LEGACYIFEND ON}
