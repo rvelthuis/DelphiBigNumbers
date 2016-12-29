@@ -3,21 +3,10 @@
 interface
 
 (*
+  TODO:
   Compare
   CompareTo
   HashCode
-  HighestOneBit
-  LowestOneBit
-  Reverse
-  ReverseBytes
-  RotateLeft
-  RotateRight
-  Sign
-  ToBinaryString
-  ToHexString
-  ToOctalString
-  ToString
-  ToString(base)
 *)
 
 // For Delphi XE3 and up:
