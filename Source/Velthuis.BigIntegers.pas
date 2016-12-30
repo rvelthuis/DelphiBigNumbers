@@ -523,19 +523,19 @@ type
 
     /// <summary>Returns the result of the bitwise AND operation on its BigInteger operands. The result
     /// has two's complement semantics, e.g. '-1 and 7' returns '7'.</summary>
-    class operator BitwiseAnd(const Left, Right: BigInteger): BigInteger;
+    class operator BitwiseAnd(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the result of the bitwise OR operation on its BigInteger operands. The result
     /// has two's complement semantics, e.g. '-1 or 7' returns '-1'.</summary>
-    class operator BitwiseOr(const Left, Right: BigInteger): BigInteger;
+    class operator BitwiseOr(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the result of the bitwise XOR operation on its BigIntegers operands. The result
     /// has two's complement semantics, e.g. '-1 xor 7' returns '-8'.</summary>
-    class operator BitwiseXor(const Left, Right: BigInteger): BigInteger;
+    class operator BitwiseXor(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the result of the bitwise NOT operation on its BigInteger operand. The result
     /// has two's complement semantics, e.g. 'not 1' returns '-2'.</summary>
-    class operator LogicalNot(const Value: BigInteger): BigInteger;
+    class operator LogicalNot(const Value: BigInteger): BigInteger; inline;
 
 
     // -- Shift operators --
@@ -557,22 +557,22 @@ type
     // -- Comparison operators --
 
     /// <summary>Returns True if the specified BigIntegers have the same value.</summary>
-    class operator Equal(const Left, Right: BigInteger): Boolean;
+    class operator Equal(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns True if the specified BigInteger do not have the same value.</summary>
-    class operator NotEqual(const Left, Right: BigInteger): Boolean;
+    class operator NotEqual(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically greater than the value of Right.</summary>
-    class operator GreaterThan(const Left, Right: BigInteger): Boolean;
+    class operator GreaterThan(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically greater than or equal to the value of Right.</summary>
-    class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean;
+    class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically less than the value of Right.</summary>
-    class operator LessThan(const Left, Right: BigInteger): Boolean;
+    class operator LessThan(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically less than or equal to the value of Right.</summary>
-    class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean;
+    class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
 
 
     // -- Implicit conversion operators --
@@ -845,86 +845,147 @@ type
       TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse);
       TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
-      FData: TMagnitude;                        // The limbs of the magnitude, least significant limb at lowest address.
-      FSize: Integer;                           // The top bit is the sign of the big integer. Rest is the number of valid limbs of the big integer.
+      // The limbs of the magnitude, least significant limb at lowest address.
+      FData: TMagnitude;
+      // The top bit is the sign bit. Other bits form the unsigned number of valid limbs of the magnitude.
+      FSize: Integer;
     class var
+      // The currently actual (global) number base.
       FBase: TNumberBase;
+      // Flag indicating need to test for partial flag stall.
       FAvoidStall: Boolean;
+      // The current rounding mode.
       FRoundingMode: TRoundingMode;
+
+      // The internal functions used to add and subtract. These differ depending on the need to avoid
+      // a partial flag stall.
       FInternalAdd: TDyadicOperator;
       FInternalSubtract: TDyadicOperator;
   {$ENDREGION}
 
   {$REGION 'private functions'}
   {$IFNDEF PUREPASCAL}
+    // Function detecting of current CPU could suffer from partial flag stall.
     class procedure DetectPartialFlagsStall; static;
+
+    // Internal function adding two magnitudes. Contains code to avoid a partial flag stall.
     class procedure InternalAddModified(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function adding two magnitudes. Does not contain code to avoid partial flag stall.
     class procedure InternalAddPlain(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function subtracting two magnitudes. Contains code to avoid a partial flag stall.
     class procedure InternalSubtractModified(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
+    // Internal function subtracting two magnitudes. Does not contain code to avoid a partial flag stall.
     class procedure InternalSubtractPlain(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
+    // Internal perfect division by 3 (guaranteed that there is no remainder).
     class procedure InternalDivideBy3(Value, Result: PLimb; ASize: Integer); static;
+    // Internal function dividing magnitude by 100, in-place. Leaves quotient in place, returns remainder.
     class function InternalDivMod100(var X: NativeUInt): NativeUInt; static;
+    // Function performing int to string conversion, writing to WritePtr
     class procedure InternalIntToStrDecimal(const Value: NativeUInt; var WritePtr: PChar; MaxDigits: Integer); static;
   {$ELSE}
+    // Internal function adding two magnitudes. Pure Pascal (non-assembler) implementation.
     class procedure InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function subtracting two magnitudes. Pure Pascal (non-assembler) implementation.
     class procedure InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
   {$ENDIF}
+    // Internal function comparing two magnitudes.
     class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer; static;
+    // Internal function and-ing two magnitudes.
     class procedure InternalAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function or-ing two magnitudes.
     class procedure InternalOr(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal funciton xor-ing two magnitudes.
     class procedure InternalXor(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function and-not-ing two magnitudes (Left^ and not Right^).
     class procedure InternalAndNot(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function not-and-ing two magnitudes (not Left^ and Right^).
     class procedure InternalNotAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static; inline;
+    // Internal function performing bitwise operations. The bitwise operations share similar code.
     class procedure InternalBitwise(const Left, Right: BigInteger; var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TDyadicOperator); static;
+    // Internal function icrementing a magnitude by one, in-place.
     class procedure InternalIncrement(Limbs: PLimb; Size: Integer); static;
+    // Internal function decrementing a magnitude by one, in-place.
     class procedure InternalDecrement(Limbs: PLimb; Size: Integer); static;
+    // Internal function parsing a decimal string into a BigInteger. Returns False if string not valid.
     class function InternalParseDecimal(P: PChar; var Value: BigInteger): Boolean; static;
+    // Internal function parsing a hex string into a BigInteger. Returns False if string not valid.
     class function InternalParseHex(P: PChar; var Value: BigInteger): Boolean; static;
+    // Internal function shifting a magnitude left into a new magnitude.
     class procedure InternalShiftLeft(Source, Dest: PLimb; Shift, Size: Integer); static;
+    // Internal function shifting a magnitude right into a new magnitude.
     class procedure InternalShiftRight(Source, Dest: PLimb; Shift, Size: Integer); static;
+    // Internal function performing int to string function for given numeric base.
     class procedure InternalIntToStrBase(const Value: NativeUInt; Base: Cardinal; var WritePtr: PChar; MaxDigits: Integer); static;
+    // Internal function performing int to string conversion for bases 2, 4, and 16, doing simple shifts.
     class procedure InternalShiftedToString(const Value: BigInteger; Base: Integer; var WritePtr: PChar); static;
+    // Internal function performing int to string conversion, repeatedly dividing by 10 (simple algorithm).
     class procedure InternalPlainToString(const Value: BigInteger; Base: Integer; const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer); static;
+    // Internal function performing int to string conversion, using recursive divide-and-conquer algorithm.
     class procedure InternalRecursiveToString(const Value: BigInteger; Base: Integer; const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer); static;
+    // Internal function performing division of two magnitudes, returning quotient and remainder.
     class function InternalDivMod(Dividend, Divisor, Quotient, Remainder: PLimb; LSize, RSize: Integer): Boolean; static;
+    // Internal function performing division of magnitude by 32 bit integer.
     class function InternalDivMod32(Dividend: PLimb; Divisor: UInt32; Quotient, Remainder: PLimb; LSize: Integer): Boolean; static;
+    // Internal function performing division of mangitude by 16 bit integer (needed for Pure Pascal division).
     class function InternalDivMod16(Dividend: PLimb; Divisor: UInt16; Quotient, Remainder: PLimb; LSize: Integer): Boolean; static;
+    // Internal function multiplying two magnitudes.
     class procedure InternalMultiply(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function dividing magnitude by given base value. Leaves quotient in place, returns remainder.
     class function InternalDivideByBase(Mag: PLimb; Base: Integer; var Size: Integer): UInt32; static;
+    // Internal function multiplying by 16 bit integer and then adding 16 bit value. Used by parser.
     class procedure InternalMultiplyAndAdd16(const Multiplicand: TMagnitude; Multiplicator, Addend: UInt16; const Res: TMagnitude); static;
+    // Internal function multiplying by 32 bit integer and then adding 32 bit value. Used by parser.
     class procedure InternalMultiplyAndAdd32(const Multiplicand: TMagnitude; Multiplicator, Addend: UInt32; const Res: TMagnitude); static;
+    // Internal function negating magnitude (treating it as two's complement).
     class procedure InternalNegate(Source, Dest: PLimb; Size: Integer); static;
 
     // Burnikel-Ziegler and helper functions.
+    // Divides two magnitudes using Burnikel-Ziegler algorithm.
     class procedure InternalDivModBurnikelZiegler(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
+    // Divides a BigInteger by 3 exactly. BigInteger is guaranteed to be a positive multiple of 3.
     class function DivideBy3Exactly(const A: BigInteger): BigInteger; static;
+    // Helper function for Burnikel-Ziegler division. See explanation in implementation section.
     class procedure DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper, RightLower: BigInteger; N: Integer; var Quotient, Remainder: BigInteger); static;
+    // Helper function for Burnikel-Ziegler division.
     class procedure DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer; var Quotient, Remainder: BigInteger); static;
 
     // Karatsuba and Toom-Cook helper functions
+    // Add Addend into current BigInteger, at given offset.
     procedure AddWithOffset(const Addend: BigInteger; Offset: Integer);
+    // Split BigInteger into smaller BigIntegers of size BlockSize.
     function Split(BlockSize, BlockCount: Integer): TArray<BigInteger>;
 
+    // Sets global numeric base.
     class procedure SetBase(const Value: TNumberBase); static;
+    // Raises exceptions depending on given error code.
     class procedure Error(ErrorCode: TErrorCode; const ErrorInfo: string = ''); static;
 
+    // Resets size thus that there are no leading zero limbs.
     procedure Compact;
+    // Reallocates magnitude to ensure a given size.
     procedure EnsureSize(RequiredSize: Integer);
+    // Creates a new magnitude.
     procedure MakeSize(RequiredSize: Integer);
   {$ENDREGION}
 
   public
   {$REGION 'public properties'}
+    /// <summary>Number of valid limbs in the magnitude</summary>
     property Size: Integer read GetSize;
+    /// <summary>Number of allocated limbs in the mangitude</summary>
     property Allocated: Integer read GetAllocated;
+    /// <summary>Indicates whether BigInteger is negative</summary>
     property Negative: Boolean read IsNegative;
+    /// <summary>The sign of the BigInteger: -1, 0 or 1</summary>
     property Sign: Integer read GetSign write SetSign;
+    /// <summary>Magnitude, dynamic array of TLimb, containing the (unsigned) value of the BigInteger</summary>
     property Magnitude: TMagnitude read FData;
 
-    // -- Global numeric base for BigIntegers --
-
+    // Global numeric base for BigIntegers
     class property Base: TNumberBase read FBase write SetBase;
+    // Global flag indicating if partial flag stall is avoided
     class property StallAvoided: Boolean read FAvoidStall;
+    // Global rounding mode used for conversion to floating point.
     class property RoundingMode: TRoundingMode read FRoundingMode write FRoundingMode;
   {$ENDREGION}
 
