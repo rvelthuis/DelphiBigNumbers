@@ -8237,83 +8237,45 @@ begin
     ShallowCopy(Right, Result);
 end;
 
-//class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
-//var
-//  NewResult, Rem, NewRem, Temp, Quot: BigInteger;
-//begin
-//  Result := Zero;
-//  Rem := Abs(Modulus);
-//  if (Rem = One) or (Rem = Zero) then
-//    Error(ecNoInverse, '');
-//  if Value.IsNegative then
-//    NewRem := Remainder(Subtract(Rem, Remainder(-Value, Rem)), Rem)
-//  else
-//    NewRem := Remainder(Value, Rem);
-//  Result := Zero;
-//  NewResult := One;
-//  while not NewRem.IsZero do
-//  begin
-//    Quot := Divide(Rem, NewRem);
-//    Temp := NewResult;
-//    NewResult := Subtract(Result, Multiply(Quot, NewResult));
-//    Result := Temp;
-//    Temp := NewRem;
-//    NewRem := Subtract(Rem, Multiply(Quot, NewRem));
-//    Rem := Temp;
-//  end;
-//  if Rem > One then
-//    Error(ecNoInverse);
-//  if Result.IsPositive <> Value.IsPositive then
-//    if Result.IsNegative then
-//      Result := Add(Result, Abs(Modulus))
-//    else
-//      Result := Subtract(Result, Abs(Modulus));
-//end;
-//
 class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
+// Knuth, TAOCP, Vol 2 Algorithm X, p 342.
 var
-  LastX, X, Y, LastY, Res, LastRemainder, Remainder: BigInteger;
+  u1, u3, v1, v3, t1, t3, q: BigInteger;
+  iter: Integer;
 begin
-  if Value.IsZero or Modulus.IsZero then
+  // Step 1. Initialise
+  u1 := One;
+  u3 := Abs(Value);
+  v1 := Zero;
+  v3 := Abs(Modulus);
+  // X mod 1 is nonsense (always 0), but it might still be passed.
+  if Compare(v3, One) = 0 then
     Error(ecNoInverse);
-  LastX := BigInteger.One;
-  X := BigInteger.Zero;
-  Y := BigInteger.One;
-  LastY := BigInteger.Zero;
-  Res := BigInteger.Zero;
-  LastRemainder := Value;
-  Remainder := BigInteger.Abs(Modulus);
-  if LastRemainder.IsNegative then
-    LastRemainder := BigInteger.Subtract(Remainder, LastRemainder);
-  LastRemainder := BigInteger.Remainder(LastRemainder, Remainder);
-  if LastRemainder.IsZero then
-    Error(ecNoInverse);
-  repeat
-    X := Remainder;
-    BigInteger.DivMod(X, LastRemainder, X, LastX);
-    if not LastX.IsZero then
-    begin
-      Remainder := LastRemainder;
-      LastRemainder := LastX;
-    end;
-    Res := Y;
-    Y := BigInteger.Subtract(LastY, BigInteger.Multiply(Y, X));
-    LastY := Res;
-  until LastX.IsZero;
-  if LastRemainder <> 1 then
-    Error(ecNoInverse)
-  else
+  // Remember odd/even iterations
+  iter := 1;
+  // Step 2. Loop while v3 <> 0
+  while not v3.IsZero do
   begin
-    if Value.IsNegative then
-      Res := -Res;
-    if Res.IsNegative and Value.IsPositive then
-      Res := BigInteger.Add(Res, BigInteger.Abs(Modulus));
-    if Res.IsPositive and Value.IsNegative then
-      Res := BigInteger.Subtract(Res, BigInteger.Abs(Modulus));
-    Result := Res;
+    // Step 3. Divide and Subtract
+    DivMod(u3, v3, q, t3);
+    t1 := Add(u1, BigInteger.Multiply(q, v1));
+    // Swap
+    u1 := v1;
+    v1 := t1;
+    u3 := v3;
+    v3 := t3;
+    iter := -iter;
   end;
+  // Ensure u3, i.e. gcd(Value, Modulus) = 1
+  if u3 <> One then
+    Error(ecNoInverse);
+  if iter < 0 then
+    Result := Subtract(Abs(Modulus), u1)
+  else
+    Result := u1;
+  if Value < 0 then
+    Result := -Result;
 end;
-
 
 
 
