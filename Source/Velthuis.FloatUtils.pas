@@ -115,28 +115,28 @@ uses
 {$POINTERMATH ON}
 
 {$IFDEF NORECORDHELPERS}
-function GetPlainMantissa(const AValue: Single): UInt32; overload;
+function GetRawMantissa(const AValue: Single): UInt32; overload;
 begin
   Result := PUInt32(@AValue)^ and CSingleMantissaMask;
 end;
 
-function GetPlainMantissa(const AValue: Double): UInt64; overload;
+function GetRawMantissa(const AValue: Double): UInt64; overload;
 begin
   Result := PUInt64(@AValue)^ and CDoubleMantissaMask;
 end;
 
-function GetPlainExp(const AValue: Single): Integer; overload;
+function GetRawExp(const AValue: Single): Integer; overload;
 begin
   Result := PUInt32(@AValue)^ shr CSingleExponentShift and CSingleExponentMask;
 end;
 
-function GetPlainExp(const AValue: Double): Integer; overload;
+function GetRawExp(const AValue: Double): Integer; overload;
 begin
   Result := PUInt16(@AValue)[3] shr 4 and CDoubleExponentMask;
 //  Result := PUInt64(@AValue)^ shr CDoubleExponentShift and CDoubleExponentMask;
 end;
 
-function GetPlainExp(const AValue: Extended): Integer; overload;
+function GetRawExp(const AValue: Extended): Integer; overload;
 begin
   Result := PUInt16(@AValue)[4] and CExtendedExponentMask;
 end;
@@ -201,8 +201,8 @@ function GetMantissa(const AValue: Single): UInt32; overload;
 var
   E: Integer;
 begin
-  E := GetPlainExp(AValue);
-  Result := GetPlainMantissa(AValue);
+  E := GetRawExp(AValue);
+  Result := GetRawMantissa(AValue);
   if (0 < E) and (E < CSingleExponentMask) then
     Result := Result or (UInt32(1) shl CSingleExponentShift);
 end;
@@ -217,8 +217,8 @@ function GetMantissa(const AValue: Double): UInt64; overload;
 var
   E: Integer;
 begin
-  E := GetPlainExp(AValue);
-  Result := GetPlainMantissa(AValue);
+  E := GetRawExp(AValue);
+  Result := GetRawMantissa(AValue);
   if (0 < E) and (E < CDoubleExponentMask) then
     Result := Result or ((UInt64(1) shl CDoubleExponentShift));
 end;
@@ -242,8 +242,8 @@ function GetExponent(const AValue: Single): Integer; overload;
 var
   M, E: UInt32;
 begin
-  M := GetPlainMantissa(AValue);
-  E := GetPlainExp(AValue);
+  M := GetRawMantissa(AValue);
+  E := GetRawExp(AValue);
   if (0 < E) and (E < CSingleExponentMask) then
     Result := E - CSingleBias
   else if E = 0 then
@@ -269,8 +269,8 @@ var
   M: UInt64;
   E: UInt32;
 begin
-  M := GetPlainMantissa(AValue);
-  E := GetPlainExp(AValue);
+  M := GetRawMantissa(AValue);
+  E := GetRawExp(AValue);
   if (0 < E) and (E < CDoubleExponentMask) then
     Result := E - CDoubleBias
   else if E = 0 then
@@ -297,7 +297,7 @@ var
   E: UInt32;
 begin
   M := PUInt64(@AValue)^;
-  E := GetPlainExp(AValue);
+  E := GetRawExp(AValue);
   if (0 < E) and (E < CExtendedExponentMask) then
     Result := E - CExtendedBias
   else if E = 0 then
