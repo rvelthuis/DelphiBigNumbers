@@ -111,6 +111,8 @@
 {   2016-12-29: Changed return type of Compare() to Integer. Using           }
 {               TValueSign made inlining several comparison operators        }
 {               harder, since that required System.Math.                     }
+{                                                                            }
+{   2016-12-30: Changed implementation of ModInverse to 20% faster version.  }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -991,12 +993,16 @@ type
 
   end;
 
+// Returns sign bit (top bit) of an integer.
 function SignBitOf(Value: Integer): Integer; inline;
 
+// Returns the minimum of two BigIntegers.
 function Min(const A, B: BigInteger): BigInteger; overload; inline;
+// Returns the maximum of two BigIntegers.
 function Max(const A, B: BigInteger): BigInteger; overload; inline;
 
 var
+  // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
 
 implementation
@@ -8231,38 +8237,85 @@ begin
     ShallowCopy(Right, Result);
 end;
 
+//class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
+//var
+//  NewResult, Rem, NewRem, Temp, Quot: BigInteger;
+//begin
+//  Result := Zero;
+//  Rem := Abs(Modulus);
+//  if (Rem = One) or (Rem = Zero) then
+//    Error(ecNoInverse, '');
+//  if Value.IsNegative then
+//    NewRem := Remainder(Subtract(Rem, Remainder(-Value, Rem)), Rem)
+//  else
+//    NewRem := Remainder(Value, Rem);
+//  Result := Zero;
+//  NewResult := One;
+//  while not NewRem.IsZero do
+//  begin
+//    Quot := Divide(Rem, NewRem);
+//    Temp := NewResult;
+//    NewResult := Subtract(Result, Multiply(Quot, NewResult));
+//    Result := Temp;
+//    Temp := NewRem;
+//    NewRem := Subtract(Rem, Multiply(Quot, NewRem));
+//    Rem := Temp;
+//  end;
+//  if Rem > One then
+//    Error(ecNoInverse);
+//  if Result.IsPositive <> Value.IsPositive then
+//    if Result.IsNegative then
+//      Result := Add(Result, Abs(Modulus))
+//    else
+//      Result := Subtract(Result, Abs(Modulus));
+//end;
+//
 class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
 var
-  NewResult, Rem, NewRem, Temp, Quot: BigInteger;
+  LastX, X, Y, LastY, Res, LastRemainder, Remainder: BigInteger;
 begin
-  Result := Zero;
-  Rem := Abs(Modulus);
-  if (Rem = One) or (Rem = Zero) then
-    Error(ecNoInverse, '');
-  if Value.IsNegative then
-    NewRem := Remainder(Subtract(Rem, Remainder(-Value, Rem)), Rem)
-  else
-    NewRem := Remainder(Value, Rem);
-  Result := Zero;
-  NewResult := One;
-  while not NewRem.IsZero do
-  begin
-    Quot := Divide(Rem, NewRem);
-    Temp := NewResult;
-    NewResult := Subtract(Result, Multiply(Quot, NewResult));
-    Result := Temp;
-    Temp := NewRem;
-    NewRem := Subtract(Rem, Multiply(Quot, NewRem));
-    Rem := Temp;
-  end;
-  if Rem > One then
+  if Value.IsZero or Modulus.IsZero then
     Error(ecNoInverse);
-  if Result.IsPositive <> Value.IsPositive then
-    if Result.IsNegative then
-      Result := Add(Result, Abs(Modulus))
-    else
-      Result := Subtract(Result, Abs(Modulus));
+  LastX := BigInteger.One;
+  X := BigInteger.Zero;
+  Y := BigInteger.One;
+  LastY := BigInteger.Zero;
+  Res := BigInteger.Zero;
+  LastRemainder := Value;
+  Remainder := BigInteger.Abs(Modulus);
+  if LastRemainder.IsNegative then
+    LastRemainder := BigInteger.Subtract(Remainder, LastRemainder);
+  LastRemainder := BigInteger.Remainder(LastRemainder, Remainder);
+  if LastRemainder.IsZero then
+    Error(ecNoInverse);
+  repeat
+    X := Remainder;
+    BigInteger.DivMod(X, LastRemainder, X, LastX);
+    if not LastX.IsZero then
+    begin
+      Remainder := LastRemainder;
+      LastRemainder := LastX;
+    end;
+    Res := Y;
+    Y := BigInteger.Subtract(LastY, BigInteger.Multiply(Y, X));
+    LastY := Res;
+  until LastX.IsZero;
+  if LastRemainder <> 1 then
+    Error(ecNoInverse)
+  else
+  begin
+    if Value.IsNegative then
+      Res := -Res;
+    if Res.IsNegative and Value.IsPositive then
+      Res := BigInteger.Add(Res, BigInteger.Abs(Modulus));
+    if Res.IsPositive and Value.IsNegative then
+      Res := BigInteger.Subtract(Res, BigInteger.Abs(Modulus));
+    Result := Res;
+  end;
 end;
+
+
+
 
 // http://stackoverflow.com/questions/8496182/calculating-powa-b-mod-n
 class function BigInteger.ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger;
