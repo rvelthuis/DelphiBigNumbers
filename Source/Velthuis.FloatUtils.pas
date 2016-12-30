@@ -108,28 +108,27 @@ uses
 
 {$POINTERMATH ON}
 
-function GetRawMantissa(const AValue: Single): UInt32; overload;
+function GetRawMantissa(const AValue: Single): UInt32; overload; inline;
 begin
   Result := PUInt32(@AValue)^ and CSingleMantissaMask;
 end;
 
-function GetRawMantissa(const AValue: Double): UInt64; overload;
+function GetRawMantissa(const AValue: Double): UInt64; overload; inline;
 begin
   Result := PUInt64(@AValue)^ and CDoubleMantissaMask;
 end;
 
-function GetRawExponent(const AValue: Single): Integer; overload;
+function GetRawExponent(const AValue: Single): Integer; overload; inline;
 begin
   Result := PUInt32(@AValue)^ shr CSingleExponentShift and CSingleExponentMask;
 end;
 
-function GetRawExponent(const AValue: Double): Integer; overload;
+function GetRawExponent(const AValue: Double): Integer; overload; inline;
 begin
   Result := PUInt16(@AValue)[3] shr 4 and CDoubleExponentMask;
-//  Result := PUInt64(@AValue)^ shr CDoubleExponentShift and CDoubleExponentMask;
 end;
 
-function GetRawExponent(const AValue: Extended): Integer; overload;
+function GetRawExponent(const AValue: Extended): Integer; overload; inline;
 begin
   Result := PUInt16(@AValue)[4] and CExtendedExponentMask;
 end;
