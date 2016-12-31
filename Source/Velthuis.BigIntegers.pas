@@ -9585,7 +9585,8 @@ begin
     //  Original code:                                                                                                //
     //  Result := MinusOne - ((MinusOne - Value) shr Shift);                                                          //
     //                                                                                                                //
-    //  See: http://blogs.teamb.com/rudyvelthuis/2015/10/04/27826                                                     //
+    //  See: https://community.embarcadero.com/blogs/entry/speed-problems-caused-by-code-that-never-ran-27826         //
+    //   or: http://rvelthuis.blogspot.de/2015/10/speed-problems-caused-by-code-that.html                             // 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     LSize := (Value.FSize and SizeMask);
