@@ -82,16 +82,36 @@
 
 unit Velthuis.BigDecimals;
 
-{$IF CompilerVersion >= 24.0}
+(* TODO: BigDecimals are ssslllooowww. This piece of code, with CIterations = 5*1000*1000,
+
+    SetLength(arr, CIterations);
+    pi := '3.14159';
+    for I := 0 to High(arr) do
+      arr[I] := BigDecimal(I);
+    for I := 0 to High(arr) do
+      arr[I] := arr[I] * pi / (pi * BigDecimal(I) + BigDecimal.One);
+
+  is 500 times(!) slower than the Double equivalent. That is extremely slow.
+  Note that simplyfying this to do BigDecimal(I) * pi only once will only take away 1% of that.
+  It is crucial to find out what makes this code so terribly slow.
+
+  Note: probably BigInteger.DivMod is the slow part.
+
+  Note: It might make sense to use a NativeInt to hold the FValue of small BigDecimals, instead
+  of always BigIntegers.
+  It might also make sense to make BigInteger.DivMod a lot faster for small values.
+*)
+
+{$IF CompilerVersion >= 24.0}   // Delphi XE3
   {$LEGACYIFEND ON}
 {$IFEND}
 
-{$IF CompilerVersion >= 22.0}
+{$IF CompilerVersion >= 22.0}   // Delphi XE
   {$CODEALIGN 16}
   {$ALIGN 16}
 {$IFEND}
 
-{$IF CompilerVersion >= 21.0}
+{$IF CompilerVersion >= 21.0}   // Delphi 2010
   {$DEFINE HASCLASSCONSTRUCTORS}
 {$IFEND}
 
@@ -169,6 +189,8 @@ type
       // So 1.79 is coded as FValue = 179 and FScale = 2, whereas 1.7900 is coded as FValue = 17900 and FScale = 4.
       FScale: Int32;
 
+      // The precision is the number of digits in FValue. This is originally 0, and calculated when used the first time.
+      // If this value is not 0, then the precision does not need to be calculated and this value can be used.
       FPrecision: Int32;
 
     class var
@@ -235,9 +257,10 @@ type
     class function GetPowerOfTen(N: Integer): BigInteger; static;
 
     // Initialize or reset values of scale and precision to 0.
-    procedure Init;
+    procedure Init; inline;
 
-    // Checks if the NewScale value is a valid scale value. If so, simply returns NewScale.
+    // Checks if the NewScale value is a valid scale value. If so, simply returns NewScale. Otherwise, raises
+    // an appropriate exception.
     class function RangeCheckedScale(NewScale: Int32): Integer; static;
 
     // Only allows 'e' or 'E' as exponent delimiter for scientific notation output.
@@ -1137,7 +1160,7 @@ begin
   if Right.FValue = BigInteger.Zero then
     Error(ecDivByZero, []);
   TargetScale := Left.Scale - Right.Scale;
-  if Left.FValue = BigInteger.Zero then
+  if Left.FValue.IsZero then
   begin
     Result.FValue := BigInteger.Zero;
     Result.FScale := TargetScale;
@@ -1148,27 +1171,47 @@ begin
   LSign := Left.FValue.Sign xor Right.FValue.Sign;
 
   // Use positive values (zero was discarded above).
-  LDivisor := BigInteger.Abs(Right.FValue);
+//  LDivisor := BigInteger.Abs(Right.FValue);
+  LDivisor := Right.FValue;
+
+  (* $$RV:
+
+     Assume L.Precision = 12, R.Precision = 4 and desired precision = 10, then the following results in:
+
+       LMultiplier = 10 + 4 - 12 + 4 = 6
+
+     * Q: Do we really need that?
+     * Q: Can't we calculate a rough precision instead, i.e. not use .Precision? Does that help?
+       A: We should try to avoid calculating the BigDecimal.Precision at all.
+     * Q: Could it be that all this scaling up and down is too expensive, and that we should try to get it right
+          at once?
+       A: YES!
+     * Q: What about using a NativeUInt instead of a BigInteger for "small" values of .FValue (below MaxInt or
+          some such).
+
+  *)
 
   // Determine minimum power of ten with which to multiply the dividend.
   // The + 4 is empirical.
-  LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 4);
+//$$RV: removing the following reduces the time by 35%! (13.9s -> 8.8s)
+  LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
 
   // Do the division of the scaled up dividend by the divisor. Quotient and remainder are needed.
-  BigInteger.DivMod(BigInteger.Abs(Left.FValue) * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
+//  BigInteger.DivMod(BigInteger.Abs(Left.FValue) * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
+  BigInteger.DivMod(Left.FValue * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
 
   // Calculate the scale that matches the division.
   NewScale := RangeCheckedScale(TargetScale + LMultiplier);
 
-  // Create a preliiminary result.
+  // Create a preliminary result.
   Result.Create(LQuotient, NewScale);
 
   // Reduce the precision, if necessary.
-  if Result.Precision > Precision then
-    Result := Result.RoundToScale(RangeCheckedScale(Result.FScale + Precision - Result.Precision), ARoundingMode);
+  Result := Result.RoundToScale(RangeCheckedScale(NewScale + Precision - Result.Precision), ARoundingMode);
 
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
+//$$RV: removing the following reduces the time by approx 20% (30s -> 24s).
   InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
@@ -1639,13 +1682,16 @@ type
     Lo: Cardinal;
     Hi: Integer;
   end;
+const
+  // 1292913986 is Log10(2) * 1^32.
+  CMultiplier = Int64(1292913986);
 begin
-  if FValue.IsZero then
-    Result := 1
-  else
+  Result := FPrecision;
+  if Result = 0 then
   begin
-    // 1292913986 is Log10(2) * 1^32.
-    Result := CardRec(FValue.BitLength * UInt64(1292913986)).Hi;
+    //Note: Both 9999 ($270F) and 10000 ($2710) have a bitlength of 14, but 9999 has a precision of 4, while 10000 has a precision of 5.
+    //      In other words: BitLength is not a good enough measure for precision. The test with the power of ten is necessary.
+    Result := CardRec((FValue.BitLength + 1) * CMultiplier).Hi;
     if (GetPowerOfTen(Result) <= Abs(FValue)) or (Result = 0) then
       Inc(Result);
     FPrecision := Result;
