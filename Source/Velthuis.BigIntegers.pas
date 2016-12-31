@@ -507,7 +507,7 @@ type
     class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger; inline;
 
     /// <summary>Unary minus. Negates the value of the specified BigInteger.</summary>
-    class operator Negative(const Value: BigInteger): BigInteger; inline;
+    class operator Negative(const Value: BigInteger): BigInteger;
 
 {$IFDEF BIGINTEGERIMMUTABLE}
   private
@@ -1242,6 +1242,16 @@ const
 var
   CBasePowers: array[TNumberBase] of TArray<BigInteger>;
 
+type
+  PDynArrayRec = ^TDynArrayRec;
+  TDynArrayRec = packed record
+  {$IFDEF CPU64BITS}
+    _Padding: Integer; // Make 16 byte align for payload..
+  {$ENDIF}
+    RefCnt: Integer;
+    Length: NativeInt;
+  end;
+
 function FindSize(Limb: PLimb; Size: Integer): Integer;
 {$IFDEF PUREPASCAL}
 begin
@@ -1382,7 +1392,7 @@ begin
   Move(Src^, Dest^, Count * CLimbSize);
 end;
 
-{ TBigInteger }
+{ BigInteger }
 
 procedure ShallowCopy(const Value: BigInteger; var Result: BigInteger); inline;
 begin
@@ -8237,13 +8247,13 @@ begin
     ShallowCopy(Right, Result);
 end;
 
+// Knuth, TAOCP, Vol 2 Algorithm X, p 342, but using BigIntegers.
 class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
-// Knuth, TAOCP, Vol 2 Algorithm X, p 342.
 var
   u1, u3, v1, v3, t1, t3, q: BigInteger;
   iter: Integer;
 begin
-  // Step 1. Initialise
+  // Step X1. Initialise
   u1 := One;
   u3 := Abs(Value);
   v1 := Zero;
@@ -8252,11 +8262,11 @@ begin
   if Compare(v3, One) = 0 then
     Error(ecNoInverse);
   // Remember odd/even iterations
-  iter := 1;
-  // Step 2. Loop while v3 <> 0
+  iter := 0;
+  // Step X2. Loop while v3 <> 0
   while not v3.IsZero do
   begin
-    // Step 3. Divide and Subtract
+    // Step X3. Divide and Subtract
     DivMod(u3, v3, q, t3);
     t1 := Add(u1, BigInteger.Multiply(q, v1));
     // Swap
@@ -8264,20 +8274,18 @@ begin
     v1 := t1;
     u3 := v3;
     v3 := t3;
-    iter := -iter;
+    Inc(iter);
   end;
   // Ensure u3, i.e. gcd(Value, Modulus) = 1
   if u3 <> One then
     Error(ecNoInverse);
-  if iter < 0 then
+  if Odd(iter) then
     Result := Subtract(Abs(Modulus), u1)
   else
     Result := u1;
   if Value < 0 then
     Result := -Result;
 end;
-
-
 
 // http://stackoverflow.com/questions/8496182/calculating-powa-b-mod-n
 class function BigInteger.ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger;
@@ -8324,6 +8332,7 @@ var
   LHighCard: UInt32;
   LLength: Integer;
 begin
+  Assert(Multiplicand <> nil);
   LLength := Length(Multiplicand);
   LHighCard:= 0;
   I := 0;
@@ -8366,11 +8375,8 @@ asm
        MOV     ESI,EAX
        MOV     EDI,Res
 
-       TEST    EAX,EAX
-       JZ      @NotNil
+       // EAX should never be nil. Nil should be caught earlier.
        MOV     EAX,[EAX - TYPE NativeInt]
-
-@NotNil:
 
        MOV     LLength,EAX
        XOR     ECX,ECX                          // ECX used for overflow.
@@ -8422,15 +8428,15 @@ asm
        PUSH    R8                       // PUSH Extra
        MOV     R8D,EDX                  // R8D = Multiplicator
        MOV     R10,RCX
-       TEST    R10,R10
-       JZ      @@1
-       MOV     R10,[R10-8]              // R10D = Length(Multiplicand)
-@@1:
+
+       // R10 is never nil!
+       MOV     R10,[R10 - TYPE NativeInt] // R10D = Length(Multiplicand)
+
        XOR     R11D,R11D                // R11D = I
        XOR     EBX,EBX
        CMP     R11D,R10D
-       JNB     @@3
-@@2:
+       JNB     @SkipMult
+@MultLoop:
        MOV     EAX,[RCX + CLimbSize*R11]
        MUL     EAX,R8D
        ADD     EAX,EBX
@@ -8439,18 +8445,18 @@ asm
        MOV     EBX,EDX
        INC     R11D
        CMP     R11D,R10D
-       JB      @@2
-@@3:
+       JB      @MultLoop
+@SkipMult:
        MOV     [R9 + CLimbSize*R11],EDX
        POP     RDX                      // POP Extra
        XOR     EBX,EBX
-@@4:
+@AddLoop:
        ADC     [R9 + CLimbSize*RBX],EDX
        JNC     @Exit
        MOV     EDX,0                    //
        INC     EBX                      // These 3 instructions should not modify the carry flag!
        DEC     R10D                     //
-       JNE     @@4
+       JNE     @AddLoop
 @Exit:
 end;
 {$ENDIF WIN64}
@@ -8560,20 +8566,17 @@ asm
 end;
 {$ELSE WIN64}
 asm
-      .PUSHNV RBX
+       .PUSHNV RBX
 
        PUSH    R8                       // PUSH Extra
        MOVZX   R8D,DX                   // R8W = Multiplicator
        MOV     R10,RCX
-       TEST    R10,R10
-       JZ      @@1
        MOV     R10,[R10-8]              // R10D = Length(Multiplicand)
-@@1:
        XOR     R11D,R11D                // R11D = I
        XOR     EBX,EBX
        CMP     R11D,R10D
-       JNB     @@3
-@@2:
+       JNB     @SkipMult
+@MultLoop:
        MOV     EAX,[RCX + CLimbSize*R11]
        MUL     EAX,R8D
        ADD     EAX,EBX
@@ -8582,18 +8585,20 @@ asm
        MOV     EBX,EDX
        INC     R11D
        CMP     R11D,R10D
-       JB      @@2
-@@3:
+       JB      @MultLoop
+@SkipMult:
        MOV     [R9 + CLimbSize*R11],EDX
        POP     RDX                      // POP Extra
        MOVZX   EDX,DX
        XOR     EBX,EBX
-@@4:
+@AddLoop:
        ADC     [R9 + CLimbSize*RBX],EDX
+       JNC     @Exit
        MOV     EDX,0                    //
        INC     EBX                      // These 3 instructions should not modify the carry flag!
        DEC     R10D                     //
-       JNE     @@4
+       JNE     @AddLoop
+@Exit:
 end;
 {$IFEND}
 
@@ -8609,7 +8614,12 @@ end;
 
 class operator BigInteger.Multiply(Left: Word; const Right: BigInteger): BigInteger;
 begin
-  Result := Right * Left;
+  if (Left = 0) or ((Right.FSize and SizeMask) = 0) then
+    Exit(Zero);
+  Result.MakeSize((Right.FSize and SizeMask) + 2);
+  InternalMultiplyAndAdd16(Right.FData, Left, 0, Result.FData);
+  Result.FSize := (Right.FSize and SignMask) or (Result.FSize and SizeMask);
+  Result.Compact;
 end;
 
 class function BigInteger.MultiplyKaratsuba(const Left, Right: BigInteger): BigInteger;
@@ -9058,18 +9068,8 @@ begin
   FSize := (FSize and SignMask) or RequiredSize;
 end;
 
-type
-  PDynArrayRec = ^TDynArrayRec;
-  TDynArrayRec = packed record
-  {$IFDEF CPU64BITS}
-    _Padding: Integer; // Make 16 byte align for payload..
-  {$ENDIF}
-    RefCnt: Integer;
-    Length: NativeInt;
-  end;
-
 // Replacement for SetLength() only for TMagnitudes, i.e. dynamic arrays of TLimb.
-procedure AllocNewMagnitude(var FData: Pointer; RequiredSize: Integer); //inline;
+procedure AllocNewMagnitude(var FData: Pointer; RequiredSize: Integer); inline;
 var
   NewData: PByte;
   NewSize: Integer;
