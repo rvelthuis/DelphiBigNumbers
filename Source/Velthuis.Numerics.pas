@@ -20,6 +20,8 @@ interface
   {$ALIGN 16}
 {$IFEND}
 
+{$INLINE AUTO}
+
 uses
   System.Math, System.Types;
 
