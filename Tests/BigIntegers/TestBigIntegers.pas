@@ -14,6 +14,7 @@ interface
 
 uses
   TestFramework,
+  Velthuis.Magnitudes,
   Velthuis.BigIntegers,
   Velthuis.RandomNumbers,
   Velthuis.Loggers,
@@ -96,6 +97,7 @@ type
     procedure TestNthRoot;
     procedure TestSqrt;
     procedure TestToByteArray;
+    procedure TestModInverse;
   end;
 
 implementation
@@ -502,6 +504,35 @@ begin
       D := A div W32;
       E := A div C;
       Check(E = D, Format('(%d, %d) %s div %x = %s (%s)', [I, J, A.ToString(16), W32, D.ToString(16), E.ToString(16)]));
+    end;
+  end;
+end;
+
+procedure TTestBigInteger.TestModInverse;
+var
+  I, J: Integer;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    for J := 0 to High(Arguments) do
+    begin
+      B := Arguments[J];
+      // Only test if B <> 0 and A and B are coprime.
+      if B.IsZero or (BigInteger.GreatestCommonDivisor(A, B) <> BigInteger.One) then
+        Continue;
+      try
+        C := BigInteger.Zero;
+        C := BigInteger.ModInverse(A, B);
+      except
+        on E1: EInvalidArgument do
+        begin
+          Continue;
+        end;
+        on E2: EZeroDivide do
+          Check(False, Format('(%d,%d) Unexpected division by zero ModInverse(%s, %s)', [I, J, A.ToString, B.ToString]));
+      end;
+      Check(A * C mod B = BigInteger.One, Format('(%d,%d) ModInverse: %s * %s mod %s = %s', [I, J, A.ToString, C.ToString, B.ToString, (A * C mod B).ToString]));
     end;
   end;
 end;
@@ -1074,7 +1105,7 @@ begin
       E := TRDiv.val;
       F := TRMod.val;
       Check(C = E, Format('(%d,%d) %s div %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), E.ToString(16)]));
-      Check(D = F, Format('(%d,%d) %s mod %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), D.ToString(16), F.ToString(16)]));
+      Check(D = F, Format('(%d,%d) %s mod %s = "%s" ("%s")', [I, J, A.ToString(16), B.ToString(16), D.ToString(16), F.ToString(16)]));
     end;
   end;
 end;
