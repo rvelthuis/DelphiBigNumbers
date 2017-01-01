@@ -30,7 +30,8 @@ BigNumbers
    Tests
       BigDecimals                            --- Sources for DUnit tests for BigDecimals
       BigIntegers                            --- Sources for DUnit tests for BigIntegers
-   Visualizers                               --- Sources for IDE debug visualizer DLL for BigInteger and BigDecimal   
+   Visualizers                               --- Sources for IDE debug visualizer DLL for BigInteger and 
+                                                 BigDecimal   
 ```
 
 
