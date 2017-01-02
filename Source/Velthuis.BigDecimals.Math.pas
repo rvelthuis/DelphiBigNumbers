@@ -5,6 +5,7 @@ interface
 uses
   Velthuis.BigIntegers, Velthuis.BigDecimals;
 
+<<<<<<< HEAD
 // Perhaps we first need BigRational to delay the evaluation of items.
 
 type
@@ -21,10 +22,30 @@ type
     function Pi(Precision: Integer = 0): BigDecimal; static;
     function Ln(const X: BigDecimal; Precision: Integer = 0): BigDecimal; static;
     function Log10(const X: BigDecimal; Precision: Integer = 0): BigDecimal; static;
+=======
+type
+  BigDecimalMath = class
+  private
+    class var
+      FCurrentPrecision: Integer;
+      FCurrentPi: BigDecimal;
+      FCurrentPiPrecision: Integer;
+      FFactorials: TArray<BigDecimal>;
+    class procedure MakeFactorials(NewPrecision: Integer); static;
+    class constructor InitMath;
+  public
+    class function Pi(Precision: Integer): BigDecimal; overload; static;
+    class function Pi: BigDecimal; overload; static;
+    class function Sin(X: BigDecimal; Precision: Integer): BigDecimal; overload; static;
+    class function Sin(X: BigDecimal): BigDecimal; overload; static;
+    class function Cos(X: BigDecimal; Precision: Integer): BigDecimal; overload; static;
+    class function Cos(X: BigDecimal): BigDecimal; overload; static;
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f
   end;
 
 implementation
 
+<<<<<<< HEAD
 (*
 /**
  * Compute the natural logarithm of x to a given scale, x > 0.
@@ -162,28 +183,85 @@ begin
 end;
 
 function BigDecimalMath.Ln(const X: BigDecimal; Precision: Integer): BigDecimal;
+=======
+{ BigDecimalMath }
+
+class function BigDecimalMath.Cos(X: BigDecimal; Precision: Integer): BigDecimal;
+begin
+  MakeFactorials(Precision);
+
+end;
+
+class function BigDecimalMath.Cos(X: BigDecimal): BigDecimal;
 begin
 
 end;
 
+class constructor BigDecimalMath.InitMath;
+begin
+
+end;
+
+class procedure BigDecimalMath.MakeFactorials(NewPrecision: Integer);
+var
+  I: Integer;
+  Factor, Factorial: BigDecimal;
+begin
+  if NewPrecision > FCurrentPrecision then
+  begin
+    SetLength(FFactorials, NewPrecision);
+    Factorial := FFactorials[FCurrentPrecision];
+    Factor := FCurrentPrecision;
+    for I := FCurrentPrecision + 1 to NewPrecision do
+    begin
+      Inc(Factor);
+      Factorial := Factorial * Factor;
+      FFactorials[I] := Factorial;
+    end;
+  end;
+  FCurrentPrecision := NewPrecision;
+end;
+
+class function BigDecimalMath.Pi(Precision: Integer): BigDecimal;
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f
+begin
+
+end;
+
+<<<<<<< HEAD
 function BigDecimalMath.Log10(const X: BigDecimal; Precision: Integer): BigDecimal;
+=======
+class function BigDecimalMath.Pi: BigDecimal;
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f
 begin
 
 end;
 
+<<<<<<< HEAD
 function BigDecimalMath.Pi(Precision: Integer): BigDecimal;
+=======
+class function BigDecimalMath.Sin(X: BigDecimal; Precision: Integer): BigDecimal;
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f
 begin
 
 end;
 
+<<<<<<< HEAD
 function BigDecimalMath.Sin(const X: BigDecimal; Precision: Integer): BigDecimal;
+=======
+class function BigDecimalMath.Sin(X: BigDecimal): BigDecimal;
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f
 begin
 
 end;
 
+<<<<<<< HEAD
 (*
 
 *)
 
 end.
 
+=======
+end.
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f

@@ -8,7 +8,7 @@ These are implementations of the multi-precision `BigInteger` and `BigDecimal` t
 
 `BigInteger` is a multi-precision integer. Its size is only limited by available memory.
 
-`BigInteger` is built for easy of use, speed and reliability. It is written in plain Object Pascal and x86-32/x86-64 assembler, but every assembler function has a so called "pure Pascal" equivalent as well. It is modelled after the `BigInteger` type in .NET, but is far more optimized than that and provides an interface that is more in line with Delphi. It uses higher level algorithms like *Burnikel-Ziegler*, *Karatsuba*, *Toom-Cook*, etc. to make things fast even for very large integers. It offers overloaded operators and all the usual functions. More information can be found on the [BigIntegers unit](http://www.rvelthuis.de/programs/bigintegers.html) page on my website.
+`BigInteger` is built for ease of use, speed and reliability. It is written in plain Object Pascal and x86-32/x86-64 assembler, but every assembler function has a so called "pure Pascal" equivalent as well. It is modelled after the `BigInteger` type in .NET, but is far more optimized than that and provides an interface that is more in line with Delphi. It uses higher level algorithms like *Burnikel-Ziegler*, *Karatsuba*, *Toom-Cook*, etc. to make things fast even for very large integers. It offers overloaded operators and all the usual functions. More information can be found on the [BigIntegers unit](http://www.rvelthuis.de/programs/bigintegers.html) page on my website.
 
 ##BigDecimal
 
@@ -30,6 +30,8 @@ BigNumbers
    Tests
       BigDecimals                            --- Sources for DUnit tests for BigDecimals
       BigIntegers                            --- Sources for DUnit tests for BigIntegers
+   Visualizers                               --- Sources for IDE debug visualizer DLL for BigInteger and 
+                                                 BigDecimal   
 ```
 
 

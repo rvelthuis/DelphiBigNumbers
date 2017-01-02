@@ -37,6 +37,11 @@
 
 unit Velthuis.FloatUtils;
 
+{ Note: in newer versions of Delphi, most of these functions are superceded by functions in the
+        record helpers for floating point types. This unit is made to make provide the
+        functions for several older versions as well.
+}
+
 interface
 
 uses
@@ -96,9 +101,6 @@ implementation
 
 uses
   System.SysUtils;
-//{$IF NOT DECLARED(TSingleHelper)}
-  {$DEFINE NORECORDHELPERS}
-//{$IFEND}
 
 {$IF CompilerVersion >= 24.0}
   {$LEGACYIFEND ON}
@@ -106,136 +108,92 @@ uses
 
 {$POINTERMATH ON}
 
-{$IFDEF NORECORDHELPERS}
-function GetPlainMantissa(const AValue: Single): UInt32; overload;
+function GetRawMantissa(const AValue: Single): UInt32; overload; inline;
 begin
   Result := PUInt32(@AValue)^ and CSingleMantissaMask;
 end;
 
-function GetPlainMantissa(const AValue: Double): UInt64; overload;
+function GetRawMantissa(const AValue: Double): UInt64; overload; inline;
 begin
   Result := PUInt64(@AValue)^ and CDoubleMantissaMask;
 end;
 
-function GetPlainExp(const AValue: Single): Integer; overload;
+function GetRawExponent(const AValue: Single): Integer; overload; inline;
 begin
   Result := PUInt32(@AValue)^ shr CSingleExponentShift and CSingleExponentMask;
 end;
 
-function GetPlainExp(const AValue: Double): Integer; overload;
+function GetRawExponent(const AValue: Double): Integer; overload; inline;
 begin
   Result := PUInt16(@AValue)[3] shr 4 and CDoubleExponentMask;
-//  Result := PUInt64(@AValue)^ shr CDoubleExponentShift and CDoubleExponentMask;
 end;
 
-function GetPlainExp(const AValue: Extended): Integer; overload;
+function GetRawExponent(const AValue: Extended): Integer; overload; inline;
 begin
   Result := PUInt16(@AValue)[4] and CExtendedExponentMask;
 end;
-{$ENDIF}
 
 function IsNegativeInfinity(const AValue: Single): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := System.Math.IsInfinite(AValue) and (System.Math.Sign(AValue) < 0);
-{$ELSE}
-  Result := AValue.IsNegativeInfinity;
-{$ENDIF}
 end;
 
 function IsNegativeInfinity(const AValue: Double): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := System.Math.IsInfinite(AValue) and (Sign(AValue) < 0);
-{$ELSE}
-  Result := AValue.IsNegativeInfinity;
-{$ENDIF}
 end;
 
 function IsNegativeInfinity(const AValue: Extended): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := System.Math.IsInfinite(AValue) and (Sign(AValue) < 0);
-{$ELSE}
-  Result := AValue.IsNegativeInfinity;
-{$ENDIF}
 end;
 
 function IsPositiveInfinity(const AValue: Single): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := System.Math.IsInfinite(AValue) and (Sign(AValue) > 0);
-{$ELSE}
-  Result := AValue.IsNegativeInfinity;
-{$ENDIF}
 end;
 
 function IsPositiveInfinity(const AValue: Double): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := System.Math.IsInfinite(AValue) and (Sign(AValue) > 0);
-{$ELSE}
-  Result := AValue.IsNegativeInfinity;
-{$ENDIF}
 end;
 
 function IsPositiveInfinity(const AValue: Extended): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := System.Math.IsInfinite(AValue) and (Sign(AValue) > 0);
-{$ELSE}
-  Result := AValue.IsNegativeInfinity;
-{$ENDIF}
 end;
 
 function GetMantissa(const AValue: Single): UInt32; overload;
-{$IFDEF NORECORDHELPERS}
 var
   E: Integer;
 begin
-  E := GetPlainExp(AValue);
-  Result := GetPlainMantissa(AValue);
+  E := GetRawExponent(AValue);
+  Result := GetRawMantissa(AValue);
   if (0 < E) and (E < CSingleExponentMask) then
     Result := Result or (UInt32(1) shl CSingleExponentShift);
 end;
-{$ELSE}
-begin
-  Result := AValue.Mantissa;
-end;
-{$ENDIF}
 
 function GetMantissa(const AValue: Double): UInt64; overload;
-{$IFDEF NORECORDHELPERS}
 var
   E: Integer;
 begin
-  E := GetPlainExp(AValue);
-  Result := GetPlainMantissa(AValue);
+  E := GetRawExponent(AValue);
+  Result := GetRawMantissa(AValue);
   if (0 < E) and (E < CDoubleExponentMask) then
     Result := Result or ((UInt64(1) shl CDoubleExponentShift));
 end;
-{$ELSE}
-begin
-  Result := AValue.Mantissa;
-end;
-{$ENDIF}
 
 function GetMantissa(const AValue: Extended): UInt64; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := PUInt64(@AValue)^;
-{$ELSE}
-  Result := AValue.Mantissa;
-{$ENDIF}
 end;
 
 function GetExponent(const AValue: Single): Integer; overload;
-{$IFDEF NORECORDHELPERS}
 var
   M, E: UInt32;
 begin
-  M := GetPlainMantissa(AValue);
-  E := GetPlainExp(AValue);
+  M := GetRawMantissa(AValue);
+  E := GetRawExponent(AValue);
   if (0 < E) and (E < CSingleExponentMask) then
     Result := E - CSingleBias
   else if E = 0 then
@@ -249,20 +207,14 @@ begin
     // NaN or +/-Infinity
     Result := 0;
 end;
-{$ELSE}
-begin
-  Result := AValue.Exponent;
-end;
-{$ENDIF}
 
 function GetExponent(const AValue: Double): Integer; overload;
-{$IFDEF NORECORDHELPERS}
 var
   M: UInt64;
   E: UInt32;
 begin
-  M := GetPlainMantissa(AValue);
-  E := GetPlainExp(AValue);
+  M := GetRawMantissa(AValue);
+  E := GetRawExponent(AValue);
   if (0 < E) and (E < CDoubleExponentMask) then
     Result := E - CDoubleBias
   else if E = 0 then
@@ -276,20 +228,14 @@ begin
     // NaN or +/-Infinity
     Result := 0;
 end;
-{$ELSE}
-begin
-  Result := AValue.Exponent;
-end;
-{$ENDIF}
 
 function GetExponent(const AValue: Extended): Integer; overload;
-{$IFDEF NORECORDHELPERS}
 var
   M: UInt64;
   E: UInt32;
 begin
   M := PUInt64(@AValue)^;
-  E := GetPlainExp(AValue);
+  E := GetRawExponent(AValue);
   if (0 < E) and (E < CExtendedExponentMask) then
     Result := E - CExtendedBias
   else if E = 0 then
@@ -303,41 +249,23 @@ begin
     // NaN or +/-Infinity
     Result := 0;
 end;
-{$ELSE}
-begin
-  Result := AValue.Exponent;
-end;
-{$ENDIF}
 
 function IsDenormal(const AValue: Single): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := ((PUInt32(@AValue)^ shr CSingleExponentShift and CSingleExponentMask) = 0) and (GetMantissa(AValue) <> 0);
-{$ELSE}
-  Result := AValue.SpecialType in [fsDenormal, fsNDenormal];
-{$ENDIF}
 end;
 
 function IsDenormal(const AValue: Double): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := ((PUInt64(@AValue)^ shr 52) = 0) and (GetMantissa(AValue) <> 0);
-{$ELSE}
-  Result := AValue.SpecialType in [fsDenormal, fsNDenormal];
-{$ENDIF}
 end;
 
 function IsDenormal(const AValue: Extended): Boolean; overload;
 begin
-{$IFDEF NORECORDHELPERS}
   Result := ((PUInt16(@AValue)[4] and $7FFF) = 0) and (GetMantissa(AValue) <> 0);
-{$ELSE}
-  Result := AValue.SpecialType in [fsDenormal, fsNDenormal];
-{$ENDIF}
 end;
 
 function MakeSingle(Sign: TValueSign; Mantissa: UInt32; Exponent: Integer): Single;
-{$IFDEF NORECORDHELPERS}
 var
   U: UInt32;
 begin
@@ -346,14 +274,8 @@ begin
        (Mantissa and CSingleMantissaMask);
   PUInt32(@Result)^ := U;
 end;
-{$ELSE}
-begin
-  Result.BuildUp(Sign < 0, Mantissa, Exponent);
-end;
-{$ENDIF}
 
 function MakeDouble(Sign: TValueSign; Mantissa: UInt64; Exponent: Integer): Double;
-{$IFDEF NORECORDHELPERS}
 var
   U: UInt64;
 begin
@@ -362,14 +284,8 @@ begin
        (Mantissa and CDoubleMantissaMask);
   PUInt64(@Result)^ := U;
 end;
-{$ELSE}
-begin
-  Result.BuildUp(Sign < 0, Mantissa, Exponent);
-end;
-{$ENDIF}
 
 function MakeExtended(Sign: TValueSign; Mantissa: UInt64; Exponent: Integer): Extended;
-{$IFDEF NORECORDHELPERS}
 var
   E: TExt80Rec;
 begin
@@ -377,11 +293,6 @@ begin
   E.ExponentAndSign := (Sign and $8000) or ((Exponent + CExtendedBias) and CExtendedExponentMask);
   PExt80Rec(@Result)^ := E;
 end;
-{$ELSE}
-begin
-  Result.BuildUp(Sign < 0, Mantissa, Exponent);
-end;
-{$ENDIF}
 
 end.
 

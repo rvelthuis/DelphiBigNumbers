@@ -38,6 +38,8 @@
 {                http://www.hackersdelight.org/basics2.pdf                   }
 {             6. Wikipedia                                                   }
 {                https://en.wikipedia.org                                    }
+{             7. Rosetta Code                                                }
+{                http://rosettacode.org/wiki/Rosetta_Code                    }
 {                                                                            }
 { -------------------------------------------------------------------------- }
 {                                                                            }
@@ -101,7 +103,16 @@
 {                                                                            }
 {   2016-08-23: Changed Remainder(... UInt32) and Remainder(... UInt16).     }
 {               InternalDivMod32 did not return True, and on False,          }
-{               Remainder gave wrong error message                           }
+{               Remainder gave wrong error message.                          }
+{                                                                            }
+{   2016-12-27: Added ModInverse.                                            }
+{               Optimized and renamed MakeLength to AllocNewMagnitude.       }
+{                                                                            }
+{   2016-12-29: Changed return type of Compare() to Integer. Using           }
+{               TValueSign made inlining several comparison operators        }
+{               harder, since that required System.Math.                     }
+{                                                                            }
+{   2016-12-30: Changed implementation of ModInverse to 20% faster version.  }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -109,6 +120,17 @@ unit Velthuis.BigIntegers;
 // TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc.
 // TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
 //       bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time.
+
+{ TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time.
+  Should I do my own memory management? If so, how?
+
+    @DynArrayAsg:    40.46%
+    @DynArrayClear:  18.34%
+    @CopyRecord:     12.64%
+
+  See BigIntSpeedTest.dpr
+}
+
 interface
 
 uses
@@ -452,13 +474,13 @@ type
     // -- Arithmetic operators --
 
     /// <summary>Adds two BigIntegers.</summary>
-    class operator Add(const Left, Right: BigInteger): BigInteger;
+    class operator Add(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Subtracts the second BigInteger from the first.</summary>
-    class operator Subtract(const Left, Right: BigInteger): BigInteger;
+    class operator Subtract(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Multiplies two BigIntegers.</summary>
-    class operator Multiply(const Left, Right: BigInteger): BigInteger;
+    class operator Multiply(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Multiplies the specified BigInteger with the specified Word value.</summary>
     class operator Multiply(const Left: BigInteger; Right: Word): BigInteger; inline;
@@ -467,22 +489,22 @@ type
     class operator Multiply(Left: Word; const Right: BigInteger): BigInteger; inline;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left, Right: BigInteger): BigInteger;
+    class operator IntDivide(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left: BigInteger; Right: UInt16): BigInteger;
+    class operator IntDivide(const Left: BigInteger; Right: UInt16): BigInteger; inline;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left: BigInteger; Right: UInt32): BigInteger;
+    class operator IntDivide(const Left: BigInteger; Right: UInt32): BigInteger; inline;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left, Right: BigInteger): BigInteger;
+    class operator Modulus(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left: BigInteger; Right: UInt32): BigInteger;
+    class operator Modulus(const Left: BigInteger; Right: UInt32): BigInteger; inline;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger;
+    class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger; inline;
 
     /// <summary>Unary minus. Negates the value of the specified BigInteger.</summary>
     class operator Negative(const Value: BigInteger): BigInteger;
@@ -503,19 +525,19 @@ type
 
     /// <summary>Returns the result of the bitwise AND operation on its BigInteger operands. The result
     /// has two's complement semantics, e.g. '-1 and 7' returns '7'.</summary>
-    class operator BitwiseAnd(const Left, Right: BigInteger): BigInteger;
+    class operator BitwiseAnd(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the result of the bitwise OR operation on its BigInteger operands. The result
     /// has two's complement semantics, e.g. '-1 or 7' returns '-1'.</summary>
-    class operator BitwiseOr(const Left, Right: BigInteger): BigInteger;
+    class operator BitwiseOr(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the result of the bitwise XOR operation on its BigIntegers operands. The result
     /// has two's complement semantics, e.g. '-1 xor 7' returns '-8'.</summary>
-    class operator BitwiseXor(const Left, Right: BigInteger): BigInteger;
+    class operator BitwiseXor(const Left, Right: BigInteger): BigInteger; inline;
 
     /// <summary>Returns the result of the bitwise NOT operation on its BigInteger operand. The result
     /// has two's complement semantics, e.g. 'not 1' returns '-2'.</summary>
-    class operator LogicalNot(const Value: BigInteger): BigInteger;
+    class operator LogicalNot(const Value: BigInteger): BigInteger; inline;
 
 
     // -- Shift operators --
@@ -537,70 +559,70 @@ type
     // -- Comparison operators --
 
     /// <summary>Returns True if the specified BigIntegers have the same value.</summary>
-    class operator Equal(const Left, Right: BigInteger): Boolean;
+    class operator Equal(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns True if the specified BigInteger do not have the same value.</summary>
-    class operator NotEqual(const Left, Right: BigInteger): Boolean;
+    class operator NotEqual(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically greater than the value of Right.</summary>
-    class operator GreaterThan(const Left, Right: BigInteger): Boolean;
+    class operator GreaterThan(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically greater than or equal to the value of Right.</summary>
-    class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean;
+    class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically less than the value of Right.</summary>
-    class operator LessThan(const Left, Right: BigInteger): Boolean;
+    class operator LessThan(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically less than or equal to the value of Right.</summary>
-    class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean;
+    class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
 
 
     // -- Implicit conversion operators --
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Integer to a BigInteger.</summary>
-    class operator Implicit(const Value: Integer): BigInteger;
+    class operator Implicit(const Value: Integer): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Cardinal to a BigInteger.</summary>
-    class operator Implicit(const Value: Cardinal): BigInteger;
+    class operator Implicit(const Value: Cardinal): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Int64 to a BigInteger.</summary>
-    class operator Implicit(const Value: Int64): BigInteger;
+    class operator Implicit(const Value: Int64): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified UInt64 to a BigInteger.</summary>
-    class operator Implicit(const Value: UInt64): BigInteger;
+    class operator Implicit(const Value: UInt64): BigInteger; inline;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified string to a BigInteger. The BigInteger is the
     ///   result of a call to Parse(Value).</summary>
-    class operator Implicit(const Value: string): BigInteger;
+    class operator Implicit(const Value: string): BigInteger; inline;
 
 
     // -- Explicit conversion operators --
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Integer. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Integer;
+    class operator Explicit(const Value: BigInteger): Integer; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Cardinal. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Cardinal;
+    class operator Explicit(const Value: BigInteger): Cardinal; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Int64. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Int64;
+    class operator Explicit(const Value: BigInteger): Int64; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an UInt64. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): UInt64;
+    class operator Explicit(const Value: BigInteger): UInt64; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Double.</summary>
-    class operator Explicit(const Value: BigInteger): Double;
+    class operator Explicit(const Value: BigInteger): Double; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified Double to a BigInteger.</summary>
-    class operator Explicit(const Value: Double): BigInteger;
+    class operator Explicit(const Value: Double): BigInteger; inline;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a string.</summary>
     /// <remarks>Calls Value.ToString to generate the result.</remarks>
-    class operator Explicit(const Value: BigInteger): string;
+    class operator Explicit(const Value: BigInteger): string; inline;
 
     // -- Conversion functions --
 
@@ -726,7 +748,7 @@ type
 
     /// <summary>Returns +1 if the value in Left is greater than the value in Right, 0 if they are equal and
     ///   1 if it is lesser.</summary>
-    class function Compare(const Left, Right: BigInteger): TValueSign; static;
+    class function Compare(const Left, Right: BigInteger): Integer; static;
 
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
@@ -748,6 +770,10 @@ type
 
     /// <summary>Returns the smaller of two specified values.</summary>
     class function Min(const Left, Right: BigInteger): BigInteger; static;
+
+    /// <summary>Returns the modular inverse of Value mod Modulus.</summary>
+    /// <exception>Returns an exception if there is no modular inverse.</exception>
+    class function ModInverse(const Value, Modulus: BigInteger): BigInteger; static;
 
     /// <summary>Returns the specified modulus value of the specified value raised to the specified power.</summary>
     class function ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger; static;
@@ -818,100 +844,165 @@ type
   private
   {$REGION 'private constants, types and variables'}
     type
-      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg);
+      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse);
       TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
-      FData: TMagnitude;                        // The limbs of the magnitude, least significant limb at lowest address.
-      FSize: Integer;                           // The top bit is the sign of the big integer. Rest is the number of valid limbs of the big integer.
+      // The limbs of the magnitude, least significant limb at lowest address.
+      FData: TMagnitude;
+      // The top bit is the sign bit. Other bits form the unsigned number of valid limbs of the magnitude.
+      FSize: Integer;
     class var
+      // The currently actual (global) number base.
       FBase: TNumberBase;
+      // Flag indicating need to test for partial flag stall.
       FAvoidStall: Boolean;
+      // The current rounding mode.
       FRoundingMode: TRoundingMode;
+
+      // The internal functions used to add and subtract. These differ depending on the need to avoid
+      // a partial flag stall.
       FInternalAdd: TDyadicOperator;
       FInternalSubtract: TDyadicOperator;
   {$ENDREGION}
 
   {$REGION 'private functions'}
   {$IFNDEF PUREPASCAL}
+    // Function detecting of current CPU could suffer from partial flag stall.
     class procedure DetectPartialFlagsStall; static;
+
+    // Internal function adding two magnitudes. Contains code to avoid a partial flag stall.
     class procedure InternalAddModified(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function adding two magnitudes. Does not contain code to avoid partial flag stall.
     class procedure InternalAddPlain(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function subtracting two magnitudes. Contains code to avoid a partial flag stall.
     class procedure InternalSubtractModified(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
+    // Internal function subtracting two magnitudes. Does not contain code to avoid a partial flag stall.
     class procedure InternalSubtractPlain(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
+    // Internal perfect division by 3 (guaranteed that there is no remainder).
     class procedure InternalDivideBy3(Value, Result: PLimb; ASize: Integer); static;
+    // Internal function dividing magnitude by 100, in-place. Leaves quotient in place, returns remainder.
     class function InternalDivMod100(var X: NativeUInt): NativeUInt; static;
+    // Function performing int to string conversion, writing to WritePtr
     class procedure InternalIntToStrDecimal(const Value: NativeUInt; var WritePtr: PChar; MaxDigits: Integer); static;
   {$ELSE}
+    // Internal function adding two magnitudes. Pure Pascal (non-assembler) implementation.
     class procedure InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function subtracting two magnitudes. Pure Pascal (non-assembler) implementation.
     class procedure InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
   {$ENDIF}
-    class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): TValueSign; static;
+    // Internal function comparing two magnitudes.
+    class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer; static;
+    // Internal function and-ing two magnitudes.
     class procedure InternalAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function or-ing two magnitudes.
     class procedure InternalOr(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal funciton xor-ing two magnitudes.
     class procedure InternalXor(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function and-not-ing two magnitudes (Left^ and not Right^).
     class procedure InternalAndNot(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function not-and-ing two magnitudes (not Left^ and Right^).
     class procedure InternalNotAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static; inline;
+    // Internal function performing bitwise operations. The bitwise operations share similar code.
     class procedure InternalBitwise(const Left, Right: BigInteger; var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TDyadicOperator); static;
+    // Internal function icrementing a magnitude by one, in-place.
     class procedure InternalIncrement(Limbs: PLimb; Size: Integer); static;
+    // Internal function decrementing a magnitude by one, in-place.
     class procedure InternalDecrement(Limbs: PLimb; Size: Integer); static;
+    // Internal function parsing a decimal string into a BigInteger. Returns False if string not valid.
     class function InternalParseDecimal(P: PChar; var Value: BigInteger): Boolean; static;
+    // Internal function parsing a hex string into a BigInteger. Returns False if string not valid.
     class function InternalParseHex(P: PChar; var Value: BigInteger): Boolean; static;
+    // Internal function shifting a magnitude left into a new magnitude.
     class procedure InternalShiftLeft(Source, Dest: PLimb; Shift, Size: Integer); static;
+    // Internal function shifting a magnitude right into a new magnitude.
     class procedure InternalShiftRight(Source, Dest: PLimb; Shift, Size: Integer); static;
+    // Internal function performing int to string function for given numeric base.
     class procedure InternalIntToStrBase(const Value: NativeUInt; Base: Cardinal; var WritePtr: PChar; MaxDigits: Integer); static;
+    // Internal function performing int to string conversion for bases 2, 4, and 16, doing simple shifts.
     class procedure InternalShiftedToString(const Value: BigInteger; Base: Integer; var WritePtr: PChar); static;
+    // Internal function performing int to string conversion, repeatedly dividing by 10 (simple algorithm).
     class procedure InternalPlainToString(const Value: BigInteger; Base: Integer; const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer); static;
+    // Internal function performing int to string conversion, using recursive divide-and-conquer algorithm.
     class procedure InternalRecursiveToString(const Value: BigInteger; Base: Integer; const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer); static;
+    // Internal function performing division of two magnitudes, returning quotient and remainder.
     class function InternalDivMod(Dividend, Divisor, Quotient, Remainder: PLimb; LSize, RSize: Integer): Boolean; static;
+    // Internal function performing division of magnitude by 32 bit integer.
     class function InternalDivMod32(Dividend: PLimb; Divisor: UInt32; Quotient, Remainder: PLimb; LSize: Integer): Boolean; static;
+    // Internal function performing division of mangitude by 16 bit integer (needed for Pure Pascal division).
     class function InternalDivMod16(Dividend: PLimb; Divisor: UInt16; Quotient, Remainder: PLimb; LSize: Integer): Boolean; static;
+    // Internal function multiplying two magnitudes.
     class procedure InternalMultiply(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
+    // Internal function dividing magnitude by given base value. Leaves quotient in place, returns remainder.
     class function InternalDivideByBase(Mag: PLimb; Base: Integer; var Size: Integer): UInt32; static;
+    // Internal function multiplying by 16 bit integer and then adding 16 bit value. Used by parser.
     class procedure InternalMultiplyAndAdd16(const Multiplicand: TMagnitude; Multiplicator, Addend: UInt16; const Res: TMagnitude); static;
+    // Internal function multiplying by 32 bit integer and then adding 32 bit value. Used by parser.
     class procedure InternalMultiplyAndAdd32(const Multiplicand: TMagnitude; Multiplicator, Addend: UInt32; const Res: TMagnitude); static;
+    // Internal function negating magnitude (treating it as two's complement).
     class procedure InternalNegate(Source, Dest: PLimb; Size: Integer); static;
 
     // Burnikel-Ziegler and helper functions.
+    // Divides two magnitudes using Burnikel-Ziegler algorithm.
     class procedure InternalDivModBurnikelZiegler(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
+    // Divides a BigInteger by 3 exactly. BigInteger is guaranteed to be a positive multiple of 3.
     class function DivideBy3Exactly(const A: BigInteger): BigInteger; static;
+    // Helper function for Burnikel-Ziegler division. See explanation in implementation section.
     class procedure DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper, RightLower: BigInteger; N: Integer; var Quotient, Remainder: BigInteger); static;
+    // Helper function for Burnikel-Ziegler division.
     class procedure DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer; var Quotient, Remainder: BigInteger); static;
 
     // Karatsuba and Toom-Cook helper functions
+    // Add Addend into current BigInteger, at given offset.
     procedure AddWithOffset(const Addend: BigInteger; Offset: Integer);
+    // Split BigInteger into smaller BigIntegers of size BlockSize.
     function Split(BlockSize, BlockCount: Integer): TArray<BigInteger>;
 
+    // Sets global numeric base.
     class procedure SetBase(const Value: TNumberBase); static;
+    // Raises exceptions depending on given error code.
     class procedure Error(ErrorCode: TErrorCode; const ErrorInfo: string = ''); static;
 
+    // Resets size thus that there are no leading zero limbs.
     procedure Compact;
+    // Reallocates magnitude to ensure a given size.
     procedure EnsureSize(RequiredSize: Integer);
+    // Creates a new magnitude.
     procedure MakeSize(RequiredSize: Integer);
   {$ENDREGION}
 
   public
   {$REGION 'public properties'}
+    /// <summary>Number of valid limbs in the magnitude</summary>
     property Size: Integer read GetSize;
+    /// <summary>Number of allocated limbs in the mangitude</summary>
     property Allocated: Integer read GetAllocated;
+    /// <summary>Indicates whether BigInteger is negative</summary>
     property Negative: Boolean read IsNegative;
+    /// <summary>The sign of the BigInteger: -1, 0 or 1</summary>
     property Sign: Integer read GetSign write SetSign;
+    /// <summary>Magnitude, dynamic array of TLimb, containing the (unsigned) value of the BigInteger</summary>
     property Magnitude: TMagnitude read FData;
 
-    // -- Global numeric base for BigIntegers --
-
+    // Global numeric base for BigIntegers
     class property Base: TNumberBase read FBase write SetBase;
+    // Global flag indicating if partial flag stall is avoided
     class property StallAvoided: Boolean read FAvoidStall;
+    // Global rounding mode used for conversion to floating point.
     class property RoundingMode: TRoundingMode read FRoundingMode write FRoundingMode;
   {$ENDREGION}
 
   end;
 
+// Returns sign bit (top bit) of an integer.
 function SignBitOf(Value: Integer): Integer; inline;
 
+// Returns the minimum of two BigIntegers.
 function Min(const A, B: BigInteger): BigInteger; overload; inline;
+// Returns the maximum of two BigIntegers.
 function Max(const A, B: BigInteger): BigInteger; overload; inline;
 
 var
+  // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
 
 implementation
@@ -1091,9 +1182,10 @@ resourcestring
   SInvalidOperation          = 'Invalid operation';
   SConversionFailedFmt       = 'BigInteger value too large for conversion to %s';
   SOverflow                  = 'Double parameter may not be NaN or +/- Infinity';
-  SInvalidArgumentBase       = 'Base parameter must be in the range 2..36.';
+  SInvalidArgumentBase       = 'Base parameter must be in the range 2..36';
   SInvalidArgumentFmt        = 'Invalid Argument: %s';
   SSqrtBigInteger            = 'Negative values not allowed for Sqrt';
+  SNoInverse                 = 'No modular inverse possible';
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
@@ -1149,6 +1241,65 @@ const
 
 var
   CBasePowers: array[TNumberBase] of TArray<BigInteger>;
+
+type
+  PDynArrayRec = ^TDynArrayRec;
+  TDynArrayRec = packed record
+  {$IFDEF CPU64BITS}
+    _Padding: Integer; // Make 16 byte align for payload..
+  {$ENDIF}
+    RefCnt: Integer;
+    Length: NativeInt;
+  end;
+
+function FindSize(Limb: PLimb; Size: Integer): Integer;
+{$IFDEF PUREPASCAL}
+begin
+  while (Size > 0) and (Limb[Size - 1] = 0) do
+    Dec(Size);
+  Result := Size;
+end;
+{$ELSE}
+{$IFDEF WIN32}
+asm
+
+        LEA     EAX,[EAX + EDX * CLimbSize - CLimbSize]
+        XOR     ECX,ECX
+
+@Loop:
+
+        CMP     [EAX],ECX
+        JNE     @Exit
+        LEA     EAX,[EAX - CLimbSize]
+        DEC     EDX
+        JNE     @Loop
+
+@Exit:
+
+        MOV     EAX,EDX
+
+end;
+{$ELSE !WIN32}
+asm
+
+        LEA     RAX,[RCX + RDX * CLimbSize - CLimbSize]
+        XOR     ECX,ECX
+
+@Loop:
+
+        CMP     [RAX],ECX
+        JNE     @Exit
+        LEA     RAX,[RAX - CLimbSize]
+        DEC     EDX
+        JNE     @Loop
+
+@Exit:
+
+        MOV     EAX,EDX
+
+end;
+{$ENDIF !WIN32}
+{$ENDIF}
 
 function IntMax(Left, Right: UInt32): UInt32;
 {$IFNDEF PUREPASCAL}
@@ -1241,7 +1392,7 @@ begin
   Move(Src^, Dest^, Count * CLimbSize);
 end;
 
-{ TBigInteger }
+{ BigInteger }
 
 procedure ShallowCopy(const Value: BigInteger; var Result: BigInteger); inline;
 begin
@@ -1266,49 +1417,45 @@ var
   Res: BigInteger;
   LSize, RSize: Integer;
   SignBit: Integer;
-  Comparison: TValueSign;
+  Comparison: Integer;
 begin
-  if Left.FData = nil then
+  if Pointer(Left.FData) = nil then
   begin
     ShallowCopy(Right, Result);
     Exit;
   end
-  else if Right.FData = nil then
+  else if Pointer(Right.FData) = nil then
   begin
     ShallowCopy(Left, Result);
     Exit;
   end;
 
-  LSize := SizeBitsOf(Left.FSize);
-  RSize := SizeBitsOf(Right.FSize);
+  LSize := Left.FSize and SizeMask;
+  RSize := Right.FSize and SizeMask;
   Res.MakeSize(IntMax(LSize, RSize) + 1);
 
   if ((Left.FSize xor Right.FSize) and SignMask) = 0 then
   begin
     // Same sign: add both magnitudes and transfer sign.
     FInternalAdd(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
-    SignBit := SignBitOf(Left.FSize);
+    SignBit := Left.FSize and SignMask;
   end
   else
   begin
     Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask, Right.FSize and SizeMask);
-    case Comparison of
-      -1: // Left < Right
-        begin
-          FInternalSubtract(PLimb(Right.FData), PLimb(Left.FData), PLimb(Res.FData), RSize, LSize);
-          SignBit := SignBitOf(Right.FSize);
-        end;
-      1: // Left > Right
-        begin
-          FInternalSubtract(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
-          SignBit := SignBitOf(Left.FSize);
-        end;
-      else // Left = Right
-        begin
-          // Left and Right have equal magnitude but different sign, so return 0.
-          ShallowCopy(Zero, Result);
-          Exit;
-        end;
+
+    if Comparison = 0 then
+      Exit(Zero);
+
+    if Comparison < 0 then
+    begin
+      FInternalSubtract(PLimb(Right.FData), PLimb(Left.FData), PLimb(Res.FData), RSize, LSize);
+      SignBit := Right.FSize and SignMask;
+    end
+    else
+    begin
+      FInternalSubtract(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
+      SignBit := Left.FSize and SignMask;
     end;
   end;
   Res.FSize := (Res.FSize and SizeMask) or SignBit;
@@ -2474,54 +2621,6 @@ begin
   DeepCopy(Self, Result);
 end;
 
-function FindSize(Limb: PLimb; Size: Integer): Integer;
-{$IFDEF PUREPASCAL}
-begin
-  while (Size > 0) and (Limb[Size - 1] = 0) do
-    Dec(Size);
-  Result := Size;
-end;
-{$ELSE}
-{$IFDEF WIN32}
-asm
-
-        LEA     EAX,[EAX + EDX * CLimbSize - CLimbSize]
-        XOR     ECX,ECX
-
-@Loop:
-
-        CMP     [EAX],ECX
-        JNE     @Exit
-        LEA     EAX,[EAX - CLimbSize]
-        DEC     EDX
-        JNE     @Loop
-
-@Exit:
-
-        MOV     EAX,EDX
-
-end;
-{$ELSE !WIN32}
-asm
-
-        LEA     RAX,[RCX + RDX * CLimbSize - CLimbSize]
-        XOR     ECX,ECX
-
-@Loop:
-
-        CMP     [RAX],ECX
-        JNE     @Exit
-        LEA     RAX,[RAX - CLimbSize]
-        DEC     EDX
-        JNE     @Loop
-
-@Exit:
-
-        MOV     EAX,EDX
-
-end;
-{$ENDIF !WIN32}
-{$ENDIF}
 
 procedure BigInteger.Compact;
 var
@@ -2551,7 +2650,7 @@ begin
   end;
 end;
 
-class function BigInteger.Compare(const Left, Right: BigInteger): TValueSign;
+class function BigInteger.Compare(const Left, Right: BigInteger): Integer;
 type
   PInteger = ^Integer;
 begin
@@ -2723,7 +2822,7 @@ var
   Limbs: TMagnitude;
   Negative: Boolean;
 begin
-  Negative := Bytes[High(Bytes)] >= $80;
+  Negative := Bytes[High(Bytes)] > Byte(High(Shortint));
   SetLength(Limbs, (Length(Bytes) + 3) div 4);
   if Negative then
     Limbs[High(Limbs)] := TLimb(-1);
@@ -2740,11 +2839,15 @@ var
   LSize: Integer;
 begin
   LSize := Length(Limbs);
-  MakeSize(LSize);
-  FSize := LSize or (Ord(Negative) * SignMask);
   if LSize > 0 then
+  begin
+    MakeSize(LSize);
+    FSize := LSize or (Ord(Negative) * SignMask);
     CopyLimbs(@Limbs[0], PLimb(FData), LSize);
-  Compact;
+    Compact;
+  end
+  else
+    FSize := 0;
 end;
 
 constructor BigInteger.Create(const Value: Int64);
@@ -3032,7 +3135,6 @@ asm
 
         SUB     EDX,ECX
         PUSH    EDX
-        XOR     EDX,EDX
 
         XOR     EAX,EAX
 
@@ -5248,7 +5350,7 @@ begin
       end;
     0:
       begin
-        if SignBitOf(Dividend.FSize) = SignBitOf(Divisor.FSize) then
+        if (Dividend.FSize xor Divisor.FSize) and SignMask = 0 then
           ShallowCopy(One, Quotient)
         else
           ShallowCopy(MinusOne, Quotient);
@@ -5274,8 +5376,8 @@ begin
   if Right.FData = nil then
     Error(ecDivByZero);
 
-  LSign := SignBitOf(Left.FSize);
-  RSign := SignBitOf(Right.FSize);
+  LSign := Left.FSize and SignMask;
+  RSign := Right.FSize and SignMask;
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
 
@@ -5284,7 +5386,7 @@ begin
       begin
         ShallowCopy(Left, Remainder);
         ShallowCopy(Zero, Quotient);
-        Exit; // $$RV
+        Exit;
       end;
     0:
       begin
@@ -5293,7 +5395,7 @@ begin
           ShallowCopy(One, Quotient)
         else
           ShallowCopy(MinusOne, Quotient);
-        Exit; // $$RV
+        Exit;
       end
     else
       begin
@@ -5550,6 +5652,10 @@ end;
 {$ELSE !PUREPASCAL}
 {$IFDEF WIN32}
 asm
+
+// Note: in some versions of Delphi, DIV EBX generates the wrong opcode, while DIV EAX,EBX doesn't. The same for
+//       MUL EBX and MUL EAX,EBX.
+
         PUSH    ESI
         PUSH    EDI
         PUSH    EBX
@@ -5569,15 +5675,19 @@ asm
         MOV     EAX,[ESI]
         DIV     EAX,EBX
         MOV     [ECX],EAX
+
         MOV     EAX,[ESI - CLimbSize]
         DIV     EAX,EBX
         MOV     [ECX - CLimbSize],EAX
+
         MOV     EAX,[ESI - 2 * CLimbSize]
         DIV     EAX,EBX
         MOV     [ECX - 2 * CLimbSize],EAX
+
         MOV     EAX,[ESI - 3 * CLimbSize]
         DIV     EAX,EBX
         MOV     [ECX - 3 * CLimbSize],EAX
+
         LEA     ESI,[ESI - 4 * CLimbSize]
         LEA     ECX,[ECX - 4 * CLimbSize]
         DEC     EDI
@@ -6172,7 +6282,7 @@ asm
         .PUSHNV RDI
         .PUSHNV RBX
 
-        // To avoid reference count problems with Delphi's dynamic array types, we do or own,
+        // To avoid reference count problems with Delphi's dynamic array types, we do our own,
         // "old school" dynarrays, using GetMem and FreeMem.
 
         XOR     EBX,EBX                 // Set "dynarrays" to nil, so FreeMem calls won't fail.
@@ -6727,6 +6837,8 @@ begin
       raise EInvalidArgument.Create(SInvalidArgumentBase);
     ecInvalidArg:
       raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, [ErrorInfo]);
+    ecNoInverse:
+      raise EInvalidArgument.Create(SNoInverse);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
@@ -6953,7 +7065,7 @@ begin
   end;
 end;
 
-class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): TValueSign;
+class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer;
 {$IFDEF PUREPASCAL}
 var
   L, R: PLimb;
@@ -8135,6 +8247,46 @@ begin
     ShallowCopy(Right, Result);
 end;
 
+// Knuth, TAOCP, Vol 2 Algorithm X, p 342, but using BigIntegers.
+class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
+var
+  u1, u3, v1, v3, t1, t3, q: BigInteger;
+  iter: Integer;
+begin
+  // Step X1. Initialise
+  u1 := One;
+  u3 := Abs(Value);
+  v1 := Zero;
+  v3 := Abs(Modulus);
+  // X mod 1 is nonsense (always 0), but it might still be passed.
+  if Compare(v3, One) = 0 then
+    Error(ecNoInverse);
+  // Remember odd/even iterations
+  iter := 0;
+  // Step X2. Loop while v3 <> 0
+  while not v3.IsZero do
+  begin
+    // Step X3. Divide and Subtract
+    DivMod(u3, v3, q, t3);
+    t1 := Add(u1, BigInteger.Multiply(q, v1));
+    // Swap
+    u1 := v1;
+    v1 := t1;
+    u3 := v3;
+    v3 := t3;
+    Inc(iter);
+  end;
+  // Ensure u3, i.e. gcd(Value, Modulus) = 1
+  if u3 <> One then
+    Error(ecNoInverse);
+  if Odd(iter) then
+    Result := Subtract(Abs(Modulus), u1)
+  else
+    Result := u1;
+  if Value < 0 then
+    Result := -Result;
+end;
+
 // http://stackoverflow.com/questions/8496182/calculating-powa-b-mod-n
 class function BigInteger.ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger;
 var
@@ -8180,6 +8332,7 @@ var
   LHighCard: UInt32;
   LLength: Integer;
 begin
+  Assert(Multiplicand <> nil);
   LLength := Length(Multiplicand);
   LHighCard:= 0;
   I := 0;
@@ -8222,11 +8375,8 @@ asm
        MOV     ESI,EAX
        MOV     EDI,Res
 
-       TEST    EAX,EAX
-       JZ      @NotNil
+       // EAX should never be nil. Nil should be caught earlier.
        MOV     EAX,[EAX - TYPE NativeInt]
-
-@NotNil:
 
        MOV     LLength,EAX
        XOR     ECX,ECX                          // ECX used for overflow.
@@ -8278,15 +8428,15 @@ asm
        PUSH    R8                       // PUSH Extra
        MOV     R8D,EDX                  // R8D = Multiplicator
        MOV     R10,RCX
-       TEST    R10,R10
-       JZ      @@1
-       MOV     R10,[R10-8]              // R10D = Length(Multiplicand)
-@@1:
+
+       // R10 is never nil!
+       MOV     R10,[R10 - TYPE NativeInt] // R10D = Length(Multiplicand)
+
        XOR     R11D,R11D                // R11D = I
        XOR     EBX,EBX
        CMP     R11D,R10D
-       JNB     @@3
-@@2:
+       JNB     @SkipMult
+@MultLoop:
        MOV     EAX,[RCX + CLimbSize*R11]
        MUL     EAX,R8D
        ADD     EAX,EBX
@@ -8295,18 +8445,18 @@ asm
        MOV     EBX,EDX
        INC     R11D
        CMP     R11D,R10D
-       JB      @@2
-@@3:
+       JB      @MultLoop
+@SkipMult:
        MOV     [R9 + CLimbSize*R11],EDX
        POP     RDX                      // POP Extra
        XOR     EBX,EBX
-@@4:
+@AddLoop:
        ADC     [R9 + CLimbSize*RBX],EDX
        JNC     @Exit
        MOV     EDX,0                    //
        INC     EBX                      // These 3 instructions should not modify the carry flag!
        DEC     R10D                     //
-       JNE     @@4
+       JNE     @AddLoop
 @Exit:
 end;
 {$ENDIF WIN64}
@@ -8416,20 +8566,17 @@ asm
 end;
 {$ELSE WIN64}
 asm
-      .PUSHNV RBX
+       .PUSHNV RBX
 
        PUSH    R8                       // PUSH Extra
        MOVZX   R8D,DX                   // R8W = Multiplicator
        MOV     R10,RCX
-       TEST    R10,R10
-       JZ      @@1
        MOV     R10,[R10-8]              // R10D = Length(Multiplicand)
-@@1:
        XOR     R11D,R11D                // R11D = I
        XOR     EBX,EBX
        CMP     R11D,R10D
-       JNB     @@3
-@@2:
+       JNB     @SkipMult
+@MultLoop:
        MOV     EAX,[RCX + CLimbSize*R11]
        MUL     EAX,R8D
        ADD     EAX,EBX
@@ -8438,18 +8585,20 @@ asm
        MOV     EBX,EDX
        INC     R11D
        CMP     R11D,R10D
-       JB      @@2
-@@3:
+       JB      @MultLoop
+@SkipMult:
        MOV     [R9 + CLimbSize*R11],EDX
        POP     RDX                      // POP Extra
        MOVZX   EDX,DX
        XOR     EBX,EBX
-@@4:
+@AddLoop:
        ADC     [R9 + CLimbSize*RBX],EDX
+       JNC     @Exit
        MOV     EDX,0                    //
        INC     EBX                      // These 3 instructions should not modify the carry flag!
        DEC     R10D                     //
-       JNE     @@4
+       JNE     @AddLoop
+@Exit:
 end;
 {$IFEND}
 
@@ -8465,7 +8614,12 @@ end;
 
 class operator BigInteger.Multiply(Left: Word; const Right: BigInteger): BigInteger;
 begin
-  Result := Right * Left;
+  if (Left = 0) or ((Right.FSize and SizeMask) = 0) then
+    Exit(Zero);
+  Result.MakeSize((Right.FSize and SizeMask) + 2);
+  InternalMultiplyAndAdd16(Right.FData, Left, 0, Result.FData);
+  Result.FSize := (Right.FSize and SignMask) or (Result.FSize and SizeMask);
+  Result.Compact;
 end;
 
 class function BigInteger.MultiplyKaratsuba(const Left, Right: BigInteger): BigInteger;
@@ -8858,7 +9012,7 @@ const
 var
   Largest, Smallest: PBigInteger;
   InternalResult: BigInteger;
-  Comparison: TValueSign;
+  Comparison: Integer;
 begin
   if Left.FData = nil then
   begin
@@ -8914,11 +9068,24 @@ begin
   FSize := (FSize and SignMask) or RequiredSize;
 end;
 
+// Replacement for SetLength() only for TMagnitudes, i.e. dynamic arrays of TLimb.
+procedure AllocNewMagnitude(var FData: Pointer; RequiredSize: Integer); inline;
+var
+  NewData: PByte;
+  NewSize: Integer;
+begin
+  NewSize := (RequiredSize + 4) and BigInteger.CapacityMask;
+  NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
+  PDynArrayRec(NewData).RefCnt := 1;
+  PDynArrayRec(NewData).Length := NewSize;
+  FData := NewData + SizeOf(TDynArrayRec);
+end;
+
 procedure BigInteger.MakeSize(RequiredSize: Integer);
 begin
-  SetLength(FData, (RequiredSize + 4) and CapacityMask);
-  FillChar(FData[0], Length(FData) * CLimbSize, 0);
-  FSize := (FSize and SignMask) or RequiredSize;
+  FData := nil;
+  AllocNewMagnitude(Pointer(FData), RequiredSize);
+  FSize := RequiredSize;
 end;
 
 // In Win32, we keep what we have. In Win64, we switch, depending on Size. At 25 limbs or above, the unrolled loop version is faster.
@@ -9418,7 +9585,8 @@ begin
     //  Original code:                                                                                                //
     //  Result := MinusOne - ((MinusOne - Value) shr Shift);                                                          //
     //                                                                                                                //
-    //  See: http://blogs.teamb.com/rudyvelthuis/2015/10/04/27826                                                     //
+    //  See: https://community.embarcadero.com/blogs/entry/speed-problems-caused-by-code-that-never-ran-27826         //
+    //   or: http://rvelthuis.blogspot.de/2015/10/speed-problems-caused-by-code-that.html                             // 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     LSize := (Value.FSize and SizeMask);
@@ -9532,7 +9700,7 @@ end;
 function BigInteger.Add(const Other: BigInteger): PBigInteger;
 var
   SelfSize, OtherSize: Integer;
-  Comparison: TValueSign;
+  Comparison: Integer;
 begin
   Result := @Self;
   if Other.IsZero then
