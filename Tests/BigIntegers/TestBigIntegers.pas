@@ -14,7 +14,6 @@ interface
 
 uses
   TestFramework,
-  Velthuis.Magnitudes,
   Velthuis.BigIntegers,
   Velthuis.RandomNumbers,
   Velthuis.Loggers,
