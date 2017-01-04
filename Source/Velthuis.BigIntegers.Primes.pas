@@ -4,7 +4,7 @@
 { Language:   Delphi version XE2 or later                                   }
 { Author:     Rudy Velthuis                                                 }
 { Copyright:  (c) 2017 Rudy Velthuis                                        }
-{ Notes:      See http://praxis-velthuis.de/rdc/programs/bigintegers.html   }
+{ Notes:      See http://rvelthuis.de/programs/bigintegers.html             }
 {             See https://github.com/rvelthuis/BigNumbers                   }
 {                                                                           }
 { License:    Redistribution and use in source and binary forms, with or    }
