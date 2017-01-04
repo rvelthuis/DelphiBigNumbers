@@ -105,9 +105,13 @@
         <DCCReference Include="..\..\Source\Velthuis.Loggers.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.BigIntegers.pas"/>
 <<<<<<< HEAD
+        <DCCReference Include="..\..\Source\Velthuis.BigDecimals.Math.pas"/>
+=======
+<<<<<<< HEAD
 =======
         <DCCReference Include="..\..\Source\Velthuis.BigDecimals.Math.pas"/>
 >>>>>>> 6cb2fd03ca117ec3ac968df33997082035ea5eeb
+>>>>>>> 79328211dc087e26ce19946c8f42b861aa54f99f
         <None Include="..\BigDecimalTestData.inc"/>
         <None Include="..\bases.inc"/>
         <BuildConfiguration Include="Release">
