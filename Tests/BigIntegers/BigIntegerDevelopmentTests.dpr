@@ -24,7 +24,8 @@ uses
   Velthuis.FloatUtils in '..\..\Source\Velthuis.FloatUtils.pas',
   Velthuis.BigDecimals in '..\..\Source\Velthuis.BigDecimals.pas',
   TestBigIntegers in 'TestBigIntegers.pas',
-  Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas';
+  Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas',
+  Velthuis.BigRationals in '..\..\Source\Velthuis.BigRationals.pas';
 
 {$R *.RES}
 
