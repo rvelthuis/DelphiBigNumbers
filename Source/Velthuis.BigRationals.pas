@@ -59,6 +59,9 @@ type
 
 implementation
 
+uses
+  Velthuis.FloatUtils;
+
 { BigRational }
 
 class operator BigRational.Add(const Left, Right: BigRational): BigRational;
@@ -146,7 +149,7 @@ end;
 
 class operator BigRational.Explicit(const Value: BigRational): Integer;
 begin
-  if FDenom = BigInteger.One then
+  if Value.FDenom = BigInteger.One then
     Result := Integer(Value.FNum)
   else
     Result := Integer(Value.FNum div Value.FDenom);
@@ -154,7 +157,7 @@ end;
 
 class operator BigRational.Explicit(const Value: BigRational): string;
 begin
-  Result := ToString;
+  Result := Value.ToString;
 end;
 
 class operator BigRational.Explicit(const Value: BigRational): Double;
