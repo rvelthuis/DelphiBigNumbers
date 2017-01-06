@@ -690,19 +690,22 @@ type
     /// <summary>The function equivalent to the operator 'div'.</summary>
     class function Divide(const Left:BigInteger; Right: UInt32): BigInteger; overload; static;
 
-    /// <summary>>The function equivalent to the operator 'mod'. Like for integers, the remainder gets
+    /// <summary>The function equivalent to the operator 'mod'. Like for integers, the remainder gets
     ///   the sign - if any - of the dividend (i.e. of Left).</summary>
     class function Remainder(const Left, Right: BigInteger): BigInteger; overload; static;
 
-    /// <summary>>The function equivalent to the operator 'mod'. Like for integers, the remainder gets
+    /// <summary>The function equivalent to the operator 'mod'. Like for integers, the remainder gets
     ///   the sign - if any - of the dividend (i.e. of Left).</summary>
     class function Remainder(const Left: BigInteger; Right: UInt32): BigInteger; overload; static;
 
-    /// <summary>>The function equivalent to the operator 'mod'. Like for integers, the remainder gets
+    /// <summary>The function equivalent to the operator 'mod'. Like for integers, the remainder gets
     ///   the sign - if any - of the dividend (i.e. of Left).</summary>
     class function Remainder(const Left: BigInteger; Right: UInt16): BigInteger; overload; static;
 
     class function SqrKaratsuba(const Value: BigInteger): BigInteger; static;
+
+    /// <summary>Returns the negation of Value.</summary>
+    class function Negate(const Value: BigInteger): BigInteger; static;
 
 
     // -- Self-referential operator functions --
@@ -740,8 +743,12 @@ type
     function BitLength: Integer;
 
     /// <summary>Returns the number of all bits that are set, assuming two's complement. The sign bit is
-    ///  included in the count.</summary>
+    ///   included in the count.</summary>
     function BitCount: Integer;
+
+    /// <summary>Returns the index of the rightmost (lowest) bit set. The lowest bit has index 0. Returns -1 if
+    ///   this BigInteger is zero. </summary>
+    function LowestSetBit: Integer;
 
     /// <summary>Returns a copy of the current BigInteger, with a unique copy of the data.</summary>
     function Clone: BigInteger;
@@ -8231,6 +8238,22 @@ begin
   Result.Compact;
 end;
 
+function BigInteger.LowestSetBit: Integer;
+var
+  I: Integer;
+begin
+  if FData = nil then
+    Exit(-1);
+  I := 0;
+  Result := 0;
+  while FData[I] = 0 do
+  begin
+    Inc(Result, CLimbBits);
+    Inc(I);
+  end;
+  Inc(Result, LowestOneBit(FData[I]));
+end;
+
 class function BigInteger.Max(const Left, Right: BigInteger): BigInteger;
 begin
   if Left > Right then
@@ -9425,6 +9448,12 @@ begin
     end;
   end;
   Result.Compact;
+end;
+
+class function BigInteger.Negate(const Value: BigInteger): BigInteger;
+begin
+  Result.FData := Value.FData;
+  Result.FSize := Value.FSize xor SignMask;
 end;
 
 class operator BigInteger.Negative(const Value: BigInteger): BigInteger;
