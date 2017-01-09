@@ -1,6 +1,6 @@
 #BigNumbers
 
-###BigInteger and BigDecimal for Delphi
+###BigInteger, BigDecimal and BigRational for Delphi
 
 These are implementations of the multi-precision `BigInteger` and `BigDecimal` types, built from scratch.
 
@@ -16,20 +16,27 @@ These are implementations of the multi-precision `BigInteger` and `BigDecimal` t
 
 `BigDecimal` is equally built for ease of use and reliability. It builds on top of BigInteger: the internal representation is a BigInteger for the significant digits, and a scale to indicate the decimals. It also offers overloaded operators and all the usual functions. This is modelled after the `BigDecimal` type in Java, but the interface is more in line with Delphi. More information about this type can be found on the [BigDecimals unit](http://www.rvelthuis.de/programs/bigdecimals.html) page on my website.
 
+##BigRational
+
+A type that holds numbers as fractions of two BigIntegers, i.e. 1/7 or 100/3. This is very good at simple arithmetic, since it doesn't lose precision or need any rounding. Still a work in progress...
+
 ##Directory structure
 
 ```
 BigNumbers
    DataGenerators
       BigDecimals
-         BigDecimalTestDataGenerator / ...   --- Test data generator in Java; open with NetBeans 8
+         BigDecimalTestDataGenerator /...    --- Test data generator in Java; open with NetBeans 8
       BigIntegers
          BigIntegerTestGenerator /...        --- Test data generator in C#; open .sln file with 
                                                  Visual Studio 2010 (Express) or newer
+      BigRationalTestDataGenerator /...      --- Test data generator in Java, using the Apache Commons-Math library;
+                                                 open with NetBeans 8. Might require installation of Apache libs.
    Source                                    --- Sources for units and for bases.inc generator
    Tests
-      BigDecimals                            --- Sources for DUnit tests for BigDecimals
-      BigIntegers                            --- Sources for DUnit tests for BigIntegers
+      BigDecimals /...                       --- Sources for DUnit tests for BigDecimals
+      BigIntegers /...                       --- Sources for DUnit tests for BigIntegers
+      BigRationals /...                      --- Sources for DUnit tests for BigRationals
    Visualizers                               --- Sources for IDE debug visualizer DLL for BigInteger and 
                                                  BigDecimal   
 ```
