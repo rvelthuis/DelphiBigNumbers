@@ -5,7 +5,7 @@
 {             BigInteger implementation in Velthuis.BigIntegers.pas.        }
 { Language:   Delphi version XE2 or later                                   }
 { Author:     Rudy Velthuis                                                 }
-{ Copyright:  (c) 2016, Rudy Velthuis                                       }
+{ Copyright:  (c) 2016,2017 Rudy Velthuis                                   }
 { ------------------------------------------------------------------------- }
 {                                                                           }
 { License:    Redistribution and use in source and binary forms, with or    }

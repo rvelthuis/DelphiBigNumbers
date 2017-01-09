@@ -40,85 +40,287 @@
 unit Velthuis.BigRationals;
 
 //$$RV comments are internal comments by RV, denoting a problem. Should be all removed as soon as problem solved.
-//$$RV: all of this is untested! Yes, I write tests later.
 
 interface
 
 uses
   Velthuis.BigIntegers, Velthuis.BigDecimals, System.Math, System.SysUtils;
 
+// For Delphi versions below XE8
+{$IF CompilerVersion < 29.0}
+  {$IF (DEFINED(WIN32) OR DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
+    {$MESSAGE HINT 'Defining CPU32BITS'}
+    {$DEFINE CPU32BITS}
+  {$IFEND}
+  {$IF (DEFINED(WIN64) OR DEFINED(CPUX64)) AND NOT DEFINED(CPU64BITS)}
+    {$MESSAGE HINT 'Defining CPU64BITS'}
+    {$DEFINE CPU64BITS}
+  {$IFEND}
+{$IFEND}
+
+// For Delphi XE3 and up:
+{$IF CompilerVersion >= 24.0 }
+  {$LEGACYIFEND ON}
+{$IFEND}
+
+// For Delphi XE and up:
+{$IF CompilerVersion >= 22.0}
+  {$CODEALIGN 16}
+  {$ALIGN 16}
+{$IFEND}
+
+// For Delphi 2010 and up.
+{$IF CompilerVersion >= 21.0}
+  {$DEFINE HASCLASSCONSTRUCTORS}
+{$IFEND}
+
+{$IF SizeOf(Extended) > SizeOf(Double)}
+  {$DEFINE HASEXTENDED}
+{$IFEND}
+
 type
+  PBigRational = ^BigRational;
+
+  /// <summary>BigRational is a multiple precision rational data type, where each value is expressed as the quotient
+  ///   of two BigIntegers, the numerator and the denominator.</summary>
+  /// <remarks><para>BigRationals are simplified, i.e. common factors in numerator and denominator are eliminated.
+  ///   </para>
+  ///   <para>The resulting sign is always moved to the numerator. The denominator must always be unsigned.</para>
+  /// </remarks>
   BigRational = record
   private
     type
-      ErrorCode = (ecDivByZero, ecBadArgument, ecNoInfinity, ecZeroDenominator);
+      // Error code for the Error procedure.
+      ErrorCode = (ecDivByZero, ecBadArgument, ecNoInfinity, ecZeroDenominator, ecNoNaN, ecConversion);
 
     var
+      // The numerator (the "top" part of the fraction).
       FNumerator: BigInteger;
+      // The denominator (the "bottom" part of the fraction).
       FDenominator: BigInteger;
 
+    class var
+      // Field for AlwaysReduce property.
+      FAlwaysReduce: Boolean;
+
+    // Returns -1 for negative values, 1 for positive values and 0 for zero.
     function GetSign: Integer;
-    procedure Normalize;
+
+    // Checks for invalid values, simplifies the fraction by eliminating common factors in numerator and denominator,
+    // and moves sign to numerator.
+    procedure Normalize(Forced: Boolean = False);
+
+    // Raises exception using error code and additional data to decide which and how.
     procedure Error(Code: ErrorCode; Additional: array of const);
   public
     class var
+
+      /// <summary>Predefined BigRational value 0.</summary>
       Zero: BigRational;
+
+      /// <summary>Predefined BigRational value 1/10.</summary>
       OneTenth: BigRational;
+
+      /// <summary>Predefined BigRational value 1/4.</summary>
       OneFourth: BigRational;
+
+      /// <summary>Predefined BigRational value 1/3.</summary>
       OneThird: BigRational;
+
+      /// <summary>Predefined BigRational value 1/2.</summary>
       OneHalf: BigRational;
+
+      /// <summary>Predefined BigRational value 2/3.</summary>
       TwoThirds: BigRational;
+
+      /// <summary>Predefined BigRational value 3/4.</summary>
       ThreeFourths: BigRational;
+
+      /// <summary>Predefined BigRational value 1.</summary>
       One: BigRational;
+
+      /// <summary>Predefined BigRational value 10.</summary>
       Ten: BigRational;
 
+{$IFDEF HASCLASSCONSTRUCTORS}
     class constructor Initialize;
+{$ENDIF}
 
+    // -- Constructors --
+
+    /// <summary>Creates a new BigRational with the given values as numerator and denominator, respectively. The
+    ///  sign is adjusted thus, that the denominator is positive.</summary>
     constructor Create(const Numerator, Denominator: BigInteger); overload;
-    constructor Create(const Numerator: BigInteger); overload;
-    constructor Create(const Numerator: Integer); overload;
+
+    /// <summary>Creates a new BigRational from the given value, with a denominator of 1.</summary>
+    constructor Create(const Value: BigInteger); overload;
+
+    /// <summary>Creates a new BigRational from the given value, with a denominator of 1.</summary>
+    constructor Create(const Value: Integer); overload;
+
+    /// <summary>Creates a new BigRational from the given values.</summary>
     constructor Create(const Numerator: Integer; const Denominator: Cardinal); overload;
-    constructor Create(const ADouble: Double); overload; // exact value of double, i.e. dividing mantissa by 2^53, etc.
-    constructor Create(const Numerator: Int64); overload;
+
+    /// <summary>Creates a new BigRational with the exact same value as the given Double value.</summary>
+    /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the Double represents a positive or
+    ///   negative infinity or a NaN.</exception>
+    /// <remarks>Note that this is an exact conversion, taking into account the exact bit representation of the
+    ///   double. This means that the numerator and denominator values can be rather big.</remarks>
+    constructor Create(const Value: Double); overload;
+
+    /// <summary>Creates a new BigRational from the given value, with a denominator of 1.</summary>
+    constructor Create(const Value: Int64); overload;
+
+    /// <summary>Creates a new BigRational from the given values.</summary>
     constructor Create(const Numerator: Int64; const Denominator: UInt64); overload;
+
+    /// <summary>Creates a new BigRational from the given string, which should be in the format
+    ///   [optional sign] + numerator + '/' + denominator.</summary>
+    /// <remarks>Example input: '-1234/5678'.</remarks>
     constructor Create(const Value: string); overload;
+
+    /// <summary>Creates a new BigRational from the given BigDecimal.</summary>
+    constructor Create(const Value: BigDecimal); overload;
+
     // TODO: Create(const Value: Double; MaxDenominator: Integer); overload; // gets best approximation
     // TODO: Create(const Value: Double; MaxEpsilon: Double); overload; // gets best approximation
 
+
+    // -- Mathematical operators and functions --
+
+    /// <summary>Adds two BigRationals and returns the sum. Simplifies the result.</summary>
     class function Add(const Left, Right: BigRational): BigRational; static;
-    class operator Add(const Left, Right: BigRational): BigRational; static;
+
+    /// <summary>Adds two BigRationals and returns the sum. Simplifies the result.</summary>
+    class operator Add(const Left, Right: BigRational): BigRational;
+
+    /// <summary>Subtracts two BigRationals and returns the difference. Simplifies the result.</summary>
     class function Subtract(const Left, Right: BigRational): BigRational; static;
-    class operator Subtract(const Left, Right: BigRational): BigRational; static;
+
+    /// <summary>Subtracts two BigRationals and returns the difference. Simplifies the result.</summary>
+    class operator Subtract(const Left, Right: BigRational): BigRational;
+
+    /// <summary>Multiplies two BigRationals and returns the product. Simplifies the result.</summary>
     class function Multiply(const Left, Right: BigRational): BigRational; static;
-    class operator Multiply(const Left, Right: BigRational): BigRational; static;
+
+    /// <summary>Multiplies two BigRationals and returns the product. Simplifies the result.</summary>
+    class operator Multiply(const Left, Right: BigRational): BigRational;
+
+    /// <summary>Divides two BigRationals by multiplying Left by the reciprocal of Right. Returns the quotient.
+    ///   Simplifies the result.</summary>
     class function Divide(const Left, Right: BigRational): BigRational; static;
-    class operator Divide(const Left, Right: BigRational): BigRational; static;
-    class operator IntDivide(const Left, Right: BigRational): BigInteger; static;
-    class operator Modulus(const Left, Right: BigRational): BigRational; static;
+
+    /// <summary>Divides two BigRationals by multiplying Left by the reciprocal of Right. Returns the quotient.
+    ///   Simplifies the result.</summary>
+    class operator Divide(const Left, Right: BigRational): BigRational;
+
+    /// <summary>Divides two BigRationals returning a BigInteger result.</summary>
+    class operator IntDivide(const Left, Right: BigRational): BigInteger;
+
+    /// <summary>Divides two BigRationals returning the remainder. Simplifies the result.</summary>
+    class operator Modulus(const Left, Right: BigRational): BigRational;
+
+    /// <summary>Divides two BigRationals returning the remainder. Simplifies the result.</summary>
+    class function Remainder(const Left, Right: BigRational): BigRational; static;
+
+    /// <summary>Divides two BigRationals and returns the quotient and remainder.</summary>
     class procedure DivMod(const Left, Right: BigRational; var Quotient: BigInteger; var Remainder: BigRational); static;
 
+    /// <summary>Returns the negation of the given BigRational value.</summary>
+    class operator Negative(const Value: BigRational): BigRational;
+
+    /// <summary>Returns the negation of the current BigRational value.</summary>
+    function Negate: BigRational;
+
+    /// <summary>Returns the multiplicative inverse of the current BigRational value by swapping numerator and
+    ///   denominator.</summary>
+    function Reciprocal: BigRational;
+
+    /// <summary>Reduces numerator and denominator to their smallest values representing the same ratio.</summary>
+    function Reduce: BigRational;
+
+
+    // -- Comparison and relational operators --
+
+    /// <summary>Compares two BigRationals. Returns -1 if Left < Right, 1 if Left > Right and
+    ///   0 if Left = Right.</summary>
     class function Compare(const Left, Right: BigRational): Integer; static;
+
+    /// <summary>Returns True only if Left < Right.</summary>
     class operator LessThan(const Left, Right: BigRational): Boolean;
+
+    /// <summary>Returns True only if Left <= Right.</summary>
     class operator LessThanOrEqual(const Left, Right: BigRational): Boolean;
+
+    /// <summary>Returns True only if Left = Right.</summary>
     class operator Equal(const Left, Right: BigRational): Boolean;
+
+    /// <summary>Returns True only if Left >= Right.</summary>
     class operator GreaterThanOrEqual(const Left, Right: BigRational): Boolean;
+
+    /// <summary>Returns True only if Left > Right.</summary>
     class operator GreaterThan(const Left, Right: BigRational): Boolean;
+
+    /// <summary>Returns True only if Left <> Right.</summary>
     class operator NotEqual(const Left, Right: BigRational): Boolean;
 
+
+    // --- Conversion operators --
+
+    /// <summary>Converts the string to a BigRational.</summary>
+    /// <exception cref="EConvertError"></exception>
     class operator Implicit(const Value: string): BigRational;
+
+    /// <summary>Explicitly converts the BigRational to a string (using ToString).</summary>
     class operator Explicit(const Value: BigRational): string;
+
+    /// <summary>Converts the integer to a BigRational.</summary>
     class operator Implicit(const Value: Integer): BigRational;
+
+    /// <summary>Converts the BigRational to an Integer. If necessary, excess top bits are cut off.</summary>
     class operator Explicit(const Value: BigRational): Integer;
+
+    /// <summary>Converts the Int64 to a BigRational.</summary>
     class operator Implicit(const Value: Int64): BigRational;
+
+    /// <summary>Converts the BigRational to an Int64. If necessary, excess top bits are cut off.</summary>
     class operator Explicit(const Value: BigRational): Int64;
+
+    /// <summary>Converts the given Double to a BigRational.</summary>
+    /// <exception cref="EInvalidArgument">Raises an EInvalidArgument exception if Value represents
+    ///   (+/-)infinity or NaN.</exception>
     class operator Implicit(const Value: Double): BigRational;
+
+    /// <summary>Converts the given BigRational to a Double.</summary>
     class operator Explicit(const Value: BigRational): Double;
 
+    /// <summary>Converts the given BigDecimal to a BigRational.</summary>
+    /// <remarks>This conversion is exact.</remarks>
+    class operator Implicit(const Value: BigDecimal): BigRational;
+
+    /// <summary>Converts the given BigRational to a BigDecimal, using the default BigDecimal precision and
+    ///   rounding mode.</summary>
+    class operator Implicit(const Value: BigRational): BigDecimal;
+
+    /// <summary>Converts the current BigRational to a string. This string can be used as valid input for
+    ///  conversion.</summary>
     function ToString: string;
 
+
+    // -- Properties --
+
+    /// <summary>The numerator of the fraction represented by the current BigRational.</summary>
     property Numerator: BigInteger read FNumerator;
+
+    /// <summary>The denominator of the fraction represented by the current BigRational.</summary>
     property Denominator: BigInteger read FDenominator;
+
+    /// <summary>The sign of the fraction represented by the current BigRational.</summary>
     property Sign: Integer read GetSign;
+
+    /// <summary>If AlwaysReduce is set (default), fractions like 2/10 are reduced to 1/5.
+    ///   If it is not set, you can manually call Reduce on any BigRational.</summary>
+    class property AlwaysReduce: Boolean read FAlwaysReduce write FAlwaysReduce;
 
   end;
 
@@ -128,10 +330,12 @@ uses
   Velthuis.FloatUtils;
 
 resourcestring
-  SDivByZero   = 'Division by zero';
-  SBadArgument = 'Invalid argument: %s';
-  SNoInfinity  = 'Infinity cannot be converted to BigRational';
+  SDivByZero       = 'Division by zero';
+  SBadArgument     = 'Invalid argument: %s';
+  SNoInfinity      = 'Infinity cannot be converted to BigRational';
+  SNoNan           = 'NaN cannot be converted to BigRational';
   SZeroDenominator = 'BigRational denominator cannot be zero';
+  SConversion      = '''%s'' is not a valid BigRational value';
 
 
 { BigRational }
@@ -156,9 +360,9 @@ begin
   Result := Left + Right;
 end;
 
-constructor BigRational.Create(const Numerator: Integer);
+constructor BigRational.Create(const Value: Integer);
 begin
-  FNumerator := BigInteger(Numerator);
+  FNumerator := BigInteger(Value);
   FDenominator := BigInteger.One;
 end;
 
@@ -176,48 +380,47 @@ begin
   Normalize;
 end;
 
-constructor BigRational.Create(const Numerator: BigInteger);
+constructor BigRational.Create(const Value: BigInteger);
 begin
-  FNumerator := Numerator;
+  FNumerator := Value;
   FDenominator := BigInteger.One;
 end;
 
-constructor BigRational.Create(const ADouble: Double);
+constructor BigRational.Create(const Value: Double);
 var
   Exponent: Integer;
   Mantissa: Int64;
 begin
-  if ADouble = 0.0 then
+  if IsNegativeInfinity(Value) or IsPositiveInfinity(Value) then
+    Error(ecNoInfinity, []);
+  if IsNaN(Value) then
+    Error(ecNoNaN, []);
+
+  if Value = 0.0 then
   begin
     FNumerator := BigInteger.Zero;
     FDenominator := BigInteger.One;
     Exit;
   end;
 
-  Exponent := GetExponent(ADouble);
-  Mantissa := GetMantissa(ADouble);
+  Exponent := GetExponent(Value);
+  Mantissa := GetMantissa(Value);
 
-  // TODO: resource strings, private error method.
-
-  if IsNegativeInfinity(ADouble) or IsPositiveInfinity(ADouble) then
-    Error(ecNoInfinity, []);
-
-  //$$RV: Untested, until now. --> adjust values where necessary.
-  if IsDenormal(ADouble) then
+  if IsDenormal(Value) then
   begin
     FNumerator := Mantissa;
-    FDenominator := BigInteger.Zero.FlipBit(1023);
+    FDenominator := BigInteger.Zero.FlipBit(1023 + 52);
   end
   else
   begin
-    FDenominator := BigInteger.Zero.FlipBit(53);
+    FDenominator := BigInteger.Zero.FlipBit(52);
     FNumerator := Mantissa;
     if Exponent < 0 then
       FDenominator := FDenominator shl -Exponent
     else
       FNumerator := FNumerator shl Exponent;
   end;
-  if ADouble < 0 then
+  if Value < 0 then
     FNumerator := -FNumerator;
   Normalize;
 end;
@@ -237,13 +440,63 @@ begin
   Normalize;
 end;
 
-constructor BigRational.Create(const Numerator: Int64);
+constructor BigRational.Create(const Value: Int64);
 begin
-  FNumerator := BigInteger(Numerator);
+  FNumerator := BigInteger(Value);
   FDenominator := BigInteger.One;
 end;
 
+constructor BigRational.Create(const Value: string);
+var
+  Slash: Integer;
+  S: string;
+begin
+  S := Trim(Value);
+  Slash := Pos('/', S);
+  if Slash = 0 then
+  begin
+    try
+      FNumerator := S;
+    except
+      Error(ecConversion, [S]);
+    end;
+    FDenominator := BigInteger.One;
+  end
+  else
+  begin
+    try
+      FNumerator := TrimRight(Copy(S, 1, Slash - 1));
+      FDenominator := TrimLeft(Copy(S, Slash + 1, MaxInt));
+    except
+      Error(ecConversion, [S]);
+    end;
+    Normalize;
+  end;
+end;
+
+constructor BigRational.Create(const Value: BigDecimal);
+var
+  Num, Denom: BigInteger;
+  Scale: Integer;
+begin
+  Num := Value.UnscaledValue;
+  Scale := Value.Scale;
+  Denom := BigInteger.One;
+
+  if Scale < 0 then
+    Num := Num * BigInteger.Pow(BigInteger.Ten, -Scale)
+  else if Scale > 0 then
+    Denom := BigInteger.Pow(BigInteger.Ten, Scale);
+
+  Create(Num, Denom);
+end;
+
 class function BigRational.Divide(const Left, Right: BigRational): BigRational;
+begin
+  Result := Left / Right;
+end;
+
+class operator BigRational.Divide(const Left, Right: BigRational): BigRational;
 begin
   if Left.FDenominator = Right.FDenominator then
   begin
@@ -256,11 +509,6 @@ begin
     Result.FDenominator := Left.FDenominator * Right.FNumerator;
   end;
   Result.Normalize;
-end;
-
-class operator BigRational.Divide(const Left, Right: BigRational): BigRational;
-begin
-  Result := Left / Right;
 end;
 
 class procedure BigRational.DivMod(const Left, Right: BigRational; var Quotient: BigInteger; var Remainder: BigRational);
@@ -301,6 +549,10 @@ begin
       raise EInvalidArgument.Create(SNoInfinity);
     ecZeroDenominator:
       raise EDivByZero.Create(SZeroDenominator);
+    ecNoNaN:
+      raise EInvalidArgument.Create(SNoNan);
+    ecConversion:
+      raise EConvertError.CreateFmt(SConversion, Additional);
   end;
 end;
 
@@ -375,23 +627,80 @@ begin
   Result.FDenominator := BigInteger.One;
 end;
 
-// $$RV: have normal initialize function for non-class-constructor versions.
-class constructor BigRational.Initialize;
+class operator BigRational.Implicit(const Value: BigDecimal): BigRational;
 begin
-  Zero := BigRational.Create(BigInteger.Zero, BigInteger.One);
-  OneTenth := BigRational.Create(BigInteger.One, BigInteger.Ten);
-  OneFourth := BigRational.Create(BigInteger.One, BigInteger(4));
-  OneThird := BigRational.Create(BigInteger.One, BigInteger(3));
-  OneHalf := BigRational.Create(BigInteger.One, BigInteger(2));
-  TwoThirds := OneThird + OneThird;
-  ThreeFourths := OneHalf + OneFourth;
-  One := BigRational.Create(BigInteger.One, BigInteger.One);
-  Ten := BigRational.Create(BigInteger.Ten, BigInteger.One);
+  if Value.Scale = 0 then
+  begin
+    Result.FNumerator := Value.UnscaledValue;
+    Result.FDenominator := BigInteger.One
+  end
+  else if Value.Scale > 0 then
+  begin
+    Result.FNumerator := Value.UnscaledValue;
+    Result.FDenominator := BigInteger.Pow(BigInteger.Ten, Value.Scale);
+  end
+  else
+  begin
+    Result.FNumerator := Value.UnscaledValue * BigInteger.Pow(BigInteger.Ten, -Value.Scale);
+    Result.FDenominator := BigInteger.One;
+  end;
+  Result.Normalize;
+end;
+
+class operator BigRational.Implicit(const Value: BigRational): BigDecimal;
+begin
+  Result := BigDecimal(Value.FNumerator) / Value.FDenominator;
+end;
+
+// $$RV: have normal initialize function for non-class-constructor versions.
+{$IFDEF HASCLASSCONSTRUCTORS}
+class constructor BigRational.Initialize;
+{$ELSE}
+procedure Init;
+{$ENDIF}
+begin
+  BigRational.FAlwaysReduce := True;
+  BigRational.Zero := BigRational.Create(BigInteger.Zero, BigInteger.One);
+  BigRational.OneTenth := BigRational.Create(BigInteger.One, BigInteger.Ten);
+  BigRational.OneFourth := BigRational.Create(BigInteger.One, BigInteger(4));
+  BigRational.OneThird := BigRational.Create(BigInteger.One, BigInteger(3));
+  BigRational.OneHalf := BigRational.Create(BigInteger.One, BigInteger(2));
+  BigRational.TwoThirds := BigRational.OneThird + BigRational.OneThird;
+  BigRational.ThreeFourths := BigRational.OneHalf + BigRational.OneFourth;
+  BigRational.One := BigRational.Create(BigInteger.One, BigInteger.One);
+  BigRational.Ten := BigRational.Create(BigInteger.Ten, BigInteger.One);
 end;
 
 class operator BigRational.IntDivide(const Left, Right: BigRational): BigInteger;
 begin
   Result := (Left.FNumerator * Right.FDenominator) div (Left.FDenominator * Right.FNumerator);
+end;
+
+function BigRational.Reciprocal: BigRational;
+begin
+  if FNumerator.IsZero then
+    Error(ecDivByZero, []);
+  if Self.FNumerator.IsNegative then
+  begin
+    Result.FNumerator := -Self.FDenominator;
+    Result.FDenominator := -Self.FNumerator;
+  end
+  else
+  begin
+    Result.FNumerator := Self.FDenominator;
+    Result.FDenominator := Self.FNumerator;
+  end;
+end;
+
+function BigRational.Reduce: BigRational;
+begin
+  Result := Self;
+  Result.Normalize(True);
+end;
+
+class function BigRational.Remainder(const Left, Right: BigRational): BigRational;
+begin
+  Result := Left mod Right;
 end;
 
 class operator BigRational.LessThan(const Left, Right: BigRational): Boolean;
@@ -430,7 +739,19 @@ begin
   Result.Normalize;
 end;
 
-procedure BigRational.Normalize;
+function BigRational.Negate: BigRational;
+begin
+  Result.FDenominator := Self.FDenominator;
+  Result.FNumerator := -Self.FNumerator;
+end;
+
+class operator BigRational.Negative(const Value: BigRational): BigRational;
+begin
+  Result.FDenominator := Value.FDenominator;
+  Result.FNumerator := -Value.FNumerator;
+end;
+
+procedure BigRational.Normalize(Forced: Boolean = False);
 var
   GCD: BigInteger;
 begin
@@ -440,18 +761,22 @@ begin
   if FDenominator = BigInteger.One then
     Exit;
 
-  GCD := BigInteger.Abs(BigInteger.GreatestCommonDivisor(FNumerator, FDenominator));
-
-  // TODO: See if this can be simplified by shifting common low zero bits away first
-  if GCD > BigInteger.One then
-  begin
-    FNumerator := FNumerator div GCD;
-    FDenominator := FDenominator div GCD;
-  end;
   if FDenominator.IsNegative then
   begin
-    FDenominator := -FDenominator;
     FNumerator := -FNumerator;
+    FDenominator := -FDenominator;
+  end;
+
+  if (FAlwaysReduce or Forced) then
+  begin
+    GCD := BigInteger.Abs(BigInteger.GreatestCommonDivisor(FNumerator, FDenominator));
+
+    // TODO: See if this can be simplified by shifting common low zero bits away first
+    if GCD > BigInteger.One then
+    begin
+      FNumerator := FNumerator div GCD;
+      FDenominator := FDenominator div GCD;
+    end;
   end;
 end;
 
@@ -480,6 +805,11 @@ begin
   Result.Normalize;
 end;
 
+class function BigRational.Subtract(const Left, Right: BigRational): BigRational;
+begin
+  Result := Left - Right;
+end;
+
 function BigRational.ToString: string;
 begin
   if FDenominator = BigInteger.One then
@@ -488,29 +818,10 @@ begin
     Result := FNumerator.ToString + '/' + FDenominator.ToString;
 end;
 
-class function BigRational.Subtract(const Left, Right: BigRational): BigRational;
-begin
-  Result := Left - Right;
-end;
 
-constructor BigRational.Create(const Value: string);
-var
-  Slash: Integer;
-  S: string;
-begin
-  S := Trim(S);
-  Slash := Pos('/', S);
-  if Slash = 0 then
-  begin //$$RV: try ... except raise new exception end?
-    FNumerator := S;
-    FDenominator := BigInteger.One;
-  end
-  else
-  begin //$$RV: try ... except raise new exception end?
-    FNumerator := Copy(S, 1, Slash - 1);
-    FDenominator := Copy(S, Slash + 1, MaxInt);
-    Normalize;
-  end;
-end;
+{$IFNDEF HASCLASSCONSTRUCTORS}
+initialization
+  Init;
+{$ENDIF}
 
 end.
