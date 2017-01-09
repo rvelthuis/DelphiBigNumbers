@@ -6,7 +6,7 @@
 {             platforms, or if explicitly specified.                         }
 { Language:   Delphi version XE2 or later                                    }
 { Author:     Rudy Velthuis                                                  }
-{ Copyright:  (c) 2015,2016 Rudy Velthuis                                    }
+{ Copyright:  (c) 2015,2016,2017 Rudy Velthuis                               }
 { Notes:      See http://praxis-velthuis.de/rdc/programs/bigintegers.html    }
 {                                                                            }
 {             For tests, see BigIntegerDevelopmentTests.dproj. The data      }
@@ -758,6 +758,7 @@ type
     class function Compare(const Left, Right: BigInteger): Integer; static;
 
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
+//    class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
 
     /// <summary>Returns the natural logarithm of the BigInteger value.</summary>
@@ -851,7 +852,7 @@ type
   private
   {$REGION 'private constants, types and variables'}
     type
-      TErrorCode = (ecParse, ecDivbyZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse);
+      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse, ecNegativeExponent);
       TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
       // The limbs of the magnitude, least significant limb at lowest address.
@@ -1193,6 +1194,7 @@ resourcestring
   SInvalidArgumentFmt        = 'Invalid Argument: %s';
   SSqrtBigInteger            = 'Negative values not allowed for Sqrt';
   SNoInverse                 = 'No modular inverse possible';
+  SNegativeExponent          = 'Negative exponent %s not allowed';
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
@@ -2992,54 +2994,70 @@ begin
   Result := Compare(left, Right) >= 0;
 end;
 
-// http://en.wikipedia.org/wiki/Binary_GCD_algorithm
 class function BigInteger.GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger;
 var
-  Shift: Integer;
-  ALeft, ARight, Temp: BigInteger;
+  L, R: BigInteger;
 begin
-  // GCD(left, 0) = left; GCD(0, right) = right; GCD(0, 0) = 0
-  if Left.IsZero then
-    Exit(Abs(Right));
-  if Right.IsZero then
-    Exit(Abs(Left));
-
-  // Let Shift = Log2(K), where K is the greatest power of 2 dividing both ALeft and ARight.
-  ALeft := Abs(Left);
-  ARight := Abs(Right);
-  Shift := 0;
-  while ALeft.IsEven and ARight.IsEven do
-  begin
-    ALeft := ALeft shr 1;
-    ARight := ARight shr 1;
-    Inc(Shift);
-  end;
-
-  while ALeft.IsEven do
-    ALeft := ALeft shr 1;
-
-  // Now, ALeft is always odd.
+  L := Abs(Left);
+  R := Abs(Right);
   repeat
-    // Remove all factors of 2 in ARight, since they are not in common.
-    // ARight is not 0, so the loop will terminate
-    while ARight.IsEven do
-      ARight := ARight shr 1;
-
-    // ALeft and ARight are both odd. Swap if necessary, so that ALeft <= ARight,
-    // then set ARight to ARight - ALeft (which is even).
-    if ALeft > ARight then
-    begin
-      // Swap ALeft and ALeft.
-      Temp := ALeft;
-      ALeft := ARight;
-      ARight := Temp;
-    end;
-    ARight := ARight - ALeft;
-  until ARight = 0;
-
-  // Restore common factors of 2.
-  Result := ALeft shl Shift;
+    if R.IsZero then
+      Exit(L);
+    L := L mod R;
+    if L.IsZero then
+      Exit(R);
+    R := R mod L;
+  until False;
 end;
+
+// http://en.wikipedia.org/wiki/Binary_GCD_algorithm
+//class function BigInteger.GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger;
+//var
+//  Shift: Integer;
+//  ALeft, ARight, Temp: BigInteger;
+//begin
+//  // GCD(left, 0) = left; GCD(0, right) = right; GCD(0, 0) = 0
+//  if Left.IsZero then
+//    Exit(Abs(Right));
+//  if Right.IsZero then
+//    Exit(Abs(Left));
+//
+//  // Let Shift = Log2(K), where K is the greatest power of 2 dividing both ALeft and ARight.
+//  ALeft := Abs(Left);
+//  ARight := Abs(Right);
+//  Shift := 0;
+//  while ALeft.IsEven and ARight.IsEven do
+//  begin
+//    ALeft := ALeft shr 1;
+//    ARight := ARight shr 1;
+//    Inc(Shift);
+//  end;
+//
+//  while ALeft.IsEven do
+//    ALeft := ALeft shr 1;
+//
+//  // Now, ALeft is always odd.
+//  repeat
+//    // Remove all factors of 2 in ARight, since they are not in common.
+//    // ARight is not 0, so the loop will terminate
+//    while ARight.IsEven do
+//      ARight := ARight shr 1;
+//
+//    // ALeft and ARight are both odd. Swap if necessary, so that ALeft <= ARight,
+//    // then set ARight to ARight - ALeft (which is even).
+//    if ALeft > ARight then
+//    begin
+//      // Swap ALeft and ALeft.
+//      Temp := ALeft;
+//      ALeft := ARight;
+//      ARight := Temp;
+//    end;
+//    ARight := ARight - ALeft;
+//  until ARight = 0;
+//
+//  // Restore common factors of 2.
+//  Result := ALeft shl Shift;
+//end;
 
 class procedure BigInteger.Hexadecimal;
 begin
@@ -6846,6 +6864,8 @@ begin
       raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, [ErrorInfo]);
     ecNoInverse:
       raise EInvalidArgument.Create(SNoInverse);
+    ecNegativeExponent:
+      raise EInvalidArgument.CreateFmt(SNegativeExponent, [ErrorInfo]);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
@@ -8251,7 +8271,7 @@ begin
     Inc(Result, CLimbBits);
     Inc(I);
   end;
-  Inc(Result, LowestOneBit(FData[I]));
+  Inc(Result, NumberOfTrailingZeros(FData[I]));
 end;
 
 class function BigInteger.Max(const Left, Right: BigInteger): BigInteger;
@@ -9476,19 +9496,125 @@ end;
 
 class function BigInteger.Pow(const ABase: BigInteger; AExponent: Integer): BigInteger;
 var
-  Base: BigInteger;
+  PartToSquare: BigInteger;
+  RemainingBits: Integer;
+  ScaleFactor: Int64;
+  BigResult: BigInteger;
+  TrailingZeros: Integer;
+  BitsToShift: Int64;
+  NewSign: Integer;
+  IntResult: Int64;
+  IntPartToSquare: Int64;
+  WorkingExponent: Integer;
 begin
-  Base := ABase;
-  Result := One;
-  while AExponent > 0 do
+  if AExponent < 0 then
+    Error(ecNegativeExponent, IntToStr(AExponent));
+
+  if ABase.IsZero then
+    if AExponent = 0 then
+      Exit(BigInteger.One)
+    else
+      Exit(ABase);
+
+  PartToSquare := BigInteger.Abs(ABase);
+
+  TrailingZeros := PartToSquare.LowestSetBit;
+  BitsToShift := Int64(TrailingZeros) * AExponent;
+  if BitsToShift > High(Integer) then
+    Error(ecOverflow, '');
+
+  if TrailingZeros <> 0 then
   begin
-    if Odd(AExponent) then
-      Result := Result * Base;
-    Base := Sqr(Base);
-    AExponent := AExponent shr 1;
+    PartToSquare := PartToSquare shr TrailingZeros;
+    RemainingBits := PartToSquare.BitLength;
+    if RemainingBits = 1 then
+      if ABase.IsNegative and Odd(AExponent) then
+        Exit(BigInteger.MinusOne shl (TrailingZeros * AExponent))
+      else
+        Exit(BigInteger.One shl (TrailingZeros * AExponent));
+  end
+  else
+  begin
+    RemainingBits := PartToSquare.BitLength;
+    if RemainingBits = 1 then
+      if ABase.IsNegative and Odd(AExponent) then
+        Exit(BigInteger.MinusOne)
+      else
+        Exit(BigInteger.One);
+  end;
+
+  ScaleFactor := Int64(RemainingBits) * AExponent;
+
+  if (PartToSquare.Size = 1) and (ScaleFactor < 31) then
+  begin
+    // Small values.
+    NewSign := 1;
+    if ABase.IsNegative and Odd(AExponent) then
+      NewSign := -1;
+    IntResult := 1;
+    IntPartToSquare := PartToSquare.Magnitude[0];
+
+    WorkingExponent := AExponent;
+    while WorkingExponent <> 0 do
+    begin
+      if Odd(WorkingExponent) then
+        IntResult := IntResult * IntPartToSquare;
+      WorkingExponent := WorkingExponent shr 1;
+      if WorkingExponent <> 0 then
+        IntPartToSquare := IntPartToSquare * IntPartToSquare;
+    end;
+    if TrailingZeros > 0 then
+    begin
+      if BitsToShift + ScaleFactor < 31 then
+        Result := BigInteger(IntResult shl BitsToShift)
+      else
+        Result := BigInteger(IntResult) shl BitsToShift;
+      if (NewSign < 0) then
+        Exit(-Result)
+      else
+        Exit(Result)
+    end
+    else
+      Exit(BigInteger(IntResult * NewSign));
+  end
+  else
+  begin
+    // True BigIntegers.
+    BigResult := BigInteger.One;
+    WorkingExponent := AExponent;
+    while WorkingExponent <> 0 do
+    begin
+      if Odd(WorkingExponent) then
+        BigResult := BigResult * PartToSquare;
+      WorkingExponent := WorkingExponent shr 1;
+      if WorkingExponent <> 0 then
+        PartToSquare := PartToSquare * PartToSquare;
+    end;
+    if TrailingZeros > 0 then
+      BigResult := BigResult shl (TrailingZeros * AExponent);
+
+    if ABase.IsNegative and Odd(AExponent) then
+      Exit(-BigResult)
+    else
+      Exit(BigResult);
   end;
 end;
 
+//class function BigInteger.Pow(const ABase: BigInteger; AExponent: Integer): BigInteger;
+//var
+//  Base: BigInteger;
+//begin
+//  Base := ABase;
+//  Result := One;
+//  while AExponent > 0 do
+//  begin
+//    if Odd(AExponent) then
+//      Result := Result * Base;
+//    Base := Sqr(Base);
+//    AExponent := AExponent shr 1;
+//  end;
+//end;
+//
 class operator BigInteger.NotEqual(const Left, Right: BigInteger): Boolean;
 begin
   Result := Compare(Left, Right) <> 0;
