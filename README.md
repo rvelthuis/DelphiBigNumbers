@@ -31,8 +31,10 @@ BigNumbers
       BigIntegers
          BigIntegerTestGenerator /...        --- Test data generator in C#; open .sln file with 
                                                  Visual Studio 2010 (Express) or newer
-      BigRationalTestDataGenerator /...      --- Test data generator in Java, using the Apache Commons-Math library;
-                                                 open with NetBeans 8. Might require installation of Apache libs.
+      BigRationalTestDataGenerator /...      --- Test data generator in Java, using the Apache 
+                                                 Commons-Math library.
+                                                 Open with NetBeans 8. Might require installation 
+                                                 of the Apache libs.
    Source                                    --- Sources for units and for bases.inc generator
    Tests
       BigDecimals /...                       --- Sources for DUnit tests for BigDecimals
