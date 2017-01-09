@@ -18,7 +18,8 @@ These are implementations of the multi-precision `BigInteger` and `BigDecimal` t
 
 ##BigRational
 
-A type that holds numbers as fractions of two BigIntegers, i.e. 1/7 or 100/3. This is very good at simple arithmetic, since it doesn't lose precision or need any rounding. Still a work in progress...
+A type that holds a number as fraction (ratio) of two `BigIntegers`, a numerator and a denominator, i.e. `1/7` or `100/3`. 
+This type is very good at simple arithmetic (`+`, `-`, `*`, `/`), since it doesn't lose precision or need any rounding. Still a work in progress...
 
 ##Directory structure
 
