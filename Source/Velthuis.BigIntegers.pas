@@ -758,7 +758,6 @@ type
     class function Compare(const Left, Right: BigInteger): Integer; static;
 
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
-//    class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
 
     /// <summary>Returns the natural logarithm of the BigInteger value.</summary>
@@ -2994,70 +2993,52 @@ begin
   Result := Compare(left, Right) >= 0;
 end;
 
+// http://en.wikipedia.org/wiki/Binary_GCD_algorithm
 class function BigInteger.GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger;
 var
-  L, R: BigInteger;
+  Shift: Integer;
+  ALeft, ARight, Temp: BigInteger;
 begin
-  L := Abs(Left);
-  R := Abs(Right);
-  repeat
-    if R.IsZero then
-      Exit(L);
-    L := L mod R;
-    if L.IsZero then
-      Exit(R);
-    R := R mod L;
-  until False;
-end;
+  // GCD(left, 0) = left; GCD(0, right) = right; GCD(0, 0) = 0
+  if Left.IsZero then
+    Exit(Abs(Right));
+  if Right.IsZero then
+    Exit(Abs(Left));
 
-// http://en.wikipedia.org/wiki/Binary_GCD_algorithm
-//class function BigInteger.GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger;
-//var
-//  Shift: Integer;
-//  ALeft, ARight, Temp: BigInteger;
-//begin
-//  // GCD(left, 0) = left; GCD(0, right) = right; GCD(0, 0) = 0
-//  if Left.IsZero then
-//    Exit(Abs(Right));
-//  if Right.IsZero then
-//    Exit(Abs(Left));
-//
-//  // Let Shift = Log2(K), where K is the greatest power of 2 dividing both ALeft and ARight.
-//  ALeft := Abs(Left);
-//  ARight := Abs(Right);
-//  Shift := 0;
-//  while ALeft.IsEven and ARight.IsEven do
-//  begin
-//    ALeft := ALeft shr 1;
-//    ARight := ARight shr 1;
-//    Inc(Shift);
-//  end;
-//
-//  while ALeft.IsEven do
-//    ALeft := ALeft shr 1;
-//
-//  // Now, ALeft is always odd.
-//  repeat
-//    // Remove all factors of 2 in ARight, since they are not in common.
-//    // ARight is not 0, so the loop will terminate
-//    while ARight.IsEven do
-//      ARight := ARight shr 1;
-//
-//    // ALeft and ARight are both odd. Swap if necessary, so that ALeft <= ARight,
-//    // then set ARight to ARight - ALeft (which is even).
-//    if ALeft > ARight then
-//    begin
-//      // Swap ALeft and ALeft.
-//      Temp := ALeft;
-//      ALeft := ARight;
-//      ARight := Temp;
-//    end;
-//    ARight := ARight - ALeft;
-//  until ARight = 0;
-//
-//  // Restore common factors of 2.
-//  Result := ALeft shl Shift;
-//end;
+  // Let Shift = Log2(K), where K is the greatest power of 2 dividing both ALeft and ARight.
+  ALeft := Abs(Left);
+  ARight := Abs(Right);
+
+  // Remove as many trailing zeroes as possible, from both factors.
+  Shift := IntMin(Left.LowestSetBit, Right.LowestSetBit);
+  ALeft := ALeft shr Shift;
+  ARight := ARight shr Shift;
+
+  while ALeft.IsEven do
+    ALeft := ALeft shr 1;
+
+  // Now, ALeft is always odd.
+  repeat
+    // Remove all factors of 2 in ARight, since they are not in common.
+    // ARight is not 0, so the loop will terminate
+    while ARight.IsEven do
+      ARight := ARight shr 1;
+
+    // ALeft and ARight are both odd. Swap if necessary, so that ALeft <= ARight,
+    // then set ARight to ARight - ALeft (which is even).
+    if ALeft > ARight then
+    begin
+      // Swap ALeft and ARight.
+      Temp := ALeft;
+      ALeft := ARight;
+      ARight := Temp;
+    end;
+    ARight := ARight - ALeft;
+  until ARight = 0;
+
+  // Restore common factors of 2.
+  Result := ALeft shl Shift;
+end;
 
 class procedure BigInteger.Hexadecimal;
 begin
@@ -4227,7 +4208,7 @@ asm
         DEC     RSize
         JE      @Exit
 
-// The outer loop iterates over the limbs of the shorter operand. After the setup loop, the lowest limb
+// The outer loop iterates over the limbs of the shorter operand. After the setup loop, the lowes limb
 // has already been taken care of.
 
 @OuterLoop:
