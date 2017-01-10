@@ -4208,7 +4208,7 @@ asm
         DEC     RSize
         JE      @Exit
 
-// The outer loop iterates over the limbs of the shorter operand. After the setup loop, the lowes limb
+// The outer loop iterates over the limbs of the shorter operand. After the setup loop, the lowest limb
 // has already been taken care of.
 
 @OuterLoop:
