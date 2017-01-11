@@ -3489,17 +3489,15 @@ end;
 
 class procedure BigInteger.InternalAddPlain(Left, Right, Result: PLimb; LSize, RSize: Integer);
 
-//==============================================//
-//                                              //
-// To understand the code, please read this:    //
-//                                              //
-//   http://stackoverflow.com/q/32084204/95954  //
-//                                              //
-// especially Peter Cordes' answer:             //
-//                                              //
-//   http://stackoverflow.com/a/32087095/95954  //
-//                                              //
-//==============================================//
+////////////////////////////////////////////////////
+/// To understand the code, please read this:    ///
+///                                              ///
+///   http://stackoverflow.com/q/32084204/95954  ///
+///                                              ///
+/// especially Peter Cordes' answer:             ///
+///                                              ///
+///   http://stackoverflow.com/a/32087095/95954  ///
+////////////////////////////////////////////////////
 
 {$IFDEF WIN32}
 asm
@@ -4682,10 +4680,16 @@ const
 {$IFEND}
 
 {$IFNDEF PUREPASCAL}
-// Calculates X div 100 using multiplication by a constant, taking the high part of the 64 bit result and shifting
-// right. The return value is the remainder, calculated as X - quotient * 100.
-// This was tested to work safely and quickly for all values of UInt32.
-// The 64 bit part is taken from: https://raw.github.com/ridiculousfish/libdivide/master/libdivide.h
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///  The following calculates X div 100 using multiplication by a constant, taking the high part of the 64 bit  ///
+///  result and shifting right. The return value is the remainder, calculated as X - quotient * 100.            ///
+///                                                                                                             ///
+///  This was tested to work safely and quickly for all values of UInt32.                                       ///
+///                                                                                                             ///
+///  The 64 bit part is taken from: https://raw.github.com/ridiculousfish/libdivide/master/libdivide.h          ///
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
 class function BigInteger.InternalDivMod100(var X: NativeUInt): NativeUInt;
 {$IFDEF WIN32}
 asm
@@ -4696,16 +4700,16 @@ asm
         MOV     EBX,EAX
         MUL     EDX
         SHR     EDX,Div100PostShift
-        MOV     [ECX],EDX       // Quotient
+        MOV     [ECX],EDX               // Quotient
 
         // Slightly faster than MUL
 
-        LEA     EDX,[EDX + 4*EDX] // EDX := EDX * 5;
-        LEA     EDX,[EDX + 4*EDX] // EDX := EDX * 5;
-        SHL     EDX,2             // EDX := EDX * 4; 5*5*4 = 100.
+        LEA     EDX,[EDX + 4*EDX]       // EDX := EDX * 5;
+        LEA     EDX,[EDX + 4*EDX]       // EDX := EDX * 5;
+        SHL     EDX,2                   // EDX := EDX * 4; 5*5*4 = 100.
 
         MOV     EAX,EBX
-        SUB     EAX,EDX         // Remainder
+        SUB     EAX,EDX                 // Remainder
         POP     EBX
 end;
 {$ELSE WIN64}
@@ -4888,18 +4892,19 @@ begin
   end;
 end;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// About sections: conversion is finally done in digit sections. A section is, depending on base, the number of     //
-// digits that corresponds to the maximum power of the given base that fits in a NativeUInt.                        //
-//                                                                                                                  //
-// Example: the highest power of base 10 that fits in a UInt32 is 9 (so MaxPower for base 10 is 10^9 and the        //
-// number of digits that corresponds with it is 9: MaxDigits). These 9 digits form a section. Since these fit       //
-// in a UInt32, simple conversion can be done by dividing a UInt32 repeatedly by 10, which is considerably faster   //
-// than dividing a BigInteger by 10. That is why conversion is done in multiples of a section. FWIW, in 64 bit      //
-// code, the maxium power of 10 that fits in a UInt64 is 19, so in that case, a section for base 10 is 19 digits.   //
-//                                                                                                                  //
-// See bases.inc for MaxPower, MaxDigits and MaxFactor for each base and NativeUInt size.                           //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///  About sections: conversion is finally done in digit sections. A section is, depending on base, the number      ///
+///  of digits that corresponds to the maximum power of the given base that fits in a NativeUInt.                   ///
+///                                                                                                                 ///
+///  Example: the highest power of base 10 that fits in a UInt32 is 9 (so MaxPower for base 10 is 10^9 and the      ///
+///  number of digits that corresponds with it is 9: MaxDigits). These 9 digits form a section. Since these fit     ///
+///  in a UInt32, simple conversion can be done by dividing a UInt32 repeatedly by 10, which is considerably        ///
+///  faster than dividing a BigInteger by 10. That is why conversion is done in multiples of a section. FWIW, in    ///
+///  64 bit code, the maxium power of 10 that fits in a UInt64 is 19, so in that case, a section for base 10 is     ///
+///  19 digits.                                                                                                     ///
+///                                                                                                                 ///
+///  See bases.inc for MaxPower, MaxDigits and MaxFactor for each base and NativeUInt size.                         ///
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function GetSectionCount(Size, Base: Integer): Integer;
 begin
@@ -4913,15 +4918,15 @@ begin
     SetLength(CBasePowers[Base], Exponent + 1);
   Result := CBasePowers[Base, Exponent];
 
-  // Note that even uninitialized BigIntegers have an FData of nil, so they return True on IsZero.
+  // Note that "uninitialized" BigIntegers have an FData of nil, so they return True on IsZero.
   if Result.IsZero then
   begin
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  Note: I tried using a LastExponent, and if the current exponent was above the last, it would  //
-    //  multiply the lastly found value with Pow(MaxPower, difference). But that did not provide any  //
-    //  improvement.                                                                                  //
-    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///  Note: I tried using a LastExponent, and if the current exponent was above the last, it would  ///
+    ///  multiply the lastly found value with Pow(MaxPower, difference). But that did not provide any  ///
+    ///  improvement.                                                                                  ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Result := BigInteger.Pow(MaxPower, Exponent);
     CBasePowers[Base, Exponent] := Result;
@@ -5857,6 +5862,7 @@ begin
   /// Shifting should be pretty simple: simply remove any common zeroes in both dividend and divisor, ///
   /// generate an offset to the lowest non-zero limb and shift accordingly (when normalizing).        ///
   /// Note that the remainder must be amended accordingly.                                            ///
+  /// Note2: No need to amend the result: x / y == (x/n) / (y/n), when n is the trailing zero part.   ///
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if RSize = 1 then
@@ -7025,8 +7031,8 @@ begin
 
     // Remove hidden bit and place exponent and sign bit to form a complete Double.
     Res.Hi := (Res.Hi and SignificandMask) or                           // top of significand, hidden bit removed
-              UInt32(((BitLen - 1 + ExponentBias) and ExponentMask) shl ExponentShift) or  // exponent, unbiased
-              UInt32(SignBitOf(FSize));                                                    // sign bit
+              UInt32(((BitLen - 1 + ExponentBias) and ExponentMask) shl ExponentShift) or       // exponent, unbiased
+              UInt32(SignBitOf(FSize));                                                         // sign bit
 
     Result := Res.Dbl;
   end;
@@ -7957,85 +7963,85 @@ end;
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer);
 var
-  Diff: TLimb;
-  Borrow, InterBorrow: TLimb;
+  LDiff: TLimb;
+  LBorrow, LInterBorrow: TLimb;
   LTail: Integer;
   LCount: Integer;
 {$IFDEF CPU64BITS}
-  Diff64, Borrow64, InterBorrow64, Larger64: UInt64;
+  LDiff64, LBorrow64, LInterBorrow64, LLarger64: UInt64;
 {$ENDIF}
 begin
 {$IFDEF CPU64BITS}
-  Borrow64 := 0;
+  LBorrow64 := 0;
 {$ELSE}
-  Borrow := 0;
+  LBorrow := 0;
 {$ENDIF}
 
   Dec(LSize, SSize);
   LTail := SSize and CUnrollMask;
   LCount := SSize shr CUnrollShift;
 
-  // Subtract, with borrow, Smallest from Largest and store result in Result.
+  // Subtract, with LBorrow, Smallest from Largest and store result in Result.
   while LCount > 0 do
   begin
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // Tests with 64 bit intermediate results like:                                  //
-    //                                                                               //
-    //   LResult := Int64(Larger[0]) - Smaller[0] + Integer(TUInt64(LResult).Hi);    //
-    //   Result[0] := TLimb(LResult);                                                //
-    //                                                                               //
-    //   LResult := Int64(Larger[1]) - Smaller[1] + Integer(TUInt64(LResult).Hi);    //
-    //   Result[1] := TLimb(LResult);                                                //
-    //   // etc...                                                                   //
-    //                                                                               //
-    // ... turned out to be slower than the following carry emulating code, even     //
-    // for 64 bit targets.                                                           //
-    ///////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
+    ///  Tests with 64 bit intermediate results like:                                ///
+    ///                                                                              ///
+    ///    LResult := Int64(Larger[0]) - Smaller[0] + Integer(TUInt64(LResult).Hi);  ///
+    ///    Result[0] := TLimb(LResult);                                              ///
+    ///                                                                              ///
+    ///    LResult := Int64(Larger[1]) - Smaller[1] + Integer(TUInt64(LResult).Hi);  ///
+    ///    Result[1] := TLimb(LResult);                                              ///
+    ///    // etc...                                                                 ///
+    ///                                                                              ///
+    ///  ... turned out to be slower than the following carry emulating code, even   ///
+    ///  for 64 bit targets.                                                         ///
+    ////////////////////////////////////////////////////////////////////////////////////
 
-    ///////////////////////////////////////////////////////////////////////////////////
-    // Tests with loop unrolling by a factor > 4 did not improve results at all.     //
-    ///////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////
+    /// Tests with loop unrolling by a factor > 4 did not improve results at all.    ///
+    ////////////////////////////////////////////////////////////////////////////////////
 
   {$IFDEF CPU64BITS}
     // add UInt64s instead of limbs.
-    Larger64 := PUInt64(Larger)[0];
-    Diff64 := Larger64 - PUInt64(Smaller)[0];
-    InterBorrow64 := Ord(Diff64 > Larger64);
-    Diff64 := Diff64 - Borrow64;
-    PUInt64(Result)[0] := Diff64;
-    Borrow64 := InterBorrow64 or Ord(Diff64 = UInt64(-1)) and Borrow64;
+    LLarger64 := PUInt64(Larger)[0];
+    LDiff64 := LLarger64 - PUInt64(Smaller)[0];
+    LInterBorrow64 := Ord(LDiff64 > LLarger64);
+    LDiff64 := LDiff64 - LBorrow64;
+    PUInt64(Result)[0] := LDiff64;
+    LBorrow64 := LInterBorrow64 or Ord(LDiff64 = UInt64(-1)) and LBorrow64;
 
-    Larger64 := PUInt64(Larger)[1];
-    Diff64 := Larger64 - PUInt64(Smaller)[1];
-    InterBorrow64 := Ord(Diff64 > Larger64);
-    Diff64 := Diff64 - Borrow64;
-    PUInt64(Result)[1] := Diff64;
-    Borrow64 := InterBorrow64 or Ord(Diff64 = UInt64(-1)) and Borrow64;
+    LLarger64 := PUInt64(Larger)[1];
+    LDiff64 := LLarger64 - PUInt64(Smaller)[1];
+    LInterBorrow64 := Ord(LDiff64 > LLarger64);
+    LDiff64 := LDiff64 - LBorrow64;
+    PUInt64(Result)[1] := LDiff64;
+    LBorrow64 := LInterBorrow64 or Ord(LDiff64 = UInt64(-1)) and LBorrow64;
   {$ELSE}
-    Diff := Larger[0] - Smaller[0];
-    InterBorrow := Ord(Diff > Larger[0]);   // there was a borrow if R0 > Larger[0].
-    Diff := Diff - Borrow;
-    Result[0] := Diff;
-    Borrow := InterBorrow or Ord(Diff = $FFFFFFFF) and Borrow; // there was a borrow if R > R0.
+    LDiff := Larger[0] - Smaller[0];
+    LInterBorrow := Ord(LDiff > Larger[0]);   // there was a LBorrow if R0 > Larger[0].
+    LDiff := LDiff - LBorrow;
+    Result[0] := LDiff;
+    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow; // there was a LBorrow if R > R0.
 
-    Diff := Larger[1] - Smaller[1];
-    InterBorrow := Ord(Diff > Larger[1]);
-    Dec(Diff, Borrow);
-    Result[1] := Diff;
-    Borrow := InterBorrow or Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[1] - Smaller[1];
+    LInterBorrow := Ord(LDiff > Larger[1]);
+    Dec(LDiff, LBorrow);
+    Result[1] := LDiff;
+    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
 
-    Diff := Larger[2] - Smaller[2];
-    InterBorrow := Ord(Diff > Larger[2]);
-    Dec(Diff, Borrow);
-    Result[2] := Diff;
-    Borrow := InterBorrow or Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[2] - Smaller[2];
+    LInterBorrow := Ord(LDiff > Larger[2]);
+    Dec(LDiff, LBorrow);
+    Result[2] := LDiff;
+    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
 
-    Diff := Larger[3] - Smaller[3];
-    InterBorrow := Ord(Diff > Larger[3]);
-    Dec(Diff, Borrow);
-    Result[3] := Diff;
-    Borrow := InterBorrow or Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[3] - Smaller[3];
+    LInterBorrow := Ord(LDiff > Larger[3]);
+    Dec(LDiff, LBorrow);
+    Result[3] := LDiff;
+    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
   {$ENDIF}
 
     Inc(Larger, CUnrollIncrement);
@@ -8045,16 +8051,16 @@ begin
   end;
 
 {$IFDEF CPU64BITS}
-  Borrow := TLimb(Borrow64);
+  LBorrow := TLimb(LBorrow64);
 {$ENDIF}
 
   while LTail > 0 do
   begin
-    Diff := Larger[0] - Smaller[0];
-    InterBorrow := Ord(Diff > Larger[0]);
-    Dec(Diff, Borrow);
-    Result[0] := Diff;
-    Borrow := InterBorrow or Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[0] - Smaller[0];
+    LInterBorrow := Ord(LDiff > Larger[0]);
+    Dec(LDiff, LBorrow);
+    Result[0] := LDiff;
+    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
 
     Inc(Larger);
     Inc(Smaller);
@@ -8066,36 +8072,36 @@ begin
   LCount := LSize shr CUnrollShift;
 
 {$IFDEF CPU64BITS}
-  Borrow64 := Borrow;
+  LBorrow64 := LBorrow;
 {$ENDIF}
 
-  // Subtract, with borrow, 0 from Largest and store result in Result.
+  // Subtract, with LBorrow, 0 from Largest and store result in Result.
   while LCount > 0 do
   begin
   {$IFDEF CPU64BITS}
-    Diff64 := PUInt64(Larger)[0] - Borrow64;
-    PUInt64(Result)[0] := Diff64;
-    Borrow64 := Ord(Diff64 = UInt64(-1)) and Borrow64;
+    LDiff64 := PUInt64(Larger)[0] - LBorrow64;
+    PUInt64(Result)[0] := LDiff64;
+    LBorrow64 := Ord(LDiff64 = UInt64(-1)) and LBorrow64;
 
-    Diff64 := PUInt64(Larger)[1] - Borrow64;
-    PUInt64(Result)[1] := Diff64;
-    Borrow64 := Ord(Diff64 = UInt64(-1)) and Borrow64;
+    LDiff64 := PUInt64(Larger)[1] - LBorrow64;
+    PUInt64(Result)[1] := LDiff64;
+    LBorrow64 := Ord(LDiff64 = UInt64(-1)) and LBorrow64;
   {$ELSE}
-    Diff := Larger[0] - Borrow;
-    Result[0] := Diff;
-    Borrow := Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[0] - LBorrow;
+    Result[0] := LDiff;
+    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
 
-    Diff := Larger[1] - Borrow;
-    Result[1] := Diff;
-    Borrow := Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[1] - LBorrow;
+    Result[1] := LDiff;
+    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
 
-    Diff := Larger[2] - Borrow;
-    Result[2] := Diff;
-    Borrow := Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[2] - LBorrow;
+    Result[2] := LDiff;
+    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
 
-    Diff := Larger[3] - Borrow;
-    Result[3] := Diff;
-    Borrow := Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[3] - LBorrow;
+    Result[3] := LDiff;
+    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
   {$ENDIF}
 
     Inc(Larger, CUnrollIncrement);
@@ -8104,14 +8110,14 @@ begin
   end;
 
 {$IFDEF CPU64BITS}
-  Borrow := TLimb(Borrow64);
+  LBorrow := TLimb(LBorrow64);
 {$ENDIF}
 
   while LTail > 0 do
   begin
-    Diff := Larger[0] - Borrow;
-    Result[0] := Diff;
-    Borrow := Ord(Diff = $FFFFFFFF) and Borrow;
+    LDiff := Larger[0] - LBorrow;
+    Result[0] := LDiff;
+    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
 
     Inc(Larger);
     Inc(Result);
@@ -8882,12 +8888,12 @@ begin
   // "Modern Computer Arithmetic", version 0.5.1 of April 28, 2010
   // http://arxiv.org/pdf/1004.4710v1.pdf
 
-  //////////////////////////////////////////////////////////////////////////////
-  // Hint to myself: If necessary, take a look at Bodrato's improved version. //
-  // But be aware that most of his *code* is GPL-ed and now part of GMP.      //
-  //////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////////
+  ///  Hint to myself: If necessary, take a look at Bodrato's improved version.  ///
+  ///  But be aware that most of his *code* is GPL-ed and now part of GMP.       ///
+  //////////////////////////////////////////////////////////////////////////////////
 
-  // Step 2: write A = a0 +a1*x + a2*x^2, B = b0 + b1*x + b2*x^2, with x = ß^k.
+  // Step 2: write A = a0 + a1*x + a2*x^2, B = b0 + b1*x + b2*x^2, with x = ß^k.
   k := (IntMax(Left.FSize and SizeMask, Right.FSize and SizeMask) + 2) div 3;
 
   a := Left.Split(k, 3);
@@ -9300,70 +9306,68 @@ end;
 
 class procedure BigInteger.InternalBitwise(const Left, Right: BigInteger; var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TDyadicOperator);
 
-//---------------------------------------------------------------------------------------------------------------//
-//                                                                                                               //
-//  The code for the bitwise operators AND, OR and XOR does not differ much.                                     //
-//  Since the results should be the results for two's complement, two's complement semantics are emulated.       //
-//  Originally, this meant that the magnitudes of negative bigintegers were negated, then the                    //
-//  operation was performed and if the result had to be negative, the magnitude of the result was negated.       //
-//  These negation steps were slow, so now this code uses some logical shortcuts.                                //
-//                                                                                                               //
-//  The rules used are like follows.                                                                             //
-//                                                                                                               //
-//  In the following, A and B represent positive integer values, so -A and -B represent negative values.         //
-//  Note that, to keep this simple, 0 -- i.e. FData = nil -- is not handled at all. That is handled              //
-//  by the caller and then this routine is not called.                                                           //
-//                                                                                                               //
-//  Relation between negation and inversion of an integer/magnitude:                                             //
-//  -A = not A + 1    => not A = -A - 1                                                                          //
-//  -A = not (A - 1)                                                                                             //
-//                                                                                                               //
-//  Note: A and B are magnitudes here. Negating a BigInteger is as simple as flipping the sign bit. That         //
-//  does not work for magnitudes.                                                                                //
-//                                                                                                               //
-//  Boolean (and bitwise) rules followed:                                                                        //
-//  not not A       = A                                                                                          //
-//  not (A and B)   = not A or not B                                                                             //
-//  not (A or B)    = not A and not B                                                                            //
-//  not (A xor B)   = not A xor B = A xor not B                                                                  //
-//  not A xor not B = A xor B                                                                                    //
-//                                                                                                               //
-//  Expressions used here:                                                                                       //
-//                                                                                                               //
-//  A and B      = A and B                               ; both positive, plain operation                        //
-//  A and -B     = A and not (B - 1)                     ; one positive, one negative, result positive           //
-//  -(-A and -B) = -(not (A - 1) and not (B - 1))        ; both negative, result is negative too                 //
-//               = - not ((A - 1) or (B - 1)))                                                                   //
-//               = (A - 1) or (B - 1) + 1                                                                        //
-//                                                                                                               //
-//  A or B       = A or B                                ; both positive                                         //
-//  -(A or -B)   = -(A or not (B - 1))                   ; one positive, one negative, result is negative too    //
-//               = - not (not A and (B - 1))                                                                     //
-//               = ((B - 1) and not A) + 1                                                                       //
-//  -(-A or -B)  = -(not (A - 1) or not (B - 1))         ; both negative, result is negative too                 //
-//               = not (not (A - 1) or not (B - 1) + 1                                                           //
-//               = (A - 1) and (B - 1) + 1                                                                       //
-//                                                                                                               //
-//  A xor B      = A xor B                               ; both positive                                         //
-//  -(A xor -B)  = -(A xor not (B - 1))                  ; one positive, one negative, result is negative too    //
-//               = not (A xor not (B - 1)) + 1                                                                   //
-//               = A xor (B - 1) + 1                                                                             //
-//  -A xor -B    = not (A - 1) xor not (B - 1)           ; both negative, result is positive                     //
-//               = (A - 1) xor (B - 1)                                                                           //
-//                                                                                                               //
-//  So the only "primitives" required are routines for AND, OR, XOR and AND NOT. The latter is not really        //
-//  a primitive, but it is so easy to implement, that it can be considered one. NOT is cheap, does not require   //
-//  complicated carry handling.                                                                                  //
-//  Routines like Inc and Dec are cheap too: you only loop as long as there is a carry (or borrow). Often, that  //
-//  is only over very few limbs.                                                                                 //
-//                                                                                                               //
-//  Primitives (InternalAnd(), etc.) routines were optimized too. Loops were unrolled, 64 bit registers used     //
-//  where possible, both sizes are passed, so the operations can be done on the original data. The latter        //
-//  reduces the need for copying into internal buffers.                                                          //
-//                                                                                                               //
-//  These optimizations made bitwise operators 2-3 times as fast as with the simple implementations before.      //
-//                                                                                                               //
-//---------------------------------------------------------------------------------------------------------------//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///  The code for the bitwise operators AND, OR and XOR does not differ much.                                     ///
+///  Since the results should be the results for two's complement, two's complement semantics are emulated.       ///
+///  Originally, this meant that the magnitudes of negative bigintegers were negated, then the                    ///
+///  operation was performed and if the result had to be negative, the magnitude of the result was negated.       ///
+///  These negation steps were slow, so now this code uses some logical shortcuts.                                ///
+///                                                                                                               ///
+///  The rules used are like follows.                                                                             ///
+///                                                                                                               ///
+///  In the following, A and B represent positive integer values, so -A and -B represent negative values.         ///
+///  Note that, to keep this simple, 0 -- i.e. FData = nil -- is not handled at all. That is handled              ///
+///  by the caller and then this routine is not called.                                                           ///
+///                                                                                                               ///
+///  Relation between negation and inversion of an integer/magnitude:                                             ///
+///  -A = not A + 1    => not A = -A - 1                                                                          ///
+///  -A = not (A - 1)                                                                                             ///
+///                                                                                                               ///
+///  Note: A and B are magnitudes here. Negating a BigInteger is as simple as flipping the sign bit. That         ///
+///  does not work for magnitudes.                                                                                ///
+///                                                                                                               ///
+///  Boolean (and bitwise) rules followed:                                                                        ///
+///  not not A       = A                                                                                          ///
+///  not (A and B)   = not A or not B                                                                             ///
+///  not (A or B)    = not A and not B                                                                            ///
+///  not (A xor B)   = not A xor B = A xor not B                                                                  ///
+///  not A xor not B = A xor B                                                                                    ///
+///                                                                                                               ///
+///  Expressions used here:                                                                                       ///
+///                                                                                                               ///
+///  A and B      = A and B                               ; both positive, plain operation                        ///
+///  A and -B     = A and not (B - 1)                     ; one positive, one negative, result positive           ///
+///  -(-A and -B) = -(not (A - 1) and not (B - 1))        ; both negative, result is negative too                 ///
+///               = - not ((A - 1) or (B - 1)))                                                                   ///
+///               = (A - 1) or (B - 1) + 1                                                                        ///
+///                                                                                                               ///
+///  A or B       = A or B                                ; both positive                                         ///
+///  -(A or -B)   = -(A or not (B - 1))                   ; one positive, one negative, result is negative too    ///
+///               = - not (not A and (B - 1))                                                                     ///
+///               = ((B - 1) and not A) + 1                                                                       ///
+///  -(-A or -B)  = -(not (A - 1) or not (B - 1))         ; both negative, result is negative too                 ///
+///               = not (not (A - 1) or not (B - 1) + 1                                                           ///
+///               = (A - 1) and (B - 1) + 1                                                                       ///
+///                                                                                                               ///
+///  A xor B      = A xor B                               ; both positive                                         ///
+///  -(A xor -B)  = -(A xor not (B - 1))                  ; one positive, one negative, result is negative too    ///
+///               = not (A xor not (B - 1)) + 1                                                                   ///
+///               = A xor (B - 1) + 1                                                                             ///
+///  -A xor -B    = not (A - 1) xor not (B - 1)           ; both negative, result is positive                     ///
+///               = (A - 1) xor (B - 1)                                                                           ///
+///                                                                                                               ///
+///  So the only "primitives" required are routines for AND, OR, XOR and AND NOT. The latter is not really        ///
+///  a primitive, but it is so easy to implement, that it can be considered one. NOT is cheap, does not require   ///
+///  complicated carry handling.                                                                                  ///
+///  Routines like Inc and Dec are cheap too: you only loop as long as there is a carry (or borrow). Often, that  ///
+///  is only over very few limbs.                                                                                 ///
+///                                                                                                               ///
+///  Primitives (InternalAnd(), etc.) routines were optimized too. Loops were unrolled, 64 bit registers used     ///
+///  where possible, both sizes are passed, so the operations can be done on the original data. The latter        ///
+///  reduces the need for copying into internal buffers.                                                          ///
+///                                                                                                               ///
+///  These optimizations made bitwise operators 2-3 times as fast as with the simple implementations before.      ///
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 var
   LSize, RSize, MinSize, MaxSize: Integer;
@@ -9394,12 +9398,12 @@ begin
       InternalDecrement(RPtr, RSize);                           // RPtr^ := RPtr^ - 1
       Result.FSize := 0;
       Result.MakeSize(MaxSize);
-      OppositeOp(LPtr, RPtr, PLimb(Result.FData), LSize, RSize);        // Opposite op: AND --> OR, OR --> AND, XOR --> XOR
+      OppositeOp(LPtr, RPtr, PLimb(Result.FData), LSize, RSize); // Opposite op: AND --> OR, OR --> AND, XOR --> XOR
       if @PlainOp = @InternalXor then
         Result.FSize := Result.FSize and SizeMask               // Make positive.
       else
       begin
-        InternalIncrement(PLimb(Result.FData), MaxSize);                // Result := Result + 1
+        InternalIncrement(PLimb(Result.FData), MaxSize);        // Result := Result + 1
         Result.FSize := Result.FSize or SignMask;               // Make negative.
       end;
       FreeMem(LPtr);
@@ -9477,16 +9481,17 @@ end;
 
 class function BigInteger.Pow(const ABase: BigInteger; AExponent: Integer): BigInteger;
 var
-  PartToSquare: BigInteger;
-  RemainingBits: Integer;
-  ScaleFactor: Int64;
-  BigResult: BigInteger;
-  TrailingZeros: Integer;
-  BitsToShift: Int64;
-  NewSign: Integer;
-  IntResult: Int64;
-  IntPartToSquare: Int64;
-  WorkingExponent: Integer;
+  LBase: BigInteger;
+  LBaseBitLength: Integer;
+  LScaleFactor: Int64;
+  LBigResult: BigInteger;
+  LTrailingZeros: Integer;
+  LShift: Int64;
+  LNewSign: Integer;
+  LIntResult: Int64;
+  IntBase: Int64;
+  LExponent: Integer;
+  LResultIsNegative: Boolean;
 begin
   if AExponent < 0 then
     Error(ecNegativeExponent, IntToStr(AExponent));
@@ -9497,105 +9502,116 @@ begin
     else
       Exit(ABase);
 
-  PartToSquare := BigInteger.Abs(ABase);
+  LResultIsNegative := ABase.IsNegative and Odd(AExponent);
 
-  TrailingZeros := PartToSquare.LowestSetBit;
-  BitsToShift := Int64(TrailingZeros) * AExponent;
-  if BitsToShift > High(Integer) then
+  LBase := BigInteger.Abs(ABase);
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///  Speed things up by removing any common trailing zero bits. The resulting values will probably be smaller,  ///
+  ///  so exponentation is done with smaller values, and thus probably faster. The zero bits are added back in    ///
+  ///  (multiplied by the exponent, of course) at the very end.                                                   ///
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  LTrailingZeros := LBase.LowestSetBit;
+  LShift := Int64(LTrailingZeros) * AExponent;
+  if LShift > High(Integer) then
     Error(ecOverflow, '');
 
-  if TrailingZeros <> 0 then
+  if LTrailingZeros <> 0 then
   begin
-    PartToSquare := PartToSquare shr TrailingZeros;
-    RemainingBits := PartToSquare.BitLength;
-    if RemainingBits = 1 then
-      if ABase.IsNegative and Odd(AExponent) then
-        Exit(BigInteger.MinusOne shl (TrailingZeros * AExponent))
+    LBase := LBase shr LTrailingZeros;
+    LBaseBitLength := LBase.BitLength;
+    if LBaseBitLength = 1 then
+    begin
+      if LResultIsNegative then
+        Exit(BigInteger.MinusOne shl (LTrailingZeros * AExponent))
       else
-        Exit(BigInteger.One shl (TrailingZeros * AExponent));
+        Exit(BigInteger.One shl (LTrailingZeros * AExponent));
+    end;
   end
   else
   begin
-    RemainingBits := PartToSquare.BitLength;
-    if RemainingBits = 1 then
-      if ABase.IsNegative and Odd(AExponent) then
+    LBaseBitLength := LBase.BitLength;
+    if LBaseBitLength = 1 then
+      if LResultIsNegative then
         Exit(BigInteger.MinusOne)
       else
         Exit(BigInteger.One);
   end;
 
-  ScaleFactor := Int64(RemainingBits) * AExponent;
+  LScaleFactor := Int64(LBaseBitLength) * AExponent;
 
-  if (PartToSquare.Size = 1) and (ScaleFactor < 31) then
+  if (LBase.Size = 1) and (LScaleFactor < 31) then
   begin
     // Small values.
-    NewSign := 1;
-    if ABase.IsNegative and Odd(AExponent) then
-      NewSign := -1;
-    IntResult := 1;
-    IntPartToSquare := PartToSquare.Magnitude[0];
+    LNewSign := 1;
+    if LResultIsNegative then
+      LNewSign := -1;
+    LIntResult := 1;
+    IntBase := LBase.Magnitude[0];
 
-    WorkingExponent := AExponent;
-    while WorkingExponent <> 0 do
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///  The exponentiation proper:                                                                        ///
+    ///                                                                                                    ///
+    ///  1. Square the power for each iteration. So you get Base^1, Base^2, Base^4, Base^8, Base^16, etc.  ///
+    ///  2. For each bit in the exponent, multiply with the corresponding (i.e. current value of) power    ///
+    ///                                                                                                    ///
+    ///  Example: 7^11 = 7 ^ (8 + 2 + 1) = 7^1 * 7^2 * 7^8.                                                ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    LExponent := AExponent;
+    while LExponent <> 0 do
     begin
-      if Odd(WorkingExponent) then
-        IntResult := IntResult * IntPartToSquare;
-      WorkingExponent := WorkingExponent shr 1;
-      if WorkingExponent <> 0 then
-        IntPartToSquare := IntPartToSquare * IntPartToSquare;
+      if Odd(LExponent) then
+        LIntResult := LIntResult * IntBase;
+      LExponent := LExponent shr 1;
+      if LExponent <> 0 then
+        IntBase := IntBase * IntBase;
     end;
-    if TrailingZeros > 0 then
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///  Append the trailing zeroes (times exponent) back in, to get the real result.                       ///
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if LTrailingZeros > 0 then
     begin
-      if BitsToShift + ScaleFactor < 31 then
-        Result := BigInteger(IntResult shl BitsToShift)
+      if LShift + LScaleFactor < 31 then
+        Result := BigInteger(LIntResult shl LShift)  // LIntResult shl Shift is in range of Integer.
       else
-        Result := BigInteger(IntResult) shl BitsToShift;
-      if (NewSign < 0) then
+        Result := BigInteger(LIntResult) shl LShift; // slightly slower: BigInteger is shifted, not the integer.
+      if LResultIsNegative then
         Exit(-Result)
       else
         Exit(Result)
     end
     else
-      Exit(BigInteger(IntResult * NewSign));
+      Exit(BigInteger(LIntResult * LNewSign));
   end
   else
   begin
     // True BigIntegers.
-    BigResult := BigInteger.One;
-    WorkingExponent := AExponent;
-    while WorkingExponent <> 0 do
-    begin
-      if Odd(WorkingExponent) then
-        BigResult := BigResult * PartToSquare;
-      WorkingExponent := WorkingExponent shr 1;
-      if WorkingExponent <> 0 then
-        PartToSquare := PartToSquare * PartToSquare;
-    end;
-    if TrailingZeros > 0 then
-      BigResult := BigResult shl (TrailingZeros * AExponent);
+    LBigResult := BigInteger.One;
+    LExponent := AExponent;
 
-    if ABase.IsNegative and Odd(AExponent) then
-      Exit(-BigResult)
+    // The exponentiation proper. See explanation above.
+    while LExponent <> 0 do
+    begin
+      if Odd(LExponent) then
+        LBigResult := LBigResult * LBase;
+      LExponent := LExponent shr 1;
+      if LExponent <> 0 then
+        LBase := LBase * LBase;
+    end;
+
+    // Append the trailing zeroes (times exponent) back in, to get the real result.
+    if LTrailingZeros > 0 then
+      LBigResult := LBigResult shl (LTrailingZeros * AExponent);
+
+    if LResultIsNegative then
+      Exit(-LBigResult)
     else
-      Exit(BigResult);
+      Exit(LBigResult);
   end;
 end;
 
-//class function BigInteger.Pow(const ABase: BigInteger; AExponent: Integer): BigInteger;
-//var
-//  Base: BigInteger;
-//begin
-//  Base := ABase;
-//  Result := One;
-//  while AExponent > 0 do
-//  begin
-//    if Odd(AExponent) then
-//      Result := Result * Base;
-//    Base := Sqr(Base);
-//    AExponent := AExponent shr 1;
-//  end;
-//end;
-//
 class operator BigInteger.NotEqual(const Left, Right: BigInteger): Boolean;
 begin
   Result := Compare(Left, Right) <> 0;
@@ -9711,19 +9727,20 @@ begin
   else
   begin
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //  This branch had to be written out completely. Using any local BigInteger, even a hidden BigInteger (to do     //
-    //  something like "Inc(Result);" a hidden BigInteger is allocated) will slow this down enormously.               //
-    //  The mere presence of a BigInteger causes InitializeArray and FinalizeArray to be compiled in,                 //
-    //  and a hidden try-finally to be placed around the routine.                                                     //
-    //  Removing all local BigIntegers sped up this branch by a factor of 3 and the entire routine by a factor of 2.  //
-    //                                                                                                                //
-    //  Original code:                                                                                                //
-    //  Result := MinusOne - ((MinusOne - Value) shr Shift);                                                          //
-    //                                                                                                                //
-    //  See: https://community.embarcadero.com/blogs/entry/speed-problems-caused-by-code-that-never-ran-27826         //
-    //   or: http://rvelthuis.blogspot.de/2015/10/speed-problems-caused-by-code-that.html                             // 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///  This branch had to be written out completely. Using any local BigInteger, even a hidden BigInteger (to do  ///
+    ///  something like "Inc(Result);" a hidden BigInteger is allocated) will slow this down enormously.            ///
+    ///  The mere presence of a BigInteger causes InitializeArray and FinalizeArray to be compiled in,              ///
+    ///  and a hidden try-finally to be placed around the routine.                                                  ///
+    ///  Removing all local BigIntegers sped up this branch by a factor of 3 and the entire routine by a factor     ///
+    ///  of 2.                                                                                                      ///
+    ///                                                                                                             ///
+    ///  Original code:                                                                                             ///
+    ///  Result := MinusOne - ((MinusOne - Value) shr Shift);                                                       ///
+    ///                                                                                                             ///
+    ///  See: https:///community.embarcadero.com/blogs/entry/speed-problems-caused-by-code-that-never-ran-27826     ///
+    ///   or: http:///rvelthuis.blogspot.de/2015/10/speed-problems-caused-by-code-that.html                         ///
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     LSize := (Value.FSize and SizeMask);
     P := AllocLimbs(LSize);
@@ -9917,21 +9934,21 @@ end;
 function BigInteger.TestBit(Index: Integer): Boolean;
 
 ///////////////////////////////////////////////////////////////////////
-//  Two's complement semantics are required.                         //
-//                                                                   //
-//  Note: -A = not (A - 1) = not A + 1                               //
-//                                                                   //
-//  Example, assuming 16 bit limbs, negating goes like follows:      //
-//                                                                   //
-//    -$1234 5678 9ABC 0000 0000 -> $EDCB A987 6544 0000 0000        //
-//  0:                      0000 ->                      FFFF + 1    //
-//  1:                 0000      ->                 FFFF + 1         //
-//  2:            9ABC           ->            6543 + 1              //
-//  3:       5678                ->       A987                       //
-//  4:  1234                     ->  EDCB                            //
-//                                                                   //
-//  So accessing limb 4 or 3:    Data := not Data                    //
-//     accessing limb 2, 1 or 0: Data := not Data + 1                //
+///  Two's complement semantics are required.                       ///
+///                                                                 ///
+///  Note: -A = not (A - 1) = not A + 1                             ///
+///                                                                 ///
+///  Example, assuming 16 bit limbs, negating goes like follows:    ///
+///                                                                 ///
+///    -$1234 5678 9ABC 0000 0000 -> $EDCB A987 6544 0000 0000      ///
+///  0:                      0000 ->                      FFFF + 1  ///
+///  1:                 0000      ->                 FFFF + 1       ///
+///  2:            9ABC           ->            6543 + 1            ///
+///  3:       5678                ->       A987                     ///
+///  4:  1234                     ->  EDCB                          ///
+///                                                                 ///
+///  So accessing limb 4 or 3:    Data := not Data                  ///
+///     accessing limb 2, 1 or 0: Data := not Data + 1              ///
 ///////////////////////////////////////////////////////////////////////
 
 var
@@ -10040,10 +10057,10 @@ begin
   begin
     Estimate := Estimate.SetBit(AdditionalBit);
     NewEstimateToNthPower := BigInteger.Pow(Estimate, Nth);
-    if NewEstimateToNthPower > Radicand then                        // Did we add too much? If so, remove bit.
+    if NewEstimateToNthPower > Radicand then            // Did we add too much? If so, remove bit.
       Estimate := Estimate.ClearBit(AdditionalBit)
     else
-      EstimateToNthPower := NewEstimateToNthPower;               // Otherwise update EstimateToNthPower (= Estimate^Nth).
+      EstimateToNthPower := NewEstimateToNthPower;      // Otherwise update EstimateToNthPower (= Estimate^Nth).
     Dec(AdditionalBit);
     if AdditionalBit < 0 then
       Break;
@@ -10101,13 +10118,13 @@ begin
   while Radicand > EstimateSquared do
   begin
 
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Instead of multiplying two large BigIntegers, i.e. (Estimate + 2 ^ AdditionalBit) ^ 2, we try to be clever:  //
-    // If A = Estimate; B = 2 ^ AdditionalBit then:                                                                 //
-    // sqr(A + B) = A*A + 2*A*B + B*B = sqrA + (A * 2 + B)*B, so                                                    //
-    // Temp := EstimateSquared + (Estimate * 2 + 2 ^ AdditionalBit) * 2 ^ AdditionalBit                             //
-    // Since 2 ^ AdditionalBit and the multiplication can be done with shifts, we finally get the following.        //
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// Instead of multiplying two large BigIntegers, i.e. (Estimate + 2 ^ AdditionalBit) ^ 2, we try to be clever: ///
+    /// If A = Estimate; B = 2 ^ AdditionalBit then:                                                                ///
+    /// sqr(A + B) = A*A + 2*A*B + B*B = sqrA + (A * 2 + B)*B, so                                                   ///
+    /// Temp := EstimateSquared + (Estimate * 2 + 2 ^ AdditionalBit) * 2 ^ AdditionalBit                            ///
+    /// Since 2 ^ AdditionalBit and the multiplication can be done with shifts, we finally get the following.       ///
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Temp := Estimate shl 1;
     Temp := Temp.SetBit(AdditionalBit);
@@ -10196,29 +10213,29 @@ begin
   DivThreeHalvesByTwo(Rem, LeftCopy and HalfMask, RightCopy, RightUpper, RightLower, HalfN, QuotientLower, Rem);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  //                                                                                                                 //
-  //  Grade school division, but with (very) large digits, dividing [a1,a2,a3,a4] by [b1,b2]:                        //
-  //                                                                                                                 //
-  //    +----+----+----+----+     +----+----+     +----+                                                             //
-  //    | a1 | a2 | a3 | a4 |  /  | b1 | b2 |  =  | q1 |        DivideThreeHalvesByTwo(a1a2, a3, b1b2, n, q1, r1r2)  //
-  //    +----+----+----+----+     +----+----+     +----+                                                             //
-  //    +--------------+  |                          |                                                               //
-  //    |   b1b2 * q1  |  |                          |                                                               //
-  //    +--------------+  |                          |                                                               //
-  //  - ================  v                          |                                                               //
-  //         +----+----+----+     +----+----+        | +----+                                                        //
-  //         | r1 | r2 | a4 |  /  | b1 | b2 |  =       | q2 |   DivideThreeHalvesByTwo(r1r2, a4, b1b2, n, q1, r1r2)  //
-  //         +----+----+----+     +----+----+        | +----+                                                        //
-  //         +--------------+                        |    |                                                          //
-  //         |   b1b2 * q2  |                        |    |                                                          //
-  //         +--------------+                        |    |                                                          //
-  //       - ================                        v    v                                                          //
-  //              +----+----+                     +----+----+                                                        //
-  //              | r1 | r2 |                     | q1 | q2 |   r1r2 = a1a2a3a4 mod b1b2, q1q2 = a1a2a3a4 div b1b2   //
-  //              +----+----+                     +----+----+ ,                                                      //
-  //                                                                                                                 //
-  //  Note: in the diagram above, a1, b1, q1, r1 etc. are the most significant "digits" of their numbers.            //
-  //                                                                                                                 //
+  ///                                                                                                               ///
+  ///  Grade school division, but with (very) large digits, dividing [a1,a2,a3,a4] by [b1,b2]:                      ///
+  ///                                                                                                               ///
+  ///    +----+----+----+----+     +----+----+   +----+                                                             ///
+  ///    | a1 | a2 | a3 | a4 |  /  | b1 | b2 | = | q1 |        DivideThreeHalvesByTwo(a1a2, a3, b1b2, n, q1, r1r2)  ///
+  ///    +----+----+----+----+     +----+----+   +----+                                                             ///
+  ///    +--------------+  |                       |                                                                ///
+  ///    |   b1b2 * q1  |  |                       |                                                                ///
+  ///    +--------------+  |                       |                                                                ///
+  ///  - ================  v                       |                                                                ///
+  ///         +----+----+----+     +----+----+     | +----+                                                         ///
+  ///         | r1 | r2 | a4 |  /  | b1 | b2 | =   | | q2 |   DivideThreeHalvesByTwo(r1r2, a4, b1b2, n, q1, r1r2)   ///
+  ///         +----+----+----+     +----+----+     | +----+                                                         ///
+  ///         +--------------+                     |    |                                                           ///
+  ///         |   b1b2 * q2  |                     |    |                                                           ///
+  ///         +--------------+                     |    |                                                           ///
+  ///       - ================                     v    v                                                           ///
+  ///              +----+----+                  +----+----+                                                         ///
+  ///              | r1 | r2 |                  | q1 | q2 |   r1r2 = a1a2a3a4 mod b1b2, q1q2 = a1a2a3a4 div b1b2    ///
+  ///              +----+----+                  +----+----+ ,                                                       ///
+  ///                                                                                                               ///
+  ///  Note: in the diagram above, a1, b1, q1, r1 etc. are the most significant "digits" of their numbers.          ///
+  ///                                                                                                               ///
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if NIsOdd then
