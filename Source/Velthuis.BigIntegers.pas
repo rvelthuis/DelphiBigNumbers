@@ -113,6 +113,9 @@
 {               harder, since that required System.Math.                     }
 {                                                                            }
 {   2016-12-30: Changed implementation of ModInverse to 20% faster version.  }
+{                                                                            }
+{   2017-01-08: Updated Pow to remove trailing bits before exponentiation    }
+{               and putting them back afterward.                             }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -120,6 +123,8 @@ unit Velthuis.BigIntegers;
 // TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc.
 // TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
 //       bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time.
+// TODO: Removal of shared trailing zero bits before basecase division?
+// TODO: what with remainder if trailing zero bits are removed? Put them back?
 
 { TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time.
   Should I do my own memory management? If so, how?
@@ -5818,16 +5823,11 @@ var
   Shift, RevShift, I, J: Integer;                       // Help variables
   NormDividendTop2, NormDivisorTop: TDblLimb;
 {$IF SizeOf(TDivLimb) = SizeOf(TLimb)}
-//  Rem, Quot: UInt64;
   Carry, Value: Int64;
 {$ELSE}
-//  Rem: TDivLimb;
   Carry, Value: Integer;
 {$IFEND}
 begin
-
-//  {$MESSAGE ERROR 'DivMod is faulty in the 64 bit PUREPASCAL version!'}
-
   Assert(SizeOf(TDblLimb) = 2 * SizeOf(TDivLimb));
   PDividend := PDivLimb(Dividend);
   PDivisor := PDivLimb(Divisor);
@@ -5842,9 +5842,12 @@ begin
     Dec(RSize);
 {$IFEND}
 
-  // NOTE: In Win32, this uses 16-bit division (with 32-bit intermediate results) to avoid having to use
-  //       64-bit unsigned integers. This turned out to be (approx. 17%) faster than using 32-bit limbs.
-  //       In Win64, this uses 32-bit division with 64-bit intermediate results.
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+  ///  NOTE: In Win32, this uses 16-bit division (with 32-bit intermediate results) to avoid having   ///
+  ///        to use 64-bit unsigned integers. This turned out to be (approx. 17%) faster than using   ///
+  ///        32-bit limbs.                                                                            ///
+  ///        In Win64, this uses 32-bit division with 64-bit intermediate results.                    ///
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if (LSize < RSize) then
     Exit(False);
@@ -5875,11 +5878,11 @@ begin
     Exit(InternalDivMod16(Dividend, PDivisor[0], Quotient, Remainder, (LSize + 1) div 2));
   {$IFEND}
   end;
-  // Normalize by shifting divisor left just enough so that its high-order bit is set, and shift dividend left the
-  // same amount. A high-order digit is prepended to dividend unconditionally.
+  // Normalize by shifting divisor left just enough so that its high-order bit is set, and shift
+  // dividend left the same amount. A high-order digit is prepended to dividend unconditionally.
 
   // Get number of leading zeroes.
-  Shift := Velthuis.Numerics.NumberOfLeadingZeros(PDivisor[RSize - 1]);            // 0 <= Shift < Bits.
+  Shift := Velthuis.Numerics.NumberOfLeadingZeros(PDivisor[RSize - 1]); // 0 <= Shift < Bits.
   RevShift := CDivLimbBits - Shift;
 
   // Normalize divisor and shift dividend left accordingly.
@@ -5953,9 +5956,22 @@ begin
       Value := 0;
       for I := 0 to RSize - 1 do
       begin
-        // Note: the original code was:
-        //   Value := NormDividend[I + J] + NormDivisor[I] + Value shr CDivLimbBits;
-        // That caused bad results in 64 bit, probably because the first two operands were treated as 32 bit first.
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+        ///  Note: the original code was:                                                             ///
+        ///                                                                                           ///
+        ///    Value := NormDividend[I + J] + NormDivisor[I] + Value shr CDivLimbBits;                ///
+        ///                                                                                           ///
+        ///  That caused bad results in 64 bit, probably because the first two operands were          ///
+        ///  treated as 32 bit first, i.e.                                                            ///
+        ///                                                                                           ///
+        ///    UInt64 := UInt64(UInt32 + UInt32) + UInt64;                                            ///
+        ///                                                                                           ///
+        ///  instead of                                                                               ///
+        ///                                                                                           ///
+        ///    UInt64 := UInt64 + UInt64 + UInt64;                                                    ///
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+
         Value := Value shr CDivLimbBits + NormDividend[I + J] + NormDivisor[I];
         NormDividend[I + J] := TDivLimb(Value);
       end;
@@ -5977,6 +5993,16 @@ begin
   Result := True;
 end;
 {$ELSEIF DEFINED(WIN32)}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+///  TODO: Remove shared trailing zero bits. Quotient will be same, traling bits must be put back     ///
+///        for remainder. We already shift the parts anyway, so why not shift right too? If we must   ///
+///        shift left by 11 and right by 8, we do nothing. But if we must shift right by 110 and      ///
+///        left by 11, we adjust the sizes.                                                           ///
+///                                                                                                   ///
+///        Perhaps it is enough to "remove" shared zero limbs.                                        ///
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 var
   LDividend, LDivisor, LQuotient: PLimb;                // Local copies of passed registers
   NormDividend, NormDivisor: PLimb;                     // Manually managed dynamic arrays
@@ -6010,6 +6036,8 @@ asm
 
 // Simple division
 //   Divisor only contains one single limb: simple division and exit.
+
+// TODO: if multiple lower limbs can be disregarded, because they are 0 on both sides, we can simply change ESI.
 
 @SingleLimbDivisor:
 
