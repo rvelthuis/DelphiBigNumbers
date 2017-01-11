@@ -7021,16 +7021,17 @@ begin
     end;
 
     // Rounding, using guard, round and sticky bit.
-    // Guard is below lowest bit of significand, Round bit one below that, and Sticky bit is accumulation of all bits
-    // below the other two.
+    // Guard is bit directly below lowest bit of significand, Round bit is one below that,
+    // and Sticky bit is the accumulation of all bits below the other two.
 
-    // GRSB - Action (slightly modified; B is lowest bit of significand)
-    // 0xxx - round down = do nothing (x means any bit value, 0 or 1)
-    // 1000 - round down = do nothing
-    // 1001 - round up
-    // 101x - round up
-    // 110x - round up
-    // 111x - round up
+    // BGRS - Action (slightly modified; B is lowest bit of significand)
+    // x0xx - round down = do nothing (x means any bit value, 0 or 1)
+    // 0100 - round down = do nothing
+    // 1100 - round up
+    // x101 - round up
+    // x110 - round up
+    // x111 - round up
+    // In other words: round up if and only if G=1 and at least one of the other bits is set. See below.
 
     // Collect all bits below round bit into sticky bit.
     StickyIndex := BitLen - GuardOffset - 2;
@@ -7059,7 +7060,7 @@ begin
 
     // Remove hidden bit and place exponent and sign bit to form a complete Double.
     Res.Hi := (Res.Hi and SignificandMask) or                           // top of significand, hidden bit removed
-              UInt32(((BitLen - 1 + ExponentBias) and ExponentMask) shl ExponentShift) or       // exponent, unbiased
+              UInt32(((BitLen - 1 + ExponentBias) and ExponentMask) shl ExponentShift) or       // exponent, biased
               UInt32(SignBitOf(FSize));                                                         // sign bit
 
     Result := Res.Dbl;
