@@ -116,15 +116,19 @@
 {                                                                            }
 {   2017-01-08: Updated Pow to remove trailing bits before exponentiation    }
 {               and putting them back afterward.                             }
+{                                                                            }
+{   2017-01-13: DivModKnuth now eliminates common trailing zero limbs        }
+{               before attempting the division.                              }
+{               So $123400000000000000000 div $4560000000000000000 is        }
+{               performed as $1234 div $456. The mod result is of course     }
+{               corrected.                                                   }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
 
-// TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc.
-// TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
-//       bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time.
-// TODO: Removal of shared trailing zero bits before basecase division?
-// TODO: what with remainder if trailing zero bits are removed? Put them back?
+{ TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc. }
+{ TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
+        bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time. }
 
 { TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time.
   Should I do my own memory management? If so, how?
@@ -140,6 +144,11 @@ interface
 
 uses
   Velthuis.RandomNumbers, System.Types, System.SysUtils, System.Math;
+
+//$$RV: +
+var
+  GlobalDebugOffset: Integer;
+//$$RV: -
 
 // --- User settings ---
 
@@ -940,8 +949,10 @@ type
     class function InternalDivMod(Dividend, Divisor, Quotient, Remainder: PLimb; LSize, RSize: Integer): Boolean; static;
     // Internal function performing division of magnitude by 32 bit integer.
     class function InternalDivMod32(Dividend: PLimb; Divisor: UInt32; Quotient, Remainder: PLimb; LSize: Integer): Boolean; static;
-    // Internal function performing division of mangitude by 16 bit integer (needed for Pure Pascal division).
+    // Internal function performing division of magnitude by 16 bit integer (needed for Pure Pascal division).
     class function InternalDivMod16(Dividend: PLimb; Divisor: UInt16; Quotient, Remainder: PLimb; LSize: Integer): Boolean; static;
+    // performs a Knuth divmod. Does not compare magnitudes. Called by DivModKnuth.
+    class procedure UncheckedDivModKnuth(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
     // Internal function multiplying two magnitudes.
     class procedure InternalMultiply(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     // Internal function dividing magnitude by given base value. Leaves quotient in place, returns remainder.
@@ -5378,16 +5389,29 @@ begin
         if ShouldUseBurnikelZiegler(LSize, RSize) then
           DivModBurnikelZiegler(Dividend, Divisor, Quotient, Remainder)
         else
-          DivModKnuth(Dividend, Divisor, Quotient, Remainder);
+          UncheckedDivModKnuth(Dividend, Divisor, Quotient, Remainder);
       end;
   end;
 end;
 
-class procedure BigInteger.DivModKnuth(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger);
+class procedure BigInteger.UncheckedDivModKnuth(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger);
 var
   LSign, RSign: Integer;
   LSize, RSize: Integer;
   Q, R: BigInteger;
+  Offset: Integer;              // Offset into left and right data when eliminating common trailing zero limbs.
+
+  // Establish number of common trailing zero limbs.
+  function CommonTrailingZeros(const Left, Right: PLimb; LSize, RSize: Integer): Integer;
+  var
+    I: Integer;
+  begin
+    Result := 0;
+    for I := 0 to IntMin(LSize, RSize) - 1 do
+      if (Left[I] or Right[I]) <> 0 then
+        Exit(I);
+  end;
+
 begin
   if Right.FData = nil then
     Error(ecDivByZero);
@@ -5396,6 +5420,63 @@ begin
   RSign := Right.FSize and SignMask;
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
+
+  if (LSize <> 0) and (RSize <> 0) then
+  begin
+    Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
+  end
+  else
+    Offset := 0;
+
+  Q.MakeSize(LSize - RSize + 1);
+  R.MakeSize(RSize);
+  if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData), PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
+    Error(ecInvalidBase);
+  Q.Compact;
+  R.Compact;
+
+  if Q.FSize <> 0 then
+    Q.FSize := (Q.FSize and SizeMask) or (LSign xor RSign);
+  if R.FSize <> 0 then
+    R.FSize := (R.FSize and SizeMask) or LSign;
+  ShallowCopy(Q, Quotient);
+  ShallowCopy(R, Remainder);
+end;
+
+class procedure BigInteger.DivModKnuth(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger);
+var
+  LSign, RSign: Integer;
+  LSize, RSize: Integer;
+  Q, R: BigInteger;
+  Offset: Integer;              // Offset into left and right data when eliminating common trailing zero limbs.
+
+  // Establish number of common trailing zero limbs.
+  function CommonTrailingZeros(const Left, Right: PLimb; LSize, RSize: Integer): Integer;
+  var
+    I: Integer;
+  begin
+    Result := 0;
+    for I := 0 to IntMin(LSize, RSize) - 1 do
+      if (Left[I] or Right[I]) <> 0 then
+        Exit(I);
+  end;
+
+begin
+  if Right.FData = nil then
+    Error(ecDivByZero);
+
+  LSign := Left.FSize and SignMask;
+  RSign := Right.FSize and SignMask;
+  LSize := Left.FSize and SizeMask;
+  RSize := Right.FSize and SizeMask;
+
+
+  if (LSize <> 0) and (RSize <> 0) then
+  begin
+    Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
+  end
+  else
+    Offset := 0;
 
   case InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize) of
     -1:
@@ -5417,11 +5498,10 @@ begin
       begin
         Q.MakeSize(LSize - RSize + 1);
         R.MakeSize(RSize);
-        if not InternalDivMod(PLimb(Left.FData), PLimb(Right.FData), PLimb(Q.FData), PLimb(R.FData), LSize, RSize) then
+        if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData), PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
           Error(ecInvalidBase);
         Q.Compact;
         R.Compact;
-
         if Q.FSize <> 0 then
           Q.FSize := (Q.FSize and SizeMask) or (LSign xor RSign);
         if R.FSize <> 0 then
@@ -5993,16 +6073,6 @@ begin
   Result := True;
 end;
 {$ELSEIF DEFINED(WIN32)}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-///  TODO: Remove shared trailing zero bits. Quotient will be same, traling bits must be put back     ///
-///        for remainder. We already shift the parts anyway, so why not shift right too? If we must   ///
-///        shift left by 11 and right by 8, we do nothing. But if we must shift right by 110 and      ///
-///        left by 11, we adjust the sizes.                                                           ///
-///                                                                                                   ///
-///        Perhaps it is enough to "remove" shared zero limbs.                                        ///
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 var
   LDividend, LDivisor, LQuotient: PLimb;                // Local copies of passed registers
   NormDividend, NormDivisor: PLimb;                     // Manually managed dynamic arrays
@@ -6036,8 +6106,6 @@ asm
 
 // Simple division
 //   Divisor only contains one single limb: simple division and exit.
-
-// TODO: if multiple lower limbs can be disregarded, because they are 0 on both sides, we can simply change ESI.
 
 @SingleLimbDivisor:
 
