@@ -14,13 +14,13 @@ interface
 
 uses
   TestFramework,
-  Velthuis.BigIntegers,
-  Velthuis.RandomNumbers,
-  Velthuis.Loggers,
   System.Types,
   System.Generics.Defaults,
   System.SysUtils,
-  System.Math;
+  System.Math,
+  Velthuis.BigIntegers,
+  Velthuis.RandomNumbers,
+  Velthuis.Loggers;
 
 type
   // Test methods for BigInteger records.
@@ -44,9 +44,9 @@ type
     procedure TestToString;
     procedure TestToHex;
     procedure TestTestBit;
-//    procedure TestSetBit;
-//    procedure TestClearBit;
-//    procedure TestFlipBit;
+    procedure TestSetBit;
+    procedure TestClearBit;
+    procedure TestFlipBit;
     procedure TestAdd;
     procedure TestAddFunction;
     procedure TestInc;
@@ -106,11 +106,11 @@ uses
   Winapi.Windows;
 {$ENDIF}
 
-{$I 'BigIntegerTestResults.inc'}
-{$I 'BigIntegerArithmeticResults.inc'}
-{$I 'BigIntegerBitwiseResults.inc'}
+{$I 'BigIntegerTestResults.inc.inc'}
+{$I 'BigIntegerArithmeticResults.inc.inc'}
+{$I 'BigIntegerBitwiseResults.inc.inc'}
 {$I 'BigIntegerConvertResults.inc'}
-{$I 'BigIntegerMathResults.inc'}
+{$I 'BigIntegerMathResults.inc.inc'}
 
 procedure TTestBigInteger.Error(const Msg: string);
 begin
@@ -289,6 +289,69 @@ begin
       D := AddResults[N].val;
       Check(C = D, Format('(%d,%d) %s + %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
       Inc(N);
+    end;
+  end;
+end;
+
+procedure TTestBigInteger.TestSetBit;
+var
+  I, J, N, Bit: Integer;
+  A, B: BigInteger;
+  TR: TTestResult;
+begin
+  N := Length(bits);
+  for I := 1 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    for J := 0 to High(Bits) do
+    begin
+      Bit := Bits[J];
+      TR := SetBitResults[N];
+      Inc(N);
+      B := A.SetBit(Bit);
+      Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.SetBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
+    end;
+  end;
+end;
+
+procedure TTestBigInteger.TestClearBit;
+var
+  I, J, N, Bit: Integer;
+  A, B: BigInteger;
+  TR: TTestResult;
+begin
+  N := Length(bits);
+  for I := 1 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    for J := 0 to High(Bits) do
+    begin
+      Bit := Bits[J];
+      TR := ClearBitResults[N];
+      Inc(N);
+      B := A.ClearBit(Bit);
+      Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.ClearBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
+    end;
+  end;
+end;
+
+procedure TTestBigInteger.TestFlipBit;
+var
+  I, J, N, Bit: Integer;
+  A, B: BigInteger;
+  TR: TTestResult;
+begin
+  N := Length(bits);
+  for I := 1 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    for J := 0 to High(Bits) do
+    begin
+      Bit := Bits[J];
+      TR := FlipBitResults[N];
+      Inc(N);
+      B := A.FlipBit(Bit);
+      Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.FlipBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
     end;
   end;
 end;
@@ -509,14 +572,18 @@ end;
 
 procedure TTestBigInteger.TestModInverse;
 var
-  I, J: Integer;
+  I, J, N: Integer;
+  TR: TTestResult;
 begin
+  N := 0;
   for I := 0 to High(Arguments) do
   begin
     A := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
       B := Arguments[J];
+      TR := InvModResults[N];
+      Inc(N);
       // Only test if B <> 0 and A and B are coprime.
       if B.IsZero or (BigInteger.GreatestCommonDivisor(A, B) <> BigInteger.One) then
         Continue;
@@ -524,14 +591,14 @@ begin
         C := BigInteger.Zero;
         C := BigInteger.ModInverse(A, B);
       except
-        on E1: EInvalidArgument do
+        on E: Exception do
         begin
+          Check(TR.Info <> triOk, Format('(%d,%d,%d): Unexpected exception %s: %s', [I, J, N - 1, E.ClassName, E.Message]));
           Continue;
         end;
-        on E2: EZeroDivide do
-          Check(False, Format('(%d,%d) Unexpected division by zero ModInverse(%s, %s)', [I, J, A.ToString, B.ToString]));
       end;
-      Check(A * C mod B = BigInteger.One, Format('(%d,%d) ModInverse: %s * %s mod %s = %s', [I, J, A.ToString, C.ToString, B.ToString, (A * C mod B).ToString]));
+      Check(TR.Info = triOk, Format('(%d,%d,%d): Unexpected error ''%s''', [I, J, N - 1, TR.Val]));
+      Check(C = BigInteger(TR.Val), Format('(%d,%d): ModInverse: %s * %s mod %s = %s', [I, J, A.ToString, C.ToString, B.ToString, (A * C mod B).ToString]));
     end;
   end;
 end;
@@ -1281,11 +1348,11 @@ begin
   end;
   A := BigInteger.Pow(1000, 1000);
   D1 := BigInteger.Ln(A);
-  Check(Samevalue(D1, Ln_1000_1000), Format('Ln(Pow(1000, 1000)): %.15f (%.15f)', [D1, Ln_1000_1000]));
+  Check(Samevalue(D1, Ln_1000_1000), Format('Ln(Pow(1000, 1000)): %.15f (%.15f)', [D1, 0.0 + Ln_1000_1000]));
   D1 := BigInteger.Log10(A);
-  Check(SameValue(D1, Log10_1000_1000, 1e-10), Format('Log10(Pow(1000, 1000)): %.15f (%.15f)', [D1, Log10_1000_1000]));
+  Check(SameValue(D1, Log10_1000_1000, 1e-10), Format('Log10(Pow(1000, 1000)): %.15f (%.15f)', [D1, 0.0 + Log10_1000_1000]));
   D1 := BigInteger.Log2(A);
-  Check(SameValue(D1, Log2_1000_1000, 1e-10), Format('Log2(Pow(1000, 1000)): %.15f (%.15f)', [D1, Log2_1000_1000]));
+  Check(SameValue(D1, Log2_1000_1000, 1e-10), Format('Log2(Pow(1000, 1000)): %.15f (%.15f)', [D1, 0.0 + Log2_1000_1000]));
 end;
 
 procedure TTestBigInteger.TestMax;
@@ -1349,6 +1416,8 @@ begin
   BigInteger.DivMod(A, B, C, D);
   S0 := C.ToStringClassic(16);
   S1 := D.ToStringClassic(16);
+
+//  Error(Format('GlobalDebugOffset = %d', [GlobaldebugOffset]));
 
   for I := High(MultiplyResults) downto 0 do
   begin

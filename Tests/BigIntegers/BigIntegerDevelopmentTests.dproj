@@ -5,7 +5,7 @@
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>3</TargetedPlatforms>
         <AppType>Console</AppType>
         <MainSource>BigIntegerDevelopmentTests.dpr</MainSource>
@@ -133,7 +133,6 @@
         <DCCReference Include="TestBigIntegers.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.BigIntegers.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.BigRationals.pas"/>
-        <None Include="Velthuis.BigIntegers.todo"/>
         <None Include="BigIntegerDevelopmentTests.todo"/>
         <None Include="BigIntegerArithmeticResults.inc"/>
         <None Include="BigIntegerBitwiseResults.inc"/>
@@ -250,19 +249,13 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win64\Debug\BigIntegerDevelopmentTests.rsm" Configuration="Debug" Class="DebugSymbols">
-                    <Platform Name="Win64">
-                        <RemoteName>BigIntegerDevelopmentTests.rsm</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile LocalName="BigIntegerConvertResults.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\..\Source\bases.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\Source\bases.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="BigIntegerConvertResults.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -325,9 +318,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Velthuis.BigIntegers.todo" Configuration="Debug" Class="ProjectFile">
-                    <Platform Name="Win32">
-                        <RemoteDir>.\</RemoteDir>
+                <DeployFile LocalName="Win64\Release\BigIntegerDevelopmentTests.exe" Configuration="Release" Class="ProjectOutput">
+                    <Platform Name="Win64">
+                        <RemoteName>BigIntegerDevelopmentTests.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
@@ -340,12 +333,6 @@
                 <DeployFile LocalName="BigIntegerDevelopmentTests.todo" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile LocalName="Win64\Release\BigIntegerDevelopmentTests.exe" Configuration="Release" Class="ProjectOutput">
-                    <Platform Name="Win64">
-                        <RemoteName>BigIntegerDevelopmentTests.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

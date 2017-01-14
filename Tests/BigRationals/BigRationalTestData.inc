@@ -1,5 +1,5 @@
 //
-// Test data for Velthuis.BigRationals.BigRational type, generated 08 Jan, 2017, 22:52:34.
+// Test data for Velthuis.BigRationals.BigRational type, generated 13 Jan, 2017, 23:41:45.
 //
 // Do not modify the generated data in this file. Modify the data in the generator.
 // The generator is in BigRationalTestDataGenerator.java, below the Test directory.

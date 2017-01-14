@@ -112,9 +112,8 @@ public class BigRationalTestDataGenerator
         try
         {
             File outfile = new File("..\\..\\..\\Tests\\BigRationals\\BigRationalTestData.inc");
-            FileWriter fw = new FileWriter(outfile);
             BufferedWriter bw = new BufferedWriter(new FileWriter(outfile));
-            writeln("Writing file " + outfile.getAbsoluteFile());
+            writeln("Writing file " + outfile.getCanonicalPath());
             writeln();
             try
             {

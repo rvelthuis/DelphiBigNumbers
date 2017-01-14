@@ -1,4 +1,4 @@
-﻿/*                                                                           */
+/*                                                                           */
 /* File:       BigIntegerTestGenerator.cs                                    */
 /* Function:   Generates result tables for a set of big integers and the     */
 /*             math operations on them, as an include file for the           */

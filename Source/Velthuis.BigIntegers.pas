@@ -169,7 +169,8 @@ var
   {$DEFINE BIGINTEGERIMMUTABLE}
 
 
-// Experimental is set for code that tries something new without deleting the original code yet. Undefine it to get the original code.
+// Experimental is set for code that tries something new without deleting the original code yet.
+// Undefine it to get the original code.
 
   {$DEFINE Experimental}
 
@@ -227,8 +228,9 @@ type
   TLimb = type UInt32;
   TMagnitude = TArray<TLimb>;                   // These BigIntegers use sign-magnitude format, hence the name.
 
-  // TBigInteger uses a sign-magnitude representation, i.e. the magnitude is always interpreted as an unsigned big integer,
-  // while the sign bit represents the sign. Currently, the sign bit is stored as the top bit of the FSize member.
+  // BigInteger uses a sign-magnitude representation, i.e. the magnitude is always interpreted as an
+  // unsigned big integer, while the sign bit represents the sign. Currently, the sign bit is stored as the
+  // top bit of the FSize member.
 
   PBigInteger = ^BigInteger;
   BigInteger = record
@@ -255,9 +257,9 @@ type
       Ten: BigInteger;
 
     const
-      CapacityMask = High(Integer) - 3;         // Mask ensuring that FData lengths are a multiple of 4, e.g. $7FFFFFFC
-      SizeMask     = High(Integer);             // Mask to extract size part of FSize member, e.g. $7FFFFFFF
-      SignMask     = Low(Integer);              // Mask to extract sign bit of FSize member, e.g. $80000000
+      CapacityMask = High(Integer) - 3; // Mask ensuring that FData lengths are a multiple of 4, e.g. $7FFFFFFC
+      SizeMask     = High(Integer);     // Mask to extract size part of FSize member, e.g. $7FFFFFFF
+      SignMask     = Low(Integer);      // Mask to extract sign bit of FSize member, e.g. $80000000
 
   {$IFDEF PUREPASCAL}
     {$IFDEF CPU64BITS}                                          // 64PP = 64 bit, Pure Pascal
@@ -301,12 +303,14 @@ type
     class constructor Initialize;
 
     /// <summary>Creates a new BigInteger from the data in limbs and the sign specified in Negative.</summary>
-    /// <param name="Limbs">data for the magnitude of the BigInteger. The data is interpreted as unsigned, and comes low limb first.</param>
+    /// <param name="Limbs">data for the magnitude of the BigInteger. The data is interpreted as unsigned,
+    ///   and comes low limb first.</param>
     /// <param name="Negative">Indicates if the BigInteger is negative.</param>
     constructor Create(const Limbs: array of TLimb; Negative: Boolean); overload;
 
     /// <summary>Creates a new BigInteger from the data in limbs and the sign specified in Negative.</summary>
-    /// <param name="Data">data for the magnitude of the BigInteger. The data is interpreted as unsigned, and comes low limb first.</param>
+    /// <param name="Data">data for the magnitude of the BigInteger. The data is interpreted as unsigned,
+    ///   and comes low limb first.</param>
     /// <param name="Negative">Indicates if the BigInteger is negative.</param>
     constructor Create(const Magnitude: TMagnitude; Negative: Boolean); overload;
 
@@ -368,10 +372,12 @@ type
 
     // -- String input functions --
 
-    /// <summary>Tries to parse the specified string into a valid BigInteger value in the specified numeric base. Returns False if this failed.</summary>
+    /// <summary>Tries to parse the specified string into a valid BigInteger value in the specified numeric base.
+    ///   Returns False if this failed.</summary>
     /// <param name="S">The string that represents a big integer value in the specified numeric base.</param>
     /// <param name="Base">The numeric base that is assumed when parsing the string. Valid values are 2..36.</param>
-    /// <param name="Res">The resulting BigInteger, if the parsing succeeds. Res is undefined if the parsing fails.</param>
+    /// <param name="Res">The resulting BigInteger, if the parsing succeeds. Res is undefined if the
+    ///   parsing fails.</param>
     /// <returns>Returns True if S could be parsed into a valid BigInteger in Res. Returns False on failure.</returns>
     class function TryParse(const S: string; Base: TNumberBase; out Value: BigInteger): Boolean; overload; static;
 
@@ -383,27 +389,34 @@ type
     // -- Rudy Velthuis.                                                                                            //
     //--------------------------------------------------------------------------------------------------------------//
 
-    /// <summary>Tries to parse the specified string into a valid BigInteger value in the default BigInteger numeric base.</summary>
+    /// <summary>Tries to parse the specified string into a valid BigInteger value in the default BigInteger
+    ///   numeric base.</summary>
     /// <param name="S">The string that represents a big integer value in the default numeric base, unless
     ///   specified otherwise. See <see cref="BigInteger.Base" /></param>
-    /// <param name="Res">The resulting BigInteger, if the parsing succeeds. Res is undefined if the parsing fails.</param>
+    /// <param name="Res">The resulting BigInteger, if the parsing succeeds. Res is undefined if the parsing
+    ///   fails.</param>
     /// <returns>Returns True if S could be parsed into a valid BigInteger in Res. Returns False on failure.</returns>
     /// <remarks>
-    ///   <para>To make it easier to increase the legibility of large numbers, any '_' in the numeric string will completely be ignored, so
-    ///     '1_000_000_000' is exactly equivalent to '1000000000'.</para>
-    ///   <para>The string to be parsed is considered case insensitive, so '$ABC' and '$abc' represent exactly the same value.</para>
+    ///   <para>To make it easier to increase the legibility of large numbers, any '_' in the numeric string
+    ///      will completely be ignored, so '1_000_000_000' is exactly equivalent to '1000000000'.</para>
+    ///   <para>The string to be parsed is considered case insensitive, so '$ABC' and '$abc' represent exactly
+    ///     the same value.</para>
     ///   <para>The format of a string to be parsed is as follows:</para>
     ///   <para><c>[sign][base override]digits</c></para>
     ///   <para>
-    ///     <param name="sign">This can either be '-' or '+'. It will make the BigInteger negative or positive, respectively.
-    ///     If no sign is specified, a positive BigInteger is generated.</param>
-    ///     <param name="base override">There are several ways to override the default numeric base.<para>Specifying '0x' or '$' here will cause the
-    ///     string to be interpreted as representing a hexadecimal (base 16) value.</para><para>Specifying '0b' will cause it to be interpreted as
-    ///     binary (base 2).</para><para>Specifying '0d' will cause it to be interpreted as
-    ///     decimal (base 10).</para>
-    ///     <para>Specifying '0o' or '0k' will cause it to be interpreted as octal (base 8).</para><para>Finally, to specify any base,
-    ///     using an override in the format '%nnR' (R for radix) will cause the number to be interpreted to be in base 'nn', where 'nn' represent one or two
-    ///     decimal digits. So '%36rRudyVelthuis' is a valid BigInteger value with base 36.</para></param>
+    ///     <param name="sign">This can either be '-' or '+'. It will make the BigInteger negative or
+    ///       positive, respectively. If no sign is specified, a positive BigInteger is generated.</param>
+    ///     <param name="base override">There are several ways to override the default numeric base.
+    ///       <para>Specifying '0x' or '$' here will cause the string to be interpreted as representing a
+    ///       hexadecimal (base 16) value.</para><para>Specifying '0b' will cause it to be interpreted as
+    ///       binary (base 2).</para><para>Specifying '0d' will cause it to be interpreted as
+    ///       decimal (base 10).</para>
+    ///       <para>Specifying '0o' or '0k' will cause it to be interpreted as octal (base 8).</para>
+    ///       <para>Finally, to specify any base,
+    ///       using an override in the format '%nnR' (R for radix) will cause the number to be interpreted to be
+    ///       in base 'nn', where 'nn' represent one or two decimal digits. So '%36rRudyVelthuis' is a valid
+    ///       BigInteger value with base 36.</para>
+    ///     </param>
     ///   </para>
     /// </remarks>
     class function TryParse(const S: string; out Res: BigInteger): Boolean; overload; static;
@@ -455,7 +468,8 @@ type
 
     // -- String output functions --
 
-    /// <summary>Returns the string interpretation of the specified BigInteger in the default numeric base, see <see cref="BigInteger.Base" />.</summary>
+    /// <summary>Returns the string interpretation of the specified BigInteger in the default numeric base,
+    ///   see <see cref="BigInteger.Base" />.</summary>
     function ToString: string; overload;
 
     /// <summary>Returns the string interpretation of the specified BigInteger in the specified numeric base.</summary>
@@ -581,13 +595,15 @@ type
     /// <summary>Returns true if the value of Left is mathematically greater than the value of Right.</summary>
     class operator GreaterThan(const Left, Right: BigInteger): Boolean; inline;
 
-    /// <summary>Returns true if the value of Left is mathematically greater than or equal to the value of Right.</summary>
+    /// <summary>Returns true if the value of Left is mathematically greater than or equal to the value
+    ///   of Right.</summary>
     class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
 
     /// <summary>Returns true if the value of Left is mathematically less than the value of Right.</summary>
     class operator LessThan(const Left, Right: BigInteger): Boolean; inline;
 
-    /// <summary>Returns true if the value of Left is mathematically less than or equal to the value of Right.</summary>
+    /// <summary>Returns true if the value of Left is mathematically less than or equal to the
+    ///   value of Right.</summary>
     class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
 
 
@@ -605,8 +621,8 @@ type
     /// <summary>Implicitly (i.e. without a cast) converts the specified UInt64 to a BigInteger.</summary>
     class operator Implicit(const Value: UInt64): BigInteger; inline;
 
-    /// <summary>Implicitly (i.e. without a cast) converts the specified string to a BigInteger. The BigInteger is the
-    ///   result of a call to Parse(Value).</summary>
+    /// <summary>Implicitly (i.e. without a cast) converts the specified string to a BigInteger. The BigInteger
+    ///   is the result of a call to Parse(Value).</summary>
     class operator Implicit(const Value: string): BigInteger; inline;
 
 
@@ -692,7 +708,8 @@ type
     class procedure DivModKnuth(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
 
     /// <summary>Recursive "schoolbook" division, as described by Burnikel and Ziegler. Faster than
-    /// <see cref="DivModBaseCase" />, but with more overhead, so should only be applied for larger BigIntegers.</summary>
+    /// <see cref="DivModBaseCase" />, but with more overhead, so should only be applied for
+    ///   larger BigIntegers.</summary>
     class procedure DivModBurnikelZiegler(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
 
     /// <summary>The function equivalent to the operator 'div'.</summary>
@@ -806,7 +823,8 @@ type
     class function NthRoot(const Radicand: BigInteger; Nth: Integer): BigInteger; static;
 
     /// <summary>If R is the nth root of Radicand, returns Radicand - R^Nth.</summary>
-    class procedure NthRootRemainder(const Radicand: BigInteger; Nth: Integer; var Root, Remainder: BigInteger); static;
+    class procedure NthRootRemainder(const Radicand: BigInteger; Nth: Integer;
+      var Root, Remainder: BigInteger); static;
 
     /// <summary> Returns the square root R of Radicand, such that R^2 < Radicand < (R+1)^2</summary>
     class function Sqrt(const Radicand: BigInteger): BigInteger; static;
@@ -820,7 +838,8 @@ type
     // -- Utility functions --
 
     /// <summary>Sets whether partial-flags stall must be avoided with modified routines.</summary>
-    /// <remarks>USING THE WRONG SETTING MAY AFFECT THE TIMING OF CERTAIN ROUTINES CONSIDERABLY, SO USE THIS WITH EXTREME CARE!
+    /// <remarks>USING THE WRONG SETTING MAY AFFECT THE TIMING OF CERTAIN ROUTINES CONSIDERABLY, SO USE
+    ///   THIS WITH EXTREME CARE!
     ///   The unit is usually able to determine the right settings automatically.</remarks>
     class procedure AvoidPartialFlagsStall(Value: Boolean); static;
 
@@ -865,7 +884,8 @@ type
   private
   {$REGION 'private constants, types and variables'}
     type
-      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse, ecNegativeExponent);
+      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse,
+                    ecNegativeExponent);
       TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
       // The limbs of the magnitude, least significant limb at lowest address.
@@ -8406,7 +8426,7 @@ begin
   v1 := Zero;
   v3 := Abs(Modulus);
   // X mod 1 is nonsense (always 0), but it might still be passed.
-  if Compare(v3, One) = 0 then
+  if (Compare(v3, One) = 0) or Modulus.IsZero then
     Error(ecNoInverse);
   // Remember odd/even iterations
   iter := 0;
@@ -10120,12 +10140,12 @@ end;
 
 function BigInteger.SetBit(Index: Integer): BigInteger;
 var
-  LimbIndex, BitIndex: Integer;
-  Borrow, Data: TLimb;
+  LimbIndex: Integer;
+  BitMask, Borrow, Data: TLimb;
 begin
   Result := Self.Clone;
   LimbIndex := Index shr 5;
-  BitIndex := 1 shl (Index and 31);
+  BitMask := 1 shl (Index and 31);
 
   if Self.IsNegative then
   begin
@@ -10138,7 +10158,7 @@ begin
 
     // Negate this limb, set the bit, negate it again and store it back.
     Data := Result.FData[LimbIndex];
-    Result.FData[LimbIndex] := -(-Data or BitIndex);
+    Result.FData[LimbIndex] := -(-Data or BitMask);
     Inc(LimbIndex);
 
     // If there was a borrow, it must be propagated.
@@ -10163,31 +10183,31 @@ begin
       Result.EnsureSize(LimbIndex + 1);
 
     // Set the bit.
-    Result.FData[LimbIndex] := Result.FData[LimbIndex] or BitIndex;
+    Result.FData[LimbIndex] := Result.FData[LimbIndex] or BitMask;
   end;
   Result.Compact;
 end;
 
 function BigInteger.ClearBit(Index: Integer): BigInteger;
 var
-  LimbIndex, BitIndex: Integer;
-  Borrow, Data: TLimb;
+  LimbIndex: Integer;
+  BitMask, Borrow, Data: TLimb;
 begin
   Result := Self.Clone;
   LimbIndex := Index shr 5;
-  BitIndex := 1 shl (Index and 31);
+  BitMask := 1 shl (Index and 31);
 
   if Self.IsNegative then
   begin
     if Index > Self.BitLength then
     begin
       Result.EnsureSize(LimbIndex + 1);
-      Result.FData[LimbIndex] := Result.FData[LimbIndex] or BitIndex;
+      Result.FData[LimbIndex] := Result.FData[LimbIndex] or BitMask;
     end
     else
     begin
       Data := Result.FData[LimbIndex];
-      Result.FData[LimbIndex] := -(-Data and not BitIndex);
+      Result.FData[LimbIndex] := -(-Data and not BitMask);
       Inc(LimbIndex);
 
       // Propagate borrow
@@ -10208,31 +10228,31 @@ begin
   begin
     if Index > BitLength then
       Exit;
-    Result.FData[LimbIndex] := Result.FData[LimbIndex] and not BitIndex;
+    Result.FData[LimbIndex] := Result.FData[LimbIndex] and not BitMask;
   end;
   Result.Compact;
 end;
 
 function BigInteger.FlipBit(Index: Integer): BigInteger;
 var
-  LimbIndex, BitIndex: Integer;
-  Borrow, Data: TLimb;
+  LimbIndex: Integer;
+  BitMask, Borrow, Data: TLimb;
 begin
   Result := Self.Clone;
   LimbIndex := Index shr 5;
-  BitIndex := 1 shl (Index and 31);
+  BitMask := 1 shl (Index and 31);
 
   if Self.IsNegative then
   begin
     if Index > Self.BitLength then
     begin
       Result.EnsureSize(LimbIndex + 1);
-      Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitIndex;
+      Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitMask;
     end
     else
     begin
       Data := Result.FData[LimbIndex];
-      Result.FData[LimbIndex] := -(-Data xor BitIndex);
+      Result.FData[LimbIndex] := -(-Data xor BitMask);
       Inc(LimbIndex);
 
       // Propagate borrow
@@ -10253,7 +10273,7 @@ begin
   begin
     if Index > BitLength then
       Result.EnsureSize(LimbIndex + 1);
-    Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitIndex;
+    Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitMask;
   end;
   Result.Compact;
 end;
