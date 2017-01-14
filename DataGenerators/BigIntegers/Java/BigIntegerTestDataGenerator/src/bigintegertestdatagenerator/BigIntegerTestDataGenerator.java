@@ -51,7 +51,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 
@@ -180,11 +179,11 @@ public class BigIntegerTestDataGenerator
             try
             {
                 generateByteArrayResults(bw);
-//                generateHexResults(bw);
-//                generateAsIntegerResults(bw);
-//                generateAsCardinalResults(bw);
-//                generateAsInt64Results(bw);
-//                generateAsUInt64Results(bw);
+                generateHexResults(bw);
+                generateAsIntegerResults(bw);
+                generateAsCardinalResults(bw);
+                generateAsInt64Results(bw);
+                generateAsUInt64Results(bw);
 //                generateFromDoubleResults(bw);
 //                generateDoubleResults(bw);
             }
@@ -504,7 +503,6 @@ public class BigIntegerTestDataGenerator
         String[] data = ARGUMENTS;
         int count = data.length;
         TestResult[] results = new TestResult[count * count];
-        TestResult tr;
 
         int n = 0;
 
@@ -515,7 +513,7 @@ public class BigIntegerTestDataGenerator
             {
                 // Test operation.
                 BigInteger d2 = new BigInteger(data[j]);
-                tr = new TestResult();
+                TestResult tr = new TestResult();
                 tr.info = TestResultInfo.Ok;
                 BigInteger d3 = d1.add(d2);
 
@@ -532,7 +530,6 @@ public class BigIntegerTestDataGenerator
         String[] data = ARGUMENTS;
         int count = data.length;
         TestResult[] results = new TestResult[count * count];
-        TestResult tr = new TestResult();
 
         int n = 0;
 
@@ -543,7 +540,7 @@ public class BigIntegerTestDataGenerator
             {
                 // Test operation.
                 BigInteger d2 = new BigInteger(data[j]);
-                tr = new TestResult();
+                TestResult tr = new TestResult();
                 tr.info = TestResultInfo.Ok;
                 BigInteger d3 = d1.subtract(d2);
 
@@ -560,7 +557,6 @@ public class BigIntegerTestDataGenerator
         String[] data = ARGUMENTS;
         int count = data.length;
         TestResult[] results = new TestResult[count * count];
-        TestResult tr = new TestResult();
 
         int n = 0;
 
@@ -571,7 +567,7 @@ public class BigIntegerTestDataGenerator
             {
                 // Test operation.
                 BigInteger d2 = new BigInteger(data[j]);
-                tr = new TestResult();
+                TestResult tr = new TestResult();
                 tr.info = TestResultInfo.Ok;
                 BigInteger d3 = d1.multiply(d2);
 
@@ -672,7 +668,6 @@ public class BigIntegerTestDataGenerator
         String[] data = ARGUMENTS;
         int count = data.length;
         TestResult[] results = new TestResult[count * count];
-        TestResult tr = new TestResult();
 
         int n = 0;
 
@@ -683,7 +678,7 @@ public class BigIntegerTestDataGenerator
             {
                 // Test operation.
                 BigInteger d2 = new BigInteger(data[j]);
-                tr = new TestResult();
+                TestResult tr = new TestResult();
                 tr.info = TestResultInfo.Ok;
                 BigInteger d3 = d1.and(d2);
 
@@ -700,7 +695,6 @@ public class BigIntegerTestDataGenerator
         String[] data = ARGUMENTS;
         int count = data.length;
         TestResult[] results = new TestResult[count * count];
-        TestResult tr = new TestResult();
 
         int n = 0;
 
@@ -711,7 +705,7 @@ public class BigIntegerTestDataGenerator
             {
                 // Test operation.
                 BigInteger d2 = new BigInteger(data[j]);
-                tr = new TestResult();
+                TestResult tr = new TestResult();
                 tr.info = TestResultInfo.Ok;
                 BigInteger d3 = d1.or(d2);
 
@@ -728,7 +722,6 @@ public class BigIntegerTestDataGenerator
         String[] data = ARGUMENTS;
         int count = data.length;
         TestResult[] results = new TestResult[count * count];
-        TestResult tr = new TestResult();
 
         int n = 0;
 
@@ -739,7 +732,7 @@ public class BigIntegerTestDataGenerator
             {
                 // Test operation.
                 BigInteger d2 = new BigInteger(data[j]);
-                tr = new TestResult();
+                TestResult tr = new TestResult();
                 tr.info = TestResultInfo.Ok;
                 BigInteger d3 = d1.xor(d2);
 
@@ -1251,10 +1244,167 @@ public class BigIntegerTestDataGenerator
 
     
     
+
+    static void generateHexResults(BufferedWriter bw) throws IOException
+    {
+        int count = ARGUMENTS.length;
+        TestResult[] results = new TestResult[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            // This could be so easy, if not .NET would add a "0" in front of some values and if
+            // it displayed negative values as negative, just like in decimal mode.
+
+            BigInteger b = new BigInteger(ARGUMENTS[i]);
+            
+            TestResult tr = new TestResult();
+            String s = b.abs().toString(16).toUpperCase();
+            if (s.length() > 1 && s.charAt(0) == '0')
+                s = s.substring(1); // get rid of leading 0
+            if (b.signum() < 0)
+                s = "-" + s;        // if negative, show it
+            
+            tr.info = TestResultInfo.Ok;
+            tr.val = s;
+            results[i] = tr;
+        }
+
+        writeMonadicResults(bw, "HexResults", results, count, "", ".ToString(16)");
+    }
+
+    static void generateAsIntegerResults(BufferedWriter bw) throws IOException
+    {
+        int count = ARGUMENTS.length;
+        TestResult[] results = new TestResult[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            BigInteger b = new BigInteger(ARGUMENTS[i]);
+            TestResult tr = new TestResult();
+
+            tr.info = TestResultInfo.Ok;
+            try
+            {
+                int bi = b.intValueExact();
+                tr.val = String.format("%d", bi);
+            }
+            catch (Exception e)
+            {
+                writeln("Error: %s (%s)", e.getMessage(), b);
+                tr.info = TestResultInfo.Overflow;
+                tr.val = "Overflow";
+            }
+            results[i] = tr;
+        }
+
+        writeMonadicResults(bw, "AsIntegerResults", results, count, "", ".AsInteger");
+    }
+
+    static void generateAsCardinalResults(BufferedWriter bw) throws IOException
+    {
+        
+        int count = ARGUMENTS.length;
+        TestResult[] results = new TestResult[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            BigInteger b = new BigInteger(ARGUMENTS[i]);
+            TestResult tr = new TestResult();
+
+            tr.info = TestResultInfo.Ok;
+            try
+            {
+                // Java has no uint32 types, so they must be faked.
+                long blong = b.longValueExact();
+                long bcard = blong & 0xFFFFFFFFL;
+                if (blong < 0L || blong != bcard)
+                {
+                    writeln("Calculated overflow %s --> %X", b, bcard);
+                    tr.val = "Overflow"; 
+                    tr.info = TestResultInfo.Overflow;        
+                }
+                else
+                {
+                    tr.val = String.format("%d", bcard);
+                }
+            }
+            catch (Exception e)
+            {
+                writeln("Error: %s (%s)", e.getMessage(), b);
+                tr.info = TestResultInfo.Overflow;
+                tr.val = "Overflow";
+            }
+            results[i] = tr;
+        }
+
+        writeMonadicResults(bw, "AsCardinalResults", results, count, "", ".AsCardinal");
+    }
     
-    
-    
-    
+    static void generateAsInt64Results(BufferedWriter bw) throws IOException
+    {
+        int count = ARGUMENTS.length;
+        TestResult[] results = new TestResult[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            BigInteger b = new BigInteger(ARGUMENTS[i]);
+            TestResult tr = new TestResult();
+
+            tr.info = TestResultInfo.Ok;
+            try
+            {
+                long bi = b.longValueExact();
+                tr.val = String.format("%d", bi);
+            }
+            catch (Exception e)
+            {
+                writeln("Error: %s (%s)", e.getMessage(), b);
+                tr.info = TestResultInfo.Overflow;
+                tr.val = "Overflow";
+            }
+            results[i] = tr;
+        }
+
+        writeMonadicResults(bw, "AsInt64Results", results, count, "", ".AsInt64");
+    }
+
+    static void generateAsUInt64Results(BufferedWriter bw) throws IOException
+    {
+        int count = ARGUMENTS.length;
+        TestResult[] results = new TestResult[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            BigInteger b = new BigInteger(ARGUMENTS[i]);
+            TestResult tr = new TestResult();
+
+            tr.info = TestResultInfo.Ok;
+            try
+            {
+                BigInteger bi = b.and(new BigInteger("0FFFFFFFFFFFFFFFF", 16));
+                if (b.signum() < 0 || b.compareTo(bi) > 0)
+                {
+                    tr.val = "Overflow";
+                    tr.info = TestResultInfo.Overflow;
+                    writeln("AsUInt64: Calculated overflow %s --> %s", b.toString(16).toUpperCase(), bi.toString(16).toUpperCase());
+                }   
+                else
+                {
+                    tr.val = String.format("%s", bi);
+                }
+            }
+            catch (Exception e)
+            {
+                writeln("Error: %s (%s)", e.getMessage(), b);
+                tr.info = TestResultInfo.Overflow;
+                tr.val = "Overflow";
+            }
+            results[i] = tr;
+        }
+
+        writeMonadicResults(bw, "AsUInt64Results", results, count, "", ".AsUInt64");
+    }
+
     
     
     
