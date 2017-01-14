@@ -1030,7 +1030,8 @@ var
 
 implementation
 
-// To switch PUREPASCAL for debug purposes. UNDEF PUREPASCAL before the routine and DEFINE PUREPASCAL after the routine, if PP was defined.
+// To switch PUREPASCAL for debug purposes. UNDEF PUREPASCAL before the routine and DEFINE PUREPASCAL
+// after the routine, if PP was defined.
 {$IFDEF PUREPASCAL}
 {$DEFINE PP}
 {$ENDIF}
@@ -1115,9 +1116,9 @@ asm
 
 @ADCLoop:
 
-        ADC     EAX,[ECX]       // Partial-flags stall on some "older" processors causes a measurable timing difference.
-        DEC     EDX             // DEC only changes one flag, not entire flags register, causing a stall when ADC reads flag register.
-        JNE     @ADCLoop
+        ADC     EAX,[ECX]       // Partial-flags stall on some "older" processors causes a measurable
+        DEC     EDX             //   timing difference. DEC only changes one flag, not entire flags register,
+        JNE     @ADCLoop        //   causing a stall when ADC reads flag register.
 
         RDTSC
         MOV     ECX,T2
@@ -1466,7 +1467,8 @@ begin
   end
   else
   begin
-    Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask, Right.FSize and SizeMask);
+    Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask,
+                    Right.FSize and SizeMask);
 
     if Comparison = 0 then
       Exit(Zero);
@@ -4792,7 +4794,8 @@ end;
 {$ENDIF}
 
 // Simple version of IntToStr for any given base, for unsigned integers only.
-class procedure BigInteger.InternalIntToStrBase(const Value: NativeUInt; Base: Cardinal; var WritePtr: PChar; MaxDigits: Integer);
+class procedure BigInteger.InternalIntToStrBase(const Value: NativeUInt; Base: Cardinal; var WritePtr: PChar;
+  MaxDigits: Integer);
 var
 {$IFDEF PUREPASCAL}
   LRemainder: UInt64;
@@ -4880,7 +4883,8 @@ begin
 end;
 
 // This is pretty self-documenting, but also cf. Brent, Zimmermann [3], "Modern Computer Arithmetic", algorithm 1.24
-class procedure BigInteger.InternalPlainToString(const Value: BigInteger; Base: Integer; const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer);
+class procedure BigInteger.InternalPlainToString(const Value: BigInteger; Base: Integer;
+  const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer);
 var
   LQuotient, LRemainder: BigInteger;
   LSectionStart: PChar;
@@ -4950,7 +4954,8 @@ begin
 end;
 
 // cf. Brent, Zimmermann [3], "Modern Computer Arithmetic", algorithm 1.26
-class procedure BigInteger.InternalRecursiveToString(const Value: BigInteger; Base: Integer; const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer);
+class procedure BigInteger.InternalRecursiveToString(const Value: BigInteger; Base: Integer;
+  const BaseInfo: TNumberBaseInfo; var WritePtr: PChar; SectionCount: Integer);
 var
   LHalfSectionCount: Integer;
   LDivisor, LQuotient, LRemainder: BigInteger;
@@ -5073,7 +5078,8 @@ begin
   Result := P;
 end;
 
-// By default, uses FBase as numeric base, otherwise, if string "starts" with $, 0x, 0b or 0o, uses 16, 16 (both hex), 2 (binary) and 8 (octal) respectively.
+// By default, uses FBase as numeric base, otherwise, if string "starts" with $, 0x, 0b or 0o, uses
+// 16, 16 (both hex), 2 (binary) and 8 (octal) respectively.
 class function BigInteger.TryParse(const S: string; out Res: BigInteger): Boolean;
 var
   LTrimmed: string;
@@ -5201,7 +5207,8 @@ begin
 end;
 
 const
-  PowersOfTen: array[1..9] of Integer = (10, 100, 1000, 10*1000, 100*1000, 1000*1000, 10*1000*1000, 100*1000*1000, 1000*1000*1000);
+  PowersOfTen: array[1..9] of Integer = (10, 100, 1000, 10*1000, 100*1000, 1000*1000,
+                                         10*1000*1000, 100*1000*1000, 1000*1000*1000);
 
 class function BigInteger.InternalParseDecimal(P: PChar; var Value: BigInteger): Boolean;
 var
@@ -5430,7 +5437,8 @@ begin
 
   Q.MakeSize(LSize - RSize + 1);
   R.MakeSize(RSize);
-  if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData), PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
+  if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData),
+           PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
     Error(ecInvalidBase);
   Q.Compact;
   R.Compact;
@@ -5498,7 +5506,8 @@ begin
       begin
         Q.MakeSize(LSize - RSize + 1);
         R.MakeSize(RSize);
-        if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData), PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
+        if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData),
+                 PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
           Error(ecInvalidBase);
         Q.Compact;
         R.Compact;
@@ -5694,7 +5703,8 @@ const
   CDivLimbBits = SizeOf(TDivLimb) * 8;
   CDblLimbBits = SizeOf(TDblLimb) * 8;
 
-class function BigInteger.InternalDivMod16(Dividend: PLimb; Divisor: UInt16; Quotient, Remainder: PLimb; LSize: Integer): Boolean;
+class function BigInteger.InternalDivMod16(Dividend: PLimb; Divisor: UInt16; Quotient, Remainder: PLimb;
+  LSize: Integer): Boolean;
 {$IFDEF PUREPASCAL}
 // In PUREPASCAL, using 16-bit division with an intermediate 32-bit result turned out to be faster than
 // 32-bit division with an intermediate 64-bit result.
@@ -5721,7 +5731,8 @@ begin
 end;
 {$ENDIF !PUREPASCAL}
 
-class function BigInteger.InternalDivMod32(Dividend: PLimb; Divisor: UInt32; Quotient, Remainder: PLimb; LSize: Integer): Boolean;
+class function BigInteger.InternalDivMod32(Dividend: PLimb; Divisor: UInt32; Quotient, Remainder: PLimb;
+  LSize: Integer): Boolean;
 {$IFDEF PUREPASCAL}
 {$IFDEF CPU32BITS}
 begin
@@ -6104,8 +6115,10 @@ asm
         JS      @ExitFalse
         JNE     @MultiLimbDivisor
 
-// Simple division
-//   Divisor only contains one single limb: simple division and exit.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+///  Simple division                                                                                  ///
+///    Divisor only contains one single limb: simple division and exit.                               ///
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @SingleLimbDivisor:
 
@@ -6127,8 +6140,10 @@ asm
         MOV     [EAX],EDX
         JMP     @ExitTrue
 
-// Multilimb division
-//   Divisor contains more than one limb: basecase division as described in Knuth's TAoCP.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Multilimb division                                                                                ///
+///   Divisor contains more than one limb: basecase division as described in Knuth's TAoCP.           ///
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @MultiLimbDivisor:
 
@@ -6411,9 +6426,13 @@ asm
         JS      @ExitFalse
         JNE     @MultiLimbDivisor
 
-// Simple division
-//   Divisor only contains one single limb: simple division and exit.
-//   NOTE: 32 bit division is easier and probably faster than 64 bit, even in 64 bit mode. This was tested for Decimals.pas.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Simple division                                                                                   ///
+///   Divisor only contains one single limb: simple division and exit.                                ///
+///                                                                                                   ///
+///   NOTE: 32 bit division is easier and probably faster than 64 bit, even in 64 bit mode.           ///
+///         This was tested for Decimals.pas.                                                         ///
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @SingleLimbDivisor:
 
@@ -6427,10 +6446,11 @@ asm
 
         MOV     EAX,[RDI + CLimbSize*RSI]
 
-        // ---------------------------------------------------------------------------------------------------------------------- //
-        // NOTE: In XE2, in 64 bit asm, "DIV <r/m32>" is generated as "DIV <r/m64>", but "DIV EAX,<r/m32>" is generated correctly. //
-        //       The same applies to "MUL <r/m32>".                                                                               //
-        // ---------------------------------------------------------------------------------------------------------------------- //
+        // ------------------------------------------------------------------------------------------- //
+        // NOTE: In XE2, in 64 bit asm, "DIV <r/m32>" is generated as "DIV <r/m64>",                   //
+        //       but "DIV EAX,<r/m32>" is generated correctly.                                         //
+        //       The same applies to "MUL <r/m32>".                                                    //
+        // ------------------------------------------------------------------------------------------- //
 
         DIV     EAX,EBX
         MOV     [R8 + CLimbSize*RSI],EAX
@@ -6442,8 +6462,10 @@ asm
         MOV     [RAX],EDX
         JMP     @ExitTrue
 
-// MultiLimb division
-//   Divisor contains more than one limb: basecase division as described in Knuth's TAoCP Vol. 2.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// MultiLimb division                                                                                ///
+///   Divisor contains more than one limb: basecase division as described in Knuth's TAoCP Vol. 2.    ///
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @MultiLimbDivisor:
 
@@ -7552,7 +7574,8 @@ asm
 
 @MainTail:
 
-// Here, code does not add index*CLimbSize and then use negative offsets, because that would take away the advantage of using 64 bit registers.
+// Here, code does not add index*CLimbSize and then use negative offsets, because that would take away
+// the advantage of using 64 bit registers.
 // Each block is separate, no fall through.
 
         LEA     RCX,[@MainJumps]
@@ -7741,8 +7764,8 @@ asm
 
         // Update counter and loop if required.
 
-        DEC     ECX                             // Note: if INC/DEC must be emulated: LEA ECX,[ECX - 1]; JECXZ @MainTail; JMP @MainLoop
-        JNE     @MainLoop
+        DEC     ECX                             // Note: if INC/DEC must be emulated:
+        JNE     @MainLoop                       //         LEA ECX,[ECX - 1]; JECXZ @MainTail; JMP @MainLoop
 
 @MainTail:
 
@@ -7826,8 +7849,8 @@ asm
         LEA     ESI,[ESI + 4*CLimbSize] // LEA does not affect the flags, so carry will not be changed.
         LEA     EBX,[EBX + 4*CLimbSize]
 
-        DEC     ECX                     // DEC does not affect carry flag, but causes partial-flags stall (e.g. when using SBB) on older CPUs.
-        JNE     @RestLoop
+        DEC     ECX                     // DEC does not affect carry flag, but causes partial-flags stall
+        JNE     @RestLoop               //   (e.g. when using SBB) on older CPUs.
 
 @RestLast3:
 
@@ -7876,8 +7899,8 @@ asm
 end;
 {$ELSE WIN32/WIN64}
 asm
-        MOV     R10,RCX         // in emulating code, ECX must be used as loop counter! So do not exchange RCX and R10 in the editor.
-        MOV     ECX,SSize
+        MOV     R10,RCX         // in emulating code, ECX must be used as loop counter! So do not exchange
+        MOV     ECX,SSize       //   RCX and R10 in the editor.
 
         // R10 = Left, RDX = Right, R8 = Result, R9D = LSize, ECX = SSize
 
@@ -7904,7 +7927,7 @@ asm
         SBB     RAX,[RDX]
         MOV     [R8],RAX
 
-        MOV     RAX,[R10 + DLimbSize] // And next two limbs too.
+        MOV     RAX,[R10 + DLimbSize]   // And next two limbs too.
         SBB     RAX,[RDX + DLimbSize]
         MOV     [R8 + DLimbSize],RAX
 
@@ -7912,12 +7935,14 @@ asm
         LEA     RDX,[RDX + 2*DLimbSize]
         LEA     R8,[R8 + 2*DLimbSize]
 
-        DEC     ECX                     // if INC/DEC must be emulated: LEA ECX,[ECX - 1]; JECXZ @MainTail; JMP @MainLoop
+        DEC     ECX                     // if INC/DEC must be emulated:
+                                        //   LEA ECX,[ECX - 1]; JECXZ @MainTail; JMP @MainLoop
         JNE     @MainLoop
 
 @MainTail:
 
-// Here, code does not add index*CLimbSize and then use negative offsets, because that would take away the advantage of using 64 bit registers.
+// Here, code does not add index*CLimbSize and then use negative offsets, because that would take away the
+// advantage of using 64 bit registers.
 // Each block is separate, no fall through.
 
         LEA     RCX,[@MainJumps]
@@ -8243,13 +8268,8 @@ begin
     InternalShiftLeft(PLimb(Value.FData), PLimb(Result.FData) + LimbShift, Shift, (Value.FSize and SizeMask))
   else
     CopyLimbs(PLimb(Value.FData), PLimb(Result.FData) + LimbShift, (Value.FSize and SizeMask));
-//    Move(Value.FData[0], Result.FData[LimbShift], (Value.FSize and SizeMask) * CLimbSize);
   Result.FSize := (Result.FSize and SizeMask) or Integer(LSign);
   Result.Compact;
-
-  // The following can probably be omitted.
-//  if LimbShift > 0 then
-//    FillChar(Result.FData[0], CLimbSize * LimbShift, 0);
 end;
 
 class operator BigInteger.LessThan(const Left, Right: BigInteger): Boolean;
@@ -8272,7 +8292,7 @@ begin
 
     // IsPowerOfTwo is expensive, but probably less expensive than a copy and
     // subsequent decrement, like in BitCount.
-    if (FSize < 0) and (Self.IsPowerOfTwo) then
+    if (FSize < 0) and Self.IsPowerOfTwo then
       Dec(Result);
   end;
 end;
@@ -9078,7 +9098,8 @@ begin
   begin
     // The following block is "Result := MultiplyBaseCase(Left, Right);" written out in full.
     LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 1);
-    InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), (Left.FSize and SizeMask), (Right.FSize and SizeMask));
+    InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), Left.FSize and SizeMask,
+      Right.FSize and SizeMask);
     LResult.Compact;
     LResult.FSize := (LResult.FSize and SizeMask) or ((Left.FSize xor Right.FSize) and SignMask);
     ShallowCopy(LResult, Result);
@@ -9103,7 +9124,8 @@ begin
   end;
 
   LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 1);
-  InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), (Left.FSize and SizeMask), (Right.FSize and SizeMask));
+  InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), Left.FSize and SizeMask,
+    Right.FSize and SizeMask);
   LResult.Compact;
   LResult.SetSign(SignBitOf(Left.FSize) xor SignBitOf(Right.FSize));
   ShallowCopy(LResult, Result);
@@ -9154,7 +9176,8 @@ begin
     Exit;
   end;
 
-  Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), (Left.FSize and SizeMask), (Right.FSize and SizeMask));
+  Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask,
+                  Right.FSize and SizeMask);
   if (Comparison = 0) and (Left.Sign = Right.Sign) then
   begin
     ShallowCopy(Zero, Result);
@@ -9174,9 +9197,11 @@ begin
 
   InternalResult.MakeSize((Largest^.FSize and SizeMask) + 1);
   if Largest^.Sign = Smallest^.Sign then
-    FInternalSubtract(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(InternalResult.FData), (Largest^.FSize and SizeMask), (Smallest^.FSize and SizeMask))
+    FInternalSubtract(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(InternalResult.FData),
+      Largest^.FSize and SizeMask, Smallest^.FSize and SizeMask)
   else
-    FInternalAdd(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(InternalResult.FData), (Largest^.FSize and SizeMask), (Smallest^.FSize and SizeMask));
+    FInternalAdd(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(InternalResult.FData),
+      Largest^.FSize and SizeMask, Smallest^.FSize and SizeMask);
   InternalResult.FSize := (InternalResult.FSize and SizeMask) or BoolMasks[(Largest^.FSize < 0) xor (Largest = @Left)];
   InternalResult.Compact;
   Result := InternalResult;
@@ -9215,7 +9240,8 @@ begin
   FSize := RequiredSize;
 end;
 
-// In Win32, we keep what we have. In Win64, we switch, depending on Size. At 25 limbs or above, the unrolled loop version is faster.
+// In Win32, we keep what we have. In Win64, we switch, depending on Size. At 25 limbs or above,
+// the unrolled loop version is faster.
 class procedure BigInteger.InternalNegate(Source, Dest: PLimb; Size: Integer);
 {$IFDEF PUREPASCAL}
 var
@@ -9397,11 +9423,13 @@ begin
   if Offset >= (Self.FSize and SizeMask) then
     CopyLimbs(PLimb(Addend.FData), PLimb(Self.FData) + Offset, Addend.FSize and SizeMask)
   else
-    FInternalAdd(PLimb(Self.FData) + Offset, PLimb(Addend.FData), PLimb(Self.FData) + Offset, (Self.FSize and SizeMask) - Offset, Addend.FSize and SizeMask);
+    FInternalAdd(PLimb(Self.FData) + Offset, PLimb(Addend.FData), PLimb(Self.FData) + Offset,
+      (Self.FSize and SizeMask) - Offset, Addend.FSize and SizeMask);
   Self.Compact;
 end;
 
-class procedure BigInteger.InternalBitwise(const Left, Right: BigInteger; var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TDyadicOperator);
+class procedure BigInteger.InternalBitwise(const Left, Right: BigInteger;
+  var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TDyadicOperator);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///  The code for the bitwise operators AND, OR and XOR does not differ much.                                     ///
@@ -9518,7 +9546,8 @@ begin
         Result.MakeSize(RSize)
       else
         Result.MakeSize(MaxSize);
-      InversionOp(PLimb(Left.FData), RPtr, PLimb(Result.FData), LSize, RSize);  // Inversion op: AND --> AND NOT, OR --> NOT AND, XOR --> XOR
+      // Inversion op: AND --> AND NOT, OR --> NOT AND, XOR --> XOR
+      InversionOp(PLimb(Left.FData), RPtr, PLimb(Result.FData), LSize, RSize);
       if @PlainOp = @InternalAnd then
         Result.FSize := Result.FSize and SizeMask               // Make positive.
       else
@@ -9972,7 +10001,8 @@ begin
   begin
     // Different signs, so subtract.
     EnsureSize(IntMax(SelfSize, OtherSize));
-    Comparison := InternalCompare(PLimb(Self.FData), PLimb(Other.FData), (Self.FSize and SizeMask), (Other.FSize and SizeMask));
+    Comparison := InternalCompare(PLimb(Self.FData), PLimb(Other.FData), (Self.FSize and SizeMask),
+                    (Other.FSize and SizeMask));
     if Comparison = 0 then
     begin
       Self := Zero;
@@ -10089,23 +10119,143 @@ begin
 end;
 
 function BigInteger.SetBit(Index: Integer): BigInteger;
+var
+  LimbIndex, BitIndex: Integer;
+  Borrow, Data: TLimb;
 begin
-  Result := Self;
-  if not TestBit(Index) then
-    FlipBigIntegerBit(Result, Index);
+  Result := Self.Clone;
+  LimbIndex := Index shr 5;
+  BitIndex := 1 shl (Index and 31);
+
+  if Self.IsNegative then
+  begin
+    // If negative, every bit beyond the bit length is supposed to be set already (assuming two's complement), so
+    // no change.
+    if Index > Self.BitLength then
+      Exit;
+
+    // No need to change the limbs below the index, so start at LimbIndex.
+
+    // Negate this limb, set the bit, negate it again and store it back.
+    Data := Result.FData[LimbIndex];
+    Result.FData[LimbIndex] := -(-Data or BitIndex);
+    Inc(LimbIndex);
+
+    // If there was a borrow, it must be propagated.
+    Borrow := Ord(Data = 0);
+    if Borrow <> 0 then
+      while LimbIndex < (Result.FSize and SizeMask) do
+      begin
+        Data := Result.FData[LimbIndex];
+        Result.FData[LimbIndex] := Data - 1;
+
+        // We can stop if the limb *wasn't* 0, since then there will be no borrow anymore.
+        if Data <> 0 then
+          Break
+        else
+          Inc(LimbIndex);
+      end;
+  end
+  else
+  begin
+    // If the bit is beyond the bit length, the size must be expanded.
+    if Index > Self.BitLength then
+      Result.EnsureSize(LimbIndex + 1);
+
+    // Set the bit.
+    Result.FData[LimbIndex] := Result.FData[LimbIndex] or BitIndex;
+  end;
+  Result.Compact;
 end;
 
 function BigInteger.ClearBit(Index: Integer): BigInteger;
+var
+  LimbIndex, BitIndex: Integer;
+  Borrow, Data: TLimb;
 begin
-  Result := Self;
-  if TestBit(Index) then
-    FlipBigIntegerBit(Result, Index);
+  Result := Self.Clone;
+  LimbIndex := Index shr 5;
+  BitIndex := 1 shl (Index and 31);
+
+  if Self.IsNegative then
+  begin
+    if Index > Self.BitLength then
+    begin
+      Result.EnsureSize(LimbIndex + 1);
+      Result.FData[LimbIndex] := Result.FData[LimbIndex] or BitIndex;
+    end
+    else
+    begin
+      Data := Result.FData[LimbIndex];
+      Result.FData[LimbIndex] := -(-Data and not BitIndex);
+      Inc(LimbIndex);
+
+      // Propagate borrow
+      Borrow := Ord(Data = 0);
+      if Borrow > 0 then
+        while LimbIndex < Result.FSize and SizeMask do
+        begin
+          Data := Result.FData[LimbIndex];
+          Dec(Result.FData[LimbIndex]);
+          if Data <> 0 then
+            Break
+          else
+            Inc(LimbIndex);
+        end;
+    end;
+  end
+  else
+  begin
+    if Index > BitLength then
+      Exit;
+    Result.FData[LimbIndex] := Result.FData[LimbIndex] and not BitIndex;
+  end;
+  Result.Compact;
 end;
 
 function BigInteger.FlipBit(Index: Integer): BigInteger;
+var
+  LimbIndex, BitIndex: Integer;
+  Borrow, Data: TLimb;
 begin
-  Result := Self;
-  FlipBigIntegerBit(Result, Index);
+  Result := Self.Clone;
+  LimbIndex := Index shr 5;
+  BitIndex := 1 shl (Index and 31);
+
+  if Self.IsNegative then
+  begin
+    if Index > Self.BitLength then
+    begin
+      Result.EnsureSize(LimbIndex + 1);
+      Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitIndex;
+    end
+    else
+    begin
+      Data := Result.FData[LimbIndex];
+      Result.FData[LimbIndex] := -(-Data xor BitIndex);
+      Inc(LimbIndex);
+
+      // Propagate borrow
+      Borrow := Ord(Data = 0);
+      if Borrow > 0 then
+        while LimbIndex < Result.FSize and SizeMask do
+        begin
+          Data := Result.FData[LimbIndex];
+          Dec(Result.FData[LimbIndex]);
+          if Data <> 0 then
+            Break
+          else
+            Inc(LimbIndex);
+        end;
+    end;
+  end
+  else
+  begin
+    if Index > BitLength then
+      Result.EnsureSize(LimbIndex + 1);
+    Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitIndex;
+  end;
+  Result.Compact;
 end;
 
 class function BigInteger.NthRoot(const Radicand: BigInteger; Nth: Integer): BigInteger;
@@ -10244,8 +10394,9 @@ begin
   Remainder := Radicand - Root * Root;
 end;
 
-class procedure BigInteger.DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper, RightLower: BigInteger;
-  N: Integer; var Quotient, Remainder: BigInteger);
+class procedure BigInteger.DivThreeHalvesByTwo(
+  const LeftUpperMid, LeftLower, Right, RightUpper, RightLower: BigInteger; N: Integer;
+  var Quotient, Remainder: BigInteger);
 var
   Q, R: BigInteger;
 begin
@@ -10268,7 +10419,8 @@ begin
   end;
 end;
 
-class procedure BigInteger.DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer; var Quotient, Remainder: BigInteger);
+class procedure BigInteger.DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer;
+  var Quotient, Remainder: BigInteger);
 var
   NIsOdd: Boolean;
   LeftCopy, RightCopy: BigInteger;
@@ -10306,7 +10458,8 @@ begin
   RightUpper := RightCopy shr HalfN;
   RightLower := RightCopy and HalfMask;
 
-  DivThreeHalvesByTwo(LeftCopy shr N, (LeftCopy shr HalfN) and HalfMask, RightCopy, RightUpper, RightLower, HalfN, QuotientUpper, Rem);
+  DivThreeHalvesByTwo(LeftCopy shr N, (LeftCopy shr HalfN) and HalfMask, RightCopy, RightUpper, RightLower,
+    HalfN, QuotientUpper, Rem);
   DivThreeHalvesByTwo(Rem, LeftCopy and HalfMask, RightCopy, RightUpper, RightLower, HalfN, QuotientLower, Rem);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -10320,16 +10473,16 @@ begin
   ///    |   b1b2 * q1  |  |                       |                                                                ///
   ///    +--------------+  |                       |                                                                ///
   ///  - ================  v                       |                                                                ///
-  ///         +----+----+----+     +----+----+     | +----+                                                         ///
-  ///         | r1 | r2 | a4 |  /  | b1 | b2 | =   | | q2 |   DivideThreeHalvesByTwo(r1r2, a4, b1b2, n, q1, r1r2)   ///
-  ///         +----+----+----+     +----+----+     | +----+                                                         ///
+  ///         +----+----+----+     +----+----+     |  +----+                                                        ///
+  ///         | r1 | r2 | a4 |  /  | b1 | b2 | =   |  | q2 |   DivideThreeHalvesByTwo(r1r2, a4, b1b2, n, q1, r1r2)  ///
+  ///         +----+----+----+     +----+----+     |  +----+                                                        ///
   ///         +--------------+                     |    |                                                           ///
   ///         |   b1b2 * q2  |                     |    |                                                           ///
   ///         +--------------+                     |    |                                                           ///
   ///       - ================                     v    v                                                           ///
-  ///              +----+----+                  +----+----+                                                         ///
-  ///              | r1 | r2 |                  | q1 | q2 |   r1r2 = a1a2a3a4 mod b1b2, q1q2 = a1a2a3a4 div b1b2    ///
-  ///              +----+----+                  +----+----+ ,                                                       ///
+  ///              +----+----+                   +----+----+                                                        ///
+  ///              | r1 | r2 |                   | q1 | q2 |   r1r2 = a1a2a3a4 mod b1b2, q1q2 = a1a2a3a4 div b1b2   ///
+  ///              +----+----+                   +----+----+ ,                                                      ///
   ///                                                                                                               ///
   ///  Note: in the diagram above, a1, b1, q1, r1 etc. are the most significant "digits" of their numbers.          ///
   ///                                                                                                               ///
@@ -10341,7 +10494,8 @@ begin
   Quotient := (QuotientUpper shl HalfN) or QuotientLower;
 end;
 
-class procedure BigInteger.InternalDivModBurnikelZiegler(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger);
+class procedure BigInteger.InternalDivModBurnikelZiegler(const Left, Right: BigInteger;
+  var Quotient, Remainder: BigInteger);
 var
   LCopy: BigInteger;
   N: Integer;
