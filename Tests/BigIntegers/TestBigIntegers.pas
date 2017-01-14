@@ -109,7 +109,7 @@ uses
 {$I 'BigIntegerTestResults.inc.inc'}
 {$I 'BigIntegerArithmeticResults.inc.inc'}
 {$I 'BigIntegerBitwiseResults.inc.inc'}
-{$I 'BigIntegerConvertResults.inc'}
+{$I 'BigIntegerConvertResults.inc.inc'}
 {$I 'BigIntegerMathResults.inc.inc'}
 
 procedure TTestBigInteger.Error(const Msg: string);
