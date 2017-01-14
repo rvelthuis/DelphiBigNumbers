@@ -84,7 +84,7 @@ public class BigIntegerTestDataGenerator
     
     public static BufferedWriter newWriter(String fileName) throws IOException
     {
-        File outFile = new File("..\\..\\..\\..\\Tests\\BigIntegers\\" + fileName + ".inc");
+        File outFile = new File("..\\..\\..\\..\\Tests\\BigIntegers\\" + fileName);
         writeln("Writing file " + outFile.getCanonicalPath() + ".");
         writeln();
         BufferedWriter bw = new BufferedWriter(new FileWriter(outFile));
@@ -184,8 +184,8 @@ public class BigIntegerTestDataGenerator
                 generateAsCardinalResults(bw);
                 generateAsInt64Results(bw);
                 generateAsUInt64Results(bw);
-//                generateFromDoubleResults(bw);
-//                generateDoubleResults(bw);
+                generateFromDoubleResults(bw);
+                generateDoubleResults(bw);
             }
             finally
             {
@@ -941,7 +941,10 @@ public class BigIntegerTestDataGenerator
             return d < 0 ? "NegInfinity" : "Infinity";
            
         BigDecimal dec = new BigDecimal(d);
-        return dec.toPlainString();
+        String result = dec.toPlainString();
+        if (!result.contains("."))
+            result = result + ".0";
+        return result;
     }
     
     static void writeDoubleResults(BufferedWriter bw, String arrayName, double[] results, int count, String func) throws IOException
@@ -954,7 +957,7 @@ public class BigIntegerTestDataGenerator
             double d = results[i];
             String result = toExactString(d);
             result = (i < count - 1) ? result + "," : result;
-            writeln(bw, "    %-76s// %s(Arguments[%d])", result, func, i);
+            writeln(bw, "    %-75s // %s(Arguments[%d])", result, func, i);
         }
         writeln(bw, "  );");
         writeln(bw);
@@ -1404,25 +1407,59 @@ public class BigIntegerTestDataGenerator
 
         writeMonadicResults(bw, "AsUInt64Results", results, count, "", ".AsUInt64");
     }
+    
+    static void generateFromDoubleResults(BufferedWriter bw) throws IOException
+    {
+        int count = DOUBLES.length;
+        TestResult[] results = new TestResult[count];
 
+        writeln(bw);
+        writeln(bw, "  CreateDoubleResults: array[0..DoubleCount - 1] of TTestResult =");
+        writeln(bw, "  (");
+        
+        for (int i = 0; i < count; i++)
+        {
+            // In Java, there is no direct way to initialize from a double.
+            // So we must use a detour: BigDecimal.
+            
+            double d = DOUBLES[i];
+            TestResult tr = new TestResult();
+            tr.info = TestResultInfo.Ok;
+            
+            BigDecimal dec = new BigDecimal(d);
+            BigInteger b = dec.toBigInteger();
+            tr.val = b.toString();
+            
+            formatResult(bw, tr, (i == count - 1), String.format("BigInteger.Create(%s)", toExactString(DOUBLES[i])));
+        }
+
+        writeln(bw, "  );");
+        writeln(bw);
+    }
+
+    static void generateDoubleResults(BufferedWriter bw) throws IOException
+    {
+        int count = ARGUMENTS.length;
+        double[] results = new double[count];
+        
+        for (int i = 0; i < count; ++i)
+        {
+            BigInteger d1 = new BigInteger(ARGUMENTS[i]);
+            results[i] = d1.doubleValue();
+        }
+
+        writeDoubleResults(bw, "DoubleResults", results, count, "Double");
+    }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///  Test data                                                          ///
+    ///////////////////////////////////////////////////////////////////////////
     
     static String[] ARGUMENTS = new String[]
     {
-        "-1585715829851573239739325670632039865384960",                             // -0x1234 00000000 00000000 00000000 00000000 
-        "-18034965446809738563558854193883715207167",                               // -0x34 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF  
+        "-1585715829851573239739325670632039865384960", // -0x1234 00000000 00000000 00000000 00000000 
+        "-18034965446809738563558854193883715207167",   //   -0x34 FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF  
         "-779879232593610263927748006161",
         "-82261793876695338192268955270",
         "-8840587743209014991486176890",
