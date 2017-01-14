@@ -106,11 +106,11 @@ uses
   Winapi.Windows;
 {$ENDIF}
 
-{$I 'BigIntegerTestResults.inc.inc'}
-{$I 'BigIntegerArithmeticResults.inc.inc'}
-{$I 'BigIntegerBitwiseResults.inc.inc'}
-{$I 'BigIntegerConvertResults.inc.inc'}
-{$I 'BigIntegerMathResults.inc.inc'}
+{$I 'BigIntegerTestResults.inc'}
+{$I 'BigIntegerArithmeticResults.inc'}
+{$I 'BigIntegerBitwiseResults.inc'}
+{$I 'BigIntegerConvertResults.inc'}
+{$I 'BigIntegerMathResults.inc'}
 
 procedure TTestBigInteger.Error(const Msg: string);
 begin
