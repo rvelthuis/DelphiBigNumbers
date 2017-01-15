@@ -1457,7 +1457,7 @@ procedure TTestBigInteger.TestParse;
 var
   I: Integer;
   S0, S1: string;
-  A, B, C, D: BigInteger;
+  A: BigInteger;
 begin
   for I := High(MultiplyResults) downto 0 do
   begin
