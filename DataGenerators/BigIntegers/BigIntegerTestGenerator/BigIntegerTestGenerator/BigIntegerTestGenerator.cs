@@ -74,14 +74,14 @@ namespace TestBigIntegers
             DoubleConverter.SpecialValues[1] = "NegInfinity";   // "-INF";
             DoubleConverter.SpecialValues[2] = "NaN";           // "NAN";
 
-            using (StreamWriter sw = NewWriter("BigIntegerTestResults.inc"))
+            using (StreamWriter sw = NewWriter("BigIntegerTestResults.inc.inc"))
             {
                 WriteDate(sw);
                 WriteTypes(sw);
                 WriteData(sw);
             }
 
-            using (StreamWriter sw = NewWriter("BigIntegerArithmeticResults.inc"))
+            using (StreamWriter sw = NewWriter("BigIntegerArithmeticResults.inc.inc"))
             {
                 GenerateAddResults(sw);
                 GenerateSubtractResults(sw);
@@ -90,7 +90,7 @@ namespace TestBigIntegers
                 GenerateModulusResults(sw);
             }
 
-            using (StreamWriter sw = NewWriter("BigIntegerBitwiseResults.inc"))
+            using (StreamWriter sw = NewWriter("BigIntegerBitwiseResults.inc.inc"))
             {
                 GenerateBitwiseAndResults(sw);
                 GenerateBitwiseOrResults(sw);
@@ -101,17 +101,18 @@ namespace TestBigIntegers
                 GenerateRightShiftResults(sw);
             }
 
-            using (StreamWriter sw = NewWriter("BigIntegerMathResults.inc"))
+            using (StreamWriter sw = NewWriter("BigIntegerMathResults.inc.inc"))
             {
                 GenerateLnResults(sw);
                 GeneratePowerResults(sw);
+                GenerateModPowResults(sw);
                 GenerateComparisonResults(sw);
                 GenerateGCDResults(sw);
                 GenerateMinResults(sw);
                 GenerateMaxResults(sw);
             }
 
-            using (StreamWriter sw = NewWriter("BigIntegerConvertResults.inc"))
+            using (StreamWriter sw = NewWriter("BigIntegerConvertResults.inc.inc"))
             {
                 GenerateByteArrayResults(sw);
                 GenerateHexResults(sw);
@@ -1022,6 +1023,71 @@ namespace TestBigIntegers
             tw.WriteLine();
 
         }
+
+
+        // Experimental, to get debug info:
+        static BigInteger MyModPow(BigInteger abase, BigInteger exponent, BigInteger modulus)
+        {
+            if (modulus.IsOne)
+                return BigInteger.Zero;
+
+            BigInteger result = BigInteger.One;
+            abase = abase % modulus;
+            while (exponent > 0)
+            {
+                if (!exponent.IsEven)
+                    result = (result * abase) % modulus;
+                exponent >>= 1;
+                abase = (abase * abase) % modulus;
+            }
+            return result;
+        }
+
+
+        static void GenerateModPowResults(TextWriter tw)
+        {
+            int count = testData.Length;
+            int num = count / 5 + 1;
+            int total = num * num * num;
+        
+            tw.WriteLine("  ModPowResultsCount = {0}; // using MyModPow()", total);
+            tw.WriteLine("  ModPowResults: array[0..ModPowResultsCount - 1] of TTestResult =");
+            tw.WriteLine("  (");
+
+            int n = 0;
+            // Starting at 2, 0, 1 resp. produces a few exceptions, as desired.
+            for (int i = 2; i < count; i += 5)
+            {
+                BigInteger d1 = BigInteger.Abs(BigInteger.Parse(testData[i]));
+                for (int j = 0; j < count; j += 5)
+                {
+                    BigInteger d2 = BigInteger.Abs(BigInteger.Parse(testData[j]));
+                    for (int k = 1; k < count; k += 5, ++n)
+                    {
+                        BigInteger d3 = BigInteger.Abs(BigInteger.Parse(testData[k]));
+                        TestResult tr;
+                    
+                        try
+                        {
+                            BigInteger d4 = MyModPow(d1, d2, d3);
+                            tr.val = d4.ToString();
+                            tr.info = TestResultInfo.Ok;
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("({0},{1},{2},{3}): ModPow error: %s", i, j, k, n, e.Message);
+                            tr.val = e.Message;
+                            tr.info = TestResultInfo.DivideByZero;
+                        }
+                    
+                        FormatResult(tw, tr, n == total - 1, String.Format("({0}): ModPow(Arguments[{1}], Arguments[{2}], Arguments[{3}])", n, i, j, k));
+                    }
+                }
+            }
+            tw.WriteLine("  );");
+            tw.WriteLine();
+        }
+
 
 
         #region Data

@@ -1,4 +1,4 @@
-/*                                                                           */
+/*****************************************************************************/
 /* File:       BigIntegerTestDataGenerator.java                              */
 /* Function:   Generates result tables for a set of big integers and the     */
 /*             math operations on them, as include files for the             */
@@ -36,7 +36,7 @@
 /*             LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)        */
 /*             ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF   */
 /*             ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    */
-/*                                                                           */
+/*****************************************************************************/
 
 package bigintegertestdatagenerator;
 
@@ -164,6 +164,7 @@ public class BigIntegerTestDataGenerator
             {
                 generateLnResults(bw);
                 generatePowerResults(bw);
+                generateModPowResults(bw);
                 generateComparisonResults(bw);
                 generateGCDResults(bw);
                 generateInvModResults(bw);
@@ -1066,6 +1067,51 @@ public class BigIntegerTestDataGenerator
     
     }
     
+    static void generateModPowResults(BufferedWriter bw) throws IOException
+    {
+        int count = ARGUMENTS.length;
+        int num = count / 5 + 1;
+        int total = num * num * num;
+        
+        writeln(bw, "  ModPowResultsCount = %d;", total);
+        writeln(bw, "  ModPowResults: array[0..ModPowResultsCount - 1] of TTestResult =");
+        writeln(bw, "  (");
+
+        int n = 0;
+        // Starting at 2, 0, 1 resp. produces a few exceptions, as desired.
+        for (int i = 2; i < count; i += 5)
+        {
+            BigInteger d1 = new BigInteger(ARGUMENTS[i]).abs();
+            for (int j = 0; j < count; j += 5)
+            {
+                BigInteger d2 = new BigInteger(ARGUMENTS[j]).abs();
+                for (int k = 1; k < count; k += 5, ++n)
+                {
+                    BigInteger d3 = new BigInteger(ARGUMENTS[k]).abs();
+                    TestResult tr = new TestResult();
+                    
+                    try
+                    {
+                        BigInteger d4 = d1.modPow(d2, d3);
+                        tr.val = d4.toString();
+                        tr.info = TestResultInfo.Ok;
+                    }
+                    catch (Exception e)
+                    {
+                        writeln("(%d,%d,%d,%d): ModPow error: %s", i, j, k, n, e.getMessage());
+                        tr.val = e.getMessage();
+                        tr.info = TestResultInfo.DivideByZero;
+                    }
+                    
+                    formatResult(bw, tr, n == total - 1, String.format("(%d): ModPow(Arguments[%d], Arguments[%d], Arguments[%d])", n, i, j, k));
+                }
+            }
+        }
+        writeln(bw, "  );");
+        writeln(bw);
+    
+    }
+    
     static String bool(boolean b)
     {
         return b ? "True" : "False";
@@ -1229,6 +1275,7 @@ public class BigIntegerTestDataGenerator
             int bArrayLength = bArray.length;
 
             StringBuilder sb = new StringBuilder(bArrayLength * 2);
+            
             // Reverse, because Java returns a big-endian array, and 
             // Velthuis.BigIntegers (just like .NET BigIntegers) are 
             // little-endian

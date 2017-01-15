@@ -6337,7 +6337,9 @@ asm
         MOV     EAX,NormDivisor
         MOV     EAX,[EAX + CLimbSize*EBX]
         ADD     EAX,Overflow
-        ADC     EDX,0
+
+        ADC     EDX,0   // Note: forgetting this caused errors that only exhibited when I started testing ModPow.
+
         ADD     [EDI + CLimbSize*EBX],EAX
         ADC     EDX,0
         MOV     Overflow,EDX

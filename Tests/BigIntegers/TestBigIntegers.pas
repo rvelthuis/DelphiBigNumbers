@@ -91,7 +91,7 @@ type
     procedure TestLn;
     procedure TestMax;
     procedure TestMin;
-//    procedure TestModPow;
+    procedure TestModPow;
     procedure TestPow;
     procedure TestNthRoot;
     procedure TestSqrt;
@@ -1397,28 +1397,68 @@ begin
   end;
 end;
 
-//procedure TestTBigInteger.TestModPow;
-//begin
-//end;
-//
+// How to test this properly? ModPow() has 3 parameters, so which ones to choose?
+// Note that PowerResults already has 1600 entries. Choosing bit shifts for the
+// 3rd parameter would produce 1600 * 40 = 64000 entries.
+// So what to do? Taking only every third argument would reduce this to 2197 entries.
+
+procedure TTestBigInteger.TestModPow;
+var
+  A, B, C, D: BigInteger;
+  I, J, K, N: Integer;
+  TR: TTestResult;
+  HadException: Boolean;
+begin
+  N := 0;
+  I := 2;
+  while I < High(Arguments) do
+  begin
+    A := BigInteger(Arguments[I]);
+    A := BigInteger.Abs(A);
+    J := 0;
+    while J < High(Arguments) do
+    begin
+      B := BigInteger(Arguments[J]);
+      B := BigInteger.Abs(B);
+      K := 1;
+      while K < High(Arguments) do
+      begin
+        C := BigInteger(Arguments[K]);
+        C := BigInteger.Abs(C);
+
+        TR := ModPowResults[N];
+
+        HadException := False;
+        try
+          D := BigInteger.ModPow(A, B, C);
+        except
+          on E: Exception do
+          begin
+            Check(TR.Info <> triOk, Format('%d: Unexpect exception on ModPow(%s, %s, %s): %s -- %s', [N, string(A), string(B), string(C), E.ClassName, E.Message]));
+            HadException := True;
+          end;
+        end;
+
+        if not HadException then
+        begin
+          Check(TR.Info = triOk, Format('%d: ModPos(%s, %s, %s) has Java error: %s', [N, string(A), string(B), string(C), TR.Val]));
+          Check(BigInteger(TR.Val) = D, Format('(%d,%d,%d,%d): ModPow(%s, %s, %s) = %s (%s)', [I, J, K, N, string(A), string(B), string(C), string(D), TR.Val]));
+        end;
+        Inc(N);
+        Inc(K, 5);
+      end;
+      Inc(J, 5);
+    end;
+    Inc(I, 5);
+  end;
+end;
+
 procedure TTestBigInteger.TestParse;
 var
   I: Integer;
   S0, S1: string;
   A, B, C, D: BigInteger;
 begin
-  S0 := '343597383679999999999999999995663191310057982263970188796520233154296875';
-  S1 := '1000000000000000000000000000000000000000000000000000000000';
-  A := S0;
-  B := S1;
-  s0 := A.ToStringClassic(16);
-  s1 := b.tostringClassic(16);
-  BigInteger.DivMod(A, B, C, D);
-  S0 := C.ToStringClassic(16);
-  S1 := D.ToStringClassic(16);
-
-//  Error(Format('GlobalDebugOffset = %d', [GlobaldebugOffset]));
-
   for I := High(MultiplyResults) downto 0 do
   begin
     S0 := MultiplyResults[I].val;
