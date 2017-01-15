@@ -145,11 +145,6 @@ interface
 uses
   Velthuis.RandomNumbers, System.Types, System.SysUtils, System.Math;
 
-//$$RV: +
-var
-  GlobalDebugOffset: Integer;
-//$$RV: -
-
 // --- User settings ---
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
@@ -5498,12 +5493,11 @@ begin
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
 
-
-  if (LSize <> 0) and (RSize <> 0) then
-  begin
-    Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
-  end
-  else
+//  if (LSize <> 0) and (RSize <> 0) then
+//  begin
+//    Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
+//  end
+//  else
     Offset := 0;
 
   case InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize) of
@@ -6337,11 +6331,13 @@ asm
 @AddBackLoop:
 
         CMP     EBX,RSize
-        JGE     @AddBackLoopEnd
+        JE      @AddBackLoopEnd
+
         XOR     EDX,EDX
         MOV     EAX,NormDivisor
         MOV     EAX,[EAX + CLimbSize*EBX]
         ADD     EAX,Overflow
+        ADC     EDX,0
         ADD     [EDI + CLimbSize*EBX],EAX
         ADC     EDX,0
         MOV     Overflow,EDX
@@ -6350,8 +6346,7 @@ asm
 
 @AddBackLoopEnd:
 
-        MOV     EBX,[ESP + 4]
-        ADD     [ESI + CLimbSize*EBX],EDX
+        ADD     [EDI + CLimbSize*EBX],EDX
 
 @SkipAddBack:
 
@@ -6659,11 +6654,12 @@ asm
 @AddBackLoop:
 
         CMP     EBX,RSize
-        JGE     @AddBackLoopEnd
+        JE      @AddBackLoopEnd
         XOR     EDX,EDX
         MOV     RAX,NormDivisor
         MOV     EAX,[RAX + CLimbSize*RBX]
         ADD     EAX,Overflow
+        ADC     EDX,0
         ADD     [RDI + CLimbSize*RBX],EAX
         ADC     EDX,0
         MOV     Overflow,EDX
@@ -6672,8 +6668,7 @@ asm
 
 @AddBackLoopEnd:
 
-        MOV     RBX,SaveRBX
-        ADD     [RSI + CLimbSize*RBX],EDX
+        ADD     [RDI + CLimbSize*RBX],EDX
 
 @SkipAddBack:
 
@@ -8460,15 +8455,19 @@ var
   Base: BigInteger;
   Exp: BigInteger;
 begin
+  if not AModulus.IsPositive  then
+    Error(ecDivByZero, '');
+  if AModulus = BigInteger.One then
+    Exit(BigInteger.Zero);
+  Result := BigInteger.One;
   Exp := AExponent;
   Base := ABase mod AModulus;
-  Result := BigInteger.One;
   while Exp > Zero do
   begin
     if not Exp.IsEven then
       Result := (Result * Base) mod AModulus;
-    Base := (Base * Base) mod AModulus;
     Exp := Exp shr 1;
+    Base := (Base * Base) mod AModulus;
   end;
 end;
 
