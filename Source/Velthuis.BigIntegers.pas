@@ -762,7 +762,10 @@ type
     // -- Math functions --
 
     /// <summary>Returns the absolute value of the value in the BigInteger.</summary>
-    class function Abs(const Value: BigInteger): BigInteger; static;
+    class function Abs(const Value: BigInteger): BigInteger; overload; static;
+
+    /// <summary>Returns the absolute value of the current BigInteger.<summary>
+    function Abs: BigInteger; overload;
 
     /// <summary>Returns the bit length, the minimum number of bits needed to represent the value, excluding
     ///   the sign bit.</summary>
@@ -787,16 +790,28 @@ type
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
 
     /// <summary>Returns the natural logarithm of the BigInteger value.</summary>
-    class function Ln(const Value: BigInteger): Double; static;
+    class function Ln(const Value: BigInteger): Double; overload; static;
+
+    /// <summary>Returns the natural logarithm of the current BigInteger.</summary>
+    function Ln: Double; overload;
 
     /// <summary>Returns the logarithm to the specified base of the BigInteger value.</summary>
-    class function Log(const Value: BigInteger; Base: Double): Double; static;
+    class function Log(const Value: BigInteger; Base: Double): Double; overload; static;
+
+    /// <summary>Returns the logarithm to the specified base of the current BigInteger.</summary>
+    function Log(Base: Double): Double; overload;
 
     /// <summary>Returns the logarithm to base 2 of the BigInteger value.</summary>
-    class function Log2(const Value: BigInteger): Double; static;
+    class function Log2(const Value: BigInteger): Double; overload; static;
+
+    /// <summary>Returns the logarithm to base 2 of the current BigInteger.</summary>
+    function Log2: Double; overload;
 
     /// <summary>Returns the logarithm to base 10 of the BigInteger value.</summary>
-    class function Log10(const Value: BigInteger): Double; static;
+    class function Log10(const Value: BigInteger): Double; overload; static;
+
+    /// <summary>Returns the logarithm to base 10 of the current BigInteger.</summary>
+    function Log10: Double; overload;
 
     /// <summary>Returns the larger of two specified values.</summary>
     class function Max(const Left, Right: BigInteger): BigInteger; static;
@@ -1444,6 +1459,12 @@ procedure DeepCopy(const Value: BigInteger; var Result: BigInteger); inline;
 begin
   Result.FSize := Value.FSize;
   Result.FData := Copy(Value.FData);
+end;
+
+function BigInteger.Abs: BigInteger;
+begin
+  ShallowCopy(Self, Result);
+  Result.FSize := Result.FSize and SizeMask;
 end;
 
 class function BigInteger.Abs(const Value: BigInteger): BigInteger;
@@ -4356,7 +4377,7 @@ var
   SaveLeft: PLimb;
   LeftSize, RightSize: Integer;
 asm
-        .PUSHNV RSI
+.PUSHNV RSI
         .PUSHNV RDI
         .PUSHNV RBX
 
@@ -8299,6 +8320,11 @@ begin
   Result := Compare(left, Right) <= 0;
 end;
 
+function BigInteger.Ln: Double;
+begin
+  Result := Ln(Self);
+end;
+
 function BigInteger.BitLength: Integer;
 begin
   if Self.FData = nil then
@@ -8368,6 +8394,21 @@ end;
 class function BigInteger.Log2(const Value: BigInteger): Double;
 begin
   Result := Log(Value, 2.0);
+end;
+
+function BigInteger.Log(Base: Double): Double;
+begin
+  Result := Log(Self, Base);
+end;
+
+function BigInteger.Log10: Double;
+begin
+  Result := Log(Self, 10.0);
+end;
+
+function BigInteger.Log2: Double;
+begin
+  Result := Log(Self, 2.0);
 end;
 
 class operator BigInteger.LogicalNot(const Value: BigInteger): BigInteger;
