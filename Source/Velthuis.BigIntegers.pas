@@ -8459,7 +8459,7 @@ var
 begin
   if not AModulus.IsPositive  then
     Error(ecDivByZero, '');
-  if AModulus = BigInteger.One then
+  if AModulus.IsOne then
     Exit(BigInteger.Zero);
   Result := BigInteger.One;
   Exp := AExponent;
@@ -10287,7 +10287,7 @@ var
   Estimate, EstimateToNthPower, NewEstimateToNthPower, TwoToNthPower: BigInteger;
   AdditionalBit: Integer;
 begin
-  if Radicand = BigInteger.One then
+  if Radicand.IsOne then
     Exit(BigInteger.One);
   if Nth = 0 then
     Exit(BigInteger.Zero);                      // Error: there is no zeroth root.
@@ -10359,7 +10359,7 @@ var
   EstimateSquared: BigInteger;
   Temp: BigInteger;
 begin
-  if Radicand = BigInteger.One then
+  if Radicand.IsOne then
     Exit(BigInteger.One);
 
   if Radicand.IsNegative then
