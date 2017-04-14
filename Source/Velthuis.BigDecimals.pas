@@ -1,7 +1,7 @@
 ﻿{---------------------------------------------------------------------------}
 {                                                                           }
 { File:       Velthuis.BigDecimals.pas                                      }
-{ Function:   A multiple precision decimal implementation, based on the     }
+{ HFunction:  A multiple precision decimal implementation, based on the     }
 {             BigInteger implementation in Velthuis.BigIntegers.pas.        }
 { Language:   Delphi version XE2 or later                                   }
 { Author:     Rudy Velthuis                                                 }
@@ -1522,6 +1522,7 @@ begin
   BigDecimal.FOne := BigDecimal.Create(BigInteger.One, 0);
   BigDecimal.FTwo := BigDecimal.Create(BigInteger(2), 0);
   BigDecimal.FTen := BigDecimal.Create(BigInteger.Ten, 0);
+  BigDecimal.FHalf := BigDecimal.Create(BigInteger(5), 1);
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
   // Note: one might expect constants like pi or e, but since BigDecimal relies on a certain   //
@@ -1887,7 +1888,7 @@ begin
   Epsilon := Half * BigDecimal.Create(BigInteger(1), Precision);
 
   // Newton-Raphson kind of loop to refine the result, until a difference below the determined epsilon is reached.
-  while (Result * Result - Self).Abs >= Epsilon do
+  while ((Result * Result - Self).Abs >= Epsilon) and not Result.IsZero do
     Result := Half * (Result + BigDecimal.Divide(Self, Result, Precision * 2));
 
   // Round the result and remove any unnecessary trailing zeroes.
