@@ -1523,6 +1523,7 @@ begin
   BigDecimal.FTwo := BigDecimal.Create(BigInteger(2), 0);
   BigDecimal.FTen := BigDecimal.Create(BigInteger.Ten, 0);
   BigDecimal.FHalf := BigDecimal.Create(BigInteger(5), 1);
+  BigDecimal.FOneTenth := BigDecimal.Create(BigInteger(1), 1);
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
   // Note: one might expect constants like pi or e, but since BigDecimal relies on a certain   //
