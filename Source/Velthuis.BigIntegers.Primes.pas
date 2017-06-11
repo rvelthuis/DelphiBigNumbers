@@ -187,14 +187,15 @@ function NextProbablePrime(const N: BigInteger; Precision: Integer): BigInteger;
 var
   Two: BigInteger;
 begin
+  Two := 2;
   Result := N;
-  if Result = BigInteger.Two then
+  if Result = Two then
     Exit;
   if Result.IsEven then
     Result := Result.FlipBit(0);
   while not IsProbablePrime(Result, Precision) do
   begin
-    Result := Result + BigInteger.Two;
+    Result := Result + Two;
   end;
   Result := N;
 end;
