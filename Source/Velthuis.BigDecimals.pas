@@ -112,12 +112,14 @@ unit Velthuis.BigDecimals;
 {$IFEND}
 
 {$IF CompilerVersion >= 21.0}   // Delphi 2010
-  {$DEFINE HASCLASSCONSTRUCTORS}
+  {$DEFINE HasClassConstructors}
 {$IFEND}
 
 {$IF SizeOf(Extended) > SizeOf(Double)}
-  {$DEFINE HASEXTENDED}
+  {$DEFINE HasExtended}
 {$IFEND}
+
+{$DEFINE Experimental}
 
 interface
 
@@ -224,7 +226,7 @@ type
       // BigDecimal with value 0.1: unscaled value = 1, scale = 1.
       FOneTenth: BigDecimal;
 
-{$IFDEF HASCLASSCONSTRUCTORS}
+{$IFDEF HasClassConstructors}
     class constructor InitClass;
 {$ELSE}
     class procedure InitClass; static;
@@ -256,7 +258,7 @@ type
     // Gets a BigInteger of the given power of ten, either from a prefilled array or using BigInteger.Pow.
     class function GetPowerOfTen(N: Integer): BigInteger; static;
 
-    // Initialize or reset values of scale and precision to 0.
+    // Initialize or reset scale and precision to 0.
     procedure Init; inline;
 
     // Checks if the NewScale value is a valid scale value. If so, simply returns NewScale. Otherwise, raises
@@ -271,7 +273,7 @@ type
     /// <summary>Creates a BigDecimal with given unscaled value and given scale.</summary>
     constructor Create(const UnscaledValue: BigInteger; Scale: Integer); overload;
 
-  {$IFDEF HASEXTENDED}
+  {$IFDEF HasExtended}
     /// <summary>Creates a BigDecimal with the same value as the given Extended parameter.</summary>
     /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the parameter contains a NaN or infinity.</exception>
     constructor Create(const E: Extended); overload;
@@ -414,7 +416,7 @@ type
 
     // -- Implicit conversion operators --
 
-  {$IFDEF HASEXTENDED}
+  {$IFDEF HasExtended}
     /// <summary>Returns a BigDecimal with the exact value of the given Extended parameter.</summary>
     class operator Implicit(const E: Extended): BigDecimal;
   {$ENDIF}
@@ -440,7 +442,7 @@ type
 
     // -- Explicit conversion operators --
 
-  {$IFDEF HASEXTENDED}
+  {$IFDEF HasExtended}
     /// <summary>Returns an Extended with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
     /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
@@ -557,6 +559,12 @@ type
 
     /// <summary>Returns the square root of the given BigDecimal, using the default precision.</summary>
     class function Sqrt(const Value: BigDecimal): BigDecimal; overload; static;
+
+    /// <summary>Returns the integer power of the given BigDecimal, in unlimited precision.</summary>
+    class function IntPower(const Base: BigDecimal; Exponent: Integer): BigDecimal; overload; static;
+
+    /// <summary>Returns the integer power of the given BigDecimal, in the given precision.</summary>
+    class function IntPower(const Base: BigDecimal; Exponent, Precision: Integer): BigDecimal; overload; static;
 
 
     // -- Comparison functions --
@@ -679,11 +687,17 @@ type
     ///  BigDecimal('1234.56789').</para></remarks>
     function RemoveTrailingZeros(TargetScale: Integer): BigDecimal;
 
-    /// <summary>Returns the square root of the current BigDecimal, with the given precision</summary>
+    /// <summary>Returns the square root of the current BigDecimal, with the given precision.</summary>
     function Sqrt(Precision: Integer): BigDecimal; overload;
 
     /// <summary>Returns the square root of the current BigDecimal, with the default precision.</summary>
     function Sqrt: BigDecimal; overload;
+
+    /// <summary>Returns the integer power of the current BigDecimal, with unlimited precision.</summary>
+    function IntPower(Exponent: Integer): BigDecimal; overload;
+
+    /// <summary>Returns the integer power of the current BigDecimal, with the given precision.</summary>
+    function IntPower(Exponent, Precision: Integer): BigDecimal; overload;
 
     /// <summary>Returns the square of the current BigDecimal.</summary>
     function Sqr: BigDecimal; overload;
@@ -1093,7 +1107,7 @@ begin
   Create(Str);
 end;
 
-{$IFDEF HASEXTENDED}
+{$IFDEF HasExtended}
 constructor BigDecimal.Create(const E: Extended);
 var
   Str: string;
@@ -1366,7 +1380,7 @@ begin
     Result := Velthuis.FloatUtils.MakeDouble(LSign, LMantissa, LExponent);
 end;
 
-{$IFDEF HASEXTENDED}
+{$IFDEF HasExtended}
 class operator BigDecimal.Explicit(const Value: BigDecimal): Extended;
 begin
   // TODO: use binary data, see above.
@@ -1456,7 +1470,7 @@ begin
   Result.Create(D);
 end;
 
-{$IFDEF HASEXTENDED}
+{$IFDEF HasExtended}
 class operator BigDecimal.Implicit(const E: Extended): BigDecimal;
 begin
   Result.Create(E);
@@ -1489,7 +1503,7 @@ begin
   FPrecision := 0;
 end;
 
-{$IFDEF HASCLASSCONSTRUCTORS}
+{$IFDEF HasClassConstructors}
 class constructor BigDecimal.InitClass;
 {$ELSE}
 class procedure BigDecimal.InitClass;
@@ -1565,6 +1579,58 @@ begin
 
   if Result.Scale < LTargetScale then
     Result := Result.RoundToScale(LTargetScale, rmUnnecessary);
+end;
+
+class function BigDecimal.IntPower(const Base: BigDecimal; Exponent, Precision: Integer): BigDecimal;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Note: the actual code below is *much* faster than a naïve implementation which simply calculates //
+  // the full IntPower and only rounds at the end.                                                    //
+  //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var
+  LBase: BigDecimal;
+begin
+  if Base.FValue.Size > 1 then
+  begin
+    Result := One;
+    LBase := Base;
+    while Exponent <> 0 do
+    begin
+      if Odd(Exponent) then
+        Result := (Result * LBase).RoundToPrecision(Precision + 3);
+      LBase := (LBase * LBase).RoundToPrecision(Precision + 3);
+      Exponent := Exponent shr 1;
+    end;
+    Result := Result.RoundToPrecision(Precision);
+  end
+  else
+    Result := IntPower(Base, Exponent).RoundToPrecision(Precision);
+end;
+
+class function BigDecimal.IntPower(const Base: BigDecimal; Exponent: Integer): BigDecimal;
+var
+  LBase: BigDecimal;
+begin
+  Result := One;
+  LBase := Base;
+  while Exponent <> 0 do
+  begin
+    if Odd(Exponent) then
+      Result := Result * LBase;
+    LBase := LBase * LBase;
+    Exponent := Exponent shr 1;
+  end;
+end;
+
+function BigDecimal.IntPower(Exponent, Precision: Integer): BigDecimal;
+begin
+  Result := IntPower(Self, Exponent, Precision);
+end;
+
+function BigDecimal.IntPower(Exponent: Integer): BigDecimal;
+begin
+  Result := IntPower(Self, Exponent);
 end;
 
 function BigDecimal.IsZero: Boolean;
@@ -2123,7 +2189,7 @@ begin
   Result.FScale := Self.Scale;
 end;
 
-{$IFNDEF HASCLASSCONSTRUCTORS}
+{$IFNDEF HasClassConstructors}
 initialization
   BigDecimal.InitClass;
 {$ENDIF}
