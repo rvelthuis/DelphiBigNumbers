@@ -121,6 +121,7 @@ unit Velthuis.BigDecimals;
 
 {$DEFINE Experimental}
 
+
 interface
 
 uses
@@ -177,6 +178,12 @@ type
 
       /// <summary>Minimum value a BigDecimal's scale can have</summary>
       MinScale = -MaxScale - 1;
+
+{$IF defined(CPUX86)}
+      IntPowerExponentThreshold = 128;
+{$ELSE}
+      IntPowerExponentThreshold = 256;
+{$IFEND}
 
   private
     type
@@ -1582,16 +1589,10 @@ begin
 end;
 
 class function BigDecimal.IntPower(const Base: BigDecimal; Exponent, Precision: Integer): BigDecimal;
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Note: the actual code below is *much* faster than a naïve implementation which simply calculates //
-  // the full IntPower and only rounds at the end.                                                    //
-  //////////////////////////////////////////////////////////////////////////////////////////////////////
-
 var
   LBase: BigDecimal;
 begin
-  if Base.FValue.Size > 1 then
+  if (Base.Precision > 8) and (Exponent >= IntPowerExponentThreshold) then
   begin
     Result := One;
     LBase := Base;
