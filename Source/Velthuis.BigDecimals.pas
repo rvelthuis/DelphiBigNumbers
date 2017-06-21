@@ -119,6 +119,15 @@ unit Velthuis.BigDecimals;
   {$DEFINE HasExtended}
 {$IFEND}
 
+{$IF CompilerVersion < 29.0}
+  {$IF (DEFINED(WIN32) or DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
+    {$DEFINE CPU32BITS}
+  {$IFEND}
+  {$IF (DEFINED(WIN64) OR DEFINED(CPUX64)) AND NOT DEFINED(CPU64BITS)}
+    {$DEFINE CPU64BITS}
+  {$IFEND}
+{$IFEND}
+
 {$DEFINE Experimental}
 
 
@@ -179,7 +188,7 @@ type
       /// <summary>Minimum value a BigDecimal's scale can have</summary>
       MinScale = -MaxScale - 1;
 
-{$IF defined(CPUX86)}
+{$IF defined(CPU32BITS)}
       IntPowerExponentThreshold = 128;
 {$ELSE}
       IntPowerExponentThreshold = 256;
