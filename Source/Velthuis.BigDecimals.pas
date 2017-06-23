@@ -1633,7 +1633,7 @@ begin
     Result := IntPower(Base, Exponent);
 
   if LNegativeExp then
-    Result := BigDecimal.Divide(BigDecimal.One, Result, Precision)
+    Result := Result.Reciprocal(Precision)
   else
     Result := Result.RoundToPrecision(Precision);
 
