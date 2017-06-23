@@ -146,6 +146,7 @@ type
   /// "know" that rounding is not necessary, and the code determines that, to get the desired result, rounding is
   /// necessary after all.</summary>
   ERoundingNecessary = class(Exception);
+  EIntPowerExponent = class(Exception);
 
   PBigDecimal = ^BigDecimal;
 
@@ -197,7 +198,7 @@ type
   private
     type
       // Error codes to be used when calling the private static BigDecimal.Error method.
-      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecOverflow, ecUnderflow, ecInvalidArg, ecRounding);
+      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecOverflow, ecUnderflow, ecInvalidArg, ecRounding, ecExponent);
 
     var
       // The unscaled value of the BigDecimal.
@@ -806,6 +807,7 @@ resourcestring
   SInvalidArgument        = 'Invalid argument %s';
   SRounding               = 'Rounding necessary';
   SInvalidOperation       = 'Invalid BigDecimal operation';
+  SExponent               = 'Exponent to IntPower outside the allowed range';
 
 var
   PowersOfTen: TArray<BigInteger>;
@@ -1300,6 +1302,9 @@ begin
     ecRounding:
       // Rounding was necessary but rmUnnecessary was specified.
       raise ERoundingNecessary.Create(SRounding);
+    ecExponent:
+      // Exponent outside the allowed range
+      raise EIntPowerExponent.Create(SExponent);
     else
       // Invalid operand to operator.
       raise EInvalidOpException.Create(SInvalidOperation);
@@ -1600,7 +1605,18 @@ end;
 class function BigDecimal.IntPower(const Base: BigDecimal; Exponent, Precision: Integer): BigDecimal;
 var
   LBase: BigDecimal;
+  LNegativeExp: Boolean;
 begin
+  if Exponent = 0 then
+    Exit(BigDecimal.One);
+
+  LNegativeExp := Exponent < 0;
+  if LNegativeExp then
+    Exponent := -Exponent;
+
+  if Exponent > 9999999 then
+    Error(ecExponent, []);
+
   if (Base.Precision > 8) and (Exponent >= IntPowerExponentThreshold) then
   begin
     Result := One;
@@ -1612,16 +1628,35 @@ begin
       LBase := (LBase * LBase).RoundToPrecision(Precision + 3);
       Exponent := Exponent shr 1;
     end;
-    Result := Result.RoundToPrecision(Precision);
   end
   else
-    Result := IntPower(Base, Exponent).RoundToPrecision(Precision);
+    Result := IntPower(Base, Exponent);
+
+  if LNegativeExp then
+    Result := BigDecimal.Divide(BigDecimal.One, Result, Precision)
+  else
+    Result := Result.RoundToPrecision(Precision);
+
+  if Result.Scale < Precision then
+    Result := Result.RemoveTrailingZeros(0);
 end;
 
 class function BigDecimal.IntPower(const Base: BigDecimal; Exponent: Integer): BigDecimal;
 var
   LBase: BigDecimal;
+  LNegativeExp: Boolean;
 begin
+
+  if Exponent = 0 then
+    Exit(BigDecimal.One);
+
+  LNegativeExp := Exponent < 0;
+  if LNegativeExp then
+    Exponent := -Exponent;
+
+  if Exponent > 9999999 then
+    Error(ecExponent, []);
+
   Result := One;
   LBase := Base;
   while Exponent <> 0 do
@@ -1631,6 +1666,9 @@ begin
     LBase := LBase * LBase;
     Exponent := Exponent shr 1;
   end;
+
+  if LNegativeExp then
+    Result := BigDecimal.Divide(BigDecimal.One, Result, DefaultPrecision);
 end;
 
 function BigDecimal.IntPower(Exponent, Precision: Integer): BigDecimal;
