@@ -40,6 +40,10 @@
 {                https://en.wikipedia.org                                    }
 {             7. Rosetta Code                                                }
 {                http://rosettacode.org/wiki/Rosetta_Code                    }
+{             8. Michael Malenkov, Christopher J. Dutra, Marco T. Morazán    }
+{                "A New Bignum Multiplication Algorithm"                     }
+{                http://prolangs.cs.vt.edu/rutgers/meetings/                 }
+{                masplas06/papers/2_Malenkov.pdf                             }
 {                                                                            }
 { -------------------------------------------------------------------------- }
 {                                                                            }
