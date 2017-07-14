@@ -220,7 +220,7 @@ type
   TNumberBase = 2..36;                          // Number base or radix.
 
   PLimb = ^TLimb;                               // Knuth calls them "limbs".
-  TLimb = type UInt32;
+  TLimb = type UInt32;                          // FWIW, I also like the recently spotted term "bigit".
   TMagnitude = TArray<TLimb>;                   // These BigIntegers use sign-magnitude format, hence the name.
 
   // BigInteger uses a sign-magnitude representation, i.e. the magnitude is always interpreted as an
@@ -464,7 +464,8 @@ type
     // -- String output functions --
 
     /// <summary>Returns the string interpretation of the specified BigInteger in the default numeric base,
-    ///   see <see cref="BigInteger.Base" />.</summary>
+    ///   see <see cref="BigInteger.Base" />.
+    /// </summary>
     function ToString: string; overload;
 
     /// <summary>Returns the string interpretation of the specified BigInteger in the specified numeric base.</summary>
@@ -1082,6 +1083,9 @@ uses
 
 {$POINTERMATH ON}
 
+const
+  KZero: NativeUInt = 0;
+
 {$IFDEF DEBUG}
 function Join(const Delimiter: string; const Values: array of string): string;
 var
@@ -1156,7 +1160,8 @@ asm
         MOV     [ECX+4],EDX
         XOR     EAX,EAX
         MOV     EDX,CTimingLoops
-        NOP
+
+        .ALIGN  16
 
 @ADDLoop:
 
@@ -1178,6 +1183,8 @@ asm
         XOR     EAX,EAX
         MOV     EDX,CTimingLoops
 
+        .ALIGN  16
+
 @ADCLoop:
 
         ADC     EAX,[RCX]
@@ -1189,7 +1196,8 @@ asm
         MOV     [R9+4],EDX
         XOR     EAX,EAX
         MOV     EDX,CTimingLoops
-        NOP
+
+        .ALIGN  16
 
 @ADDLoop:
 
@@ -1599,7 +1607,7 @@ asm
         LEA     EBX,[@JumpsMain]
         JMP     [EBX + EDI*TYPE Pointer]
 
-        // Align jump tables manually, with NOPs.
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -1670,11 +1678,7 @@ asm
         LEA     R10,[@JumpsMain]
         JMP     [R10 + R9*TYPE Pointer]
 
-        // Align jump table manually, with NOPs
-
-        NOP
-        NOP
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -1784,9 +1788,7 @@ asm
         LEA     EBX,[@JumpsMain]
         JMP     [EBX + EDI*TYPE Pointer]
 
-        // Align jump table manually, with NOPs
-
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -1848,10 +1850,7 @@ asm
         LEA     EBX,[@RestJumps]
         JMP     [EBX + EDI*TYPE Pointer]
 
-        // Align jump table manually, with NOPs.
-
-        NOP
-        NOP
+        .ALIGN  16
 
 @RestJumps:
 
@@ -2083,9 +2082,7 @@ asm
         LEA     EBX,[@JumpsMain]
         JMP     [EBX + EDI*TYPE Pointer]
 
-        // Align jump table manually, with NOPs
-
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -2147,10 +2144,7 @@ asm
         LEA     EBX,[@RestJumps]
         JMP     [EBX + EDI*TYPE Pointer]
 
-        // Align jump table manually, with NOPs.
-
-        NOP
-        NOP
+        .ALIGN  16
 
 @RestJumps:
 
@@ -2386,10 +2380,7 @@ asm
         LEA     EBX,[@JumpsMain]
         JMP     [EBX + EDI*TYPE Pointer]
 
-        // Align jump table manually, with NOPs
-
-        NOP
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -2870,7 +2861,7 @@ begin
   Self := 0;
   Self.Create(UInt64(Mantissa));
 
-  // Shift left by the restant value of the exponent.
+  // Shift left by the remaining value of the exponent.
   if Exponent > Shift then
     Self := Self shl (Exponent - Shift);
   if Sign then
@@ -3240,9 +3231,7 @@ asm
         LEA     ECX,[@JumpsMain]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // Align jump table manually, with NOPs.
-
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -3317,9 +3306,7 @@ asm
         LEA     ECX,[@RestJumps]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // Align jump table manually, with NOPs.
-
-        NOP
+        .ALIGN  16
 
 @RestJumps:
 
@@ -3620,9 +3607,7 @@ asm
         LEA     ECX,[@JumpsMain]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // Align jump table manually, with NOPs. Update if necessary.
-
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -3698,11 +3683,7 @@ asm
         LEA     ECX,[@RestJumps]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // If necessary, align second jump table with NOPs
-
-        NOP
-        NOP
-        NOP
+        .ALIGN  16
 
 @RestJumps:
 
@@ -3784,9 +3765,7 @@ asm
         LEA     RCX,[@MainJumps]
         JMP     [RCX + R9*TYPE Pointer]
 
-        // Align jump table. Update if necessary!
-
-        NOP
+        .ALIGN  16
 
 @MainJumps:
 
@@ -4241,7 +4220,7 @@ asm
         MOV     EAX,[ESI]
         MUL     EAX,ECX                         // Uses MUL EAX,ECX syntax because of bug in XE2 assembler.
         ADD     EAX,EBX
-        ADC     EDX,0
+        ADC     EDX,KZero
         MOV     [EDI],EAX
         MOV     EBX,EDX
         LEA     ESI,[ESI + CLimbSize]
@@ -4280,24 +4259,30 @@ asm
         XOR     EBX,EBX
         MOV     EAX,LSize
         MOV     LCount,EAX
-        CMP     EAX,0
+
+
+        CMP     EAX,KZero
         JE      @EndInnerLoop
+
+        .ALIGN  16
 
 @InnerLoop:
 
         // Loop unrolled. Approx. 70% faster than simple loop.
 
-        MOV     EAX,[ESI]
-        MUL     EAX,ECX
-        ADD     EAX,[EDI]
-        ADC     EDX,0
-        ADD     EAX,EBX
-        ADC     EDX,0
-        MOV     [EDI],EAX
-        MOV     EBX,EDX
+        // TODO: Use MMX registers for multiplication and addition.
+
+        MOV     EAX,[ESI]                  // The following pattern is not faster:
+        MUL     ECX                        // MOV    EAX,[ESI]
+        ADD     EAX,[EDI]                  // MUL    ECX
+        ADC     EDX,0                      // ADD    EAX,EBX
+        ADD     EAX,EBX                    // ADC    EDX,0
+        ADC     EDX,0                      // ADD    [EDI],EAX
+        MOV     [EDI],EAX                  // ADC    EDX,0
+        MOV     EBX,EDX                    // MOV    EBX,EDX
 
         MOV     EAX,[ESI + CLimbSize]
-        MUL     EAX,ECX
+        MUL     ECX
         ADD     EAX,[EDI + CLimbSize]
         ADC     EDX,0
         ADD     EAX,EBX
@@ -4306,7 +4291,7 @@ asm
         MOV     EBX,EDX
 
         MOV     EAX,[ESI + 2*CLimbSize]
-        MUL     EAX,ECX
+        MUL     ECX
         ADD     EAX,[EDI + 2*CLimbSize]
         ADC     EDX,0
         ADD     EAX,EBX
@@ -4315,7 +4300,7 @@ asm
         MOV     EBX,EDX
 
         MOV     EAX,[ESI + 3*CLimbSize]
-        MUL     EAX,ECX
+        MUL     ECX
         ADD     EAX,[EDI + 3*CLimbSize]
         ADC     EDX,0
         ADD     EAX,EBX
@@ -4325,12 +4310,13 @@ asm
 
         LEA     ESI,[ESI + 4*CLimbSize]
         LEA     EDI,[EDI + 4*CLimbSize]
+
         DEC     LCount
         JNE     @InnerLoop
 
 @EndInnerLoop:
 
-        // The restant limbs to be handled.
+        // The remaining limbs to be handled.
 
         MOV     EAX,LRest
         MOV     LCount,EAX
@@ -4380,6 +4366,7 @@ asm
 .PUSHNV RSI
         .PUSHNV RDI
         .PUSHNV RBX
+        .PUSHNV R12
 
         MOV     EDI,RSize
         CMP     R9D,EDI
@@ -4391,6 +4378,7 @@ asm
 @SwapEnd:
 
         MOV     SaveLeft,RCX
+        XOR     R12,R12
 
         MOV     EAX,R9D
         SHR     R9D,1
@@ -4429,7 +4417,7 @@ asm
         MOV     RAX,[RSI]
         MUL     RCX
         ADD     RAX,RBX
-        ADC     RDX,0
+        ADC     RDX,R12
         MOV     [RDI],RAX
         MOV     RBX,RDX
         LEA     RSI,[RSI + DLimbSize]
@@ -4447,7 +4435,7 @@ asm
         MOV     EAX,[RSI]               // 32 bit register to read odd limb of this loop
         MUL     RCX
         ADD     RAX,RBX
-        ADC     RDX,0
+        ADC     RDX,R12
         MOV     [RDI],RAX
         MOV     [RDI + DLimbSize],RDX
         JMP     @SkipSkipSetupOddPart
@@ -4484,38 +4472,34 @@ asm
 
         MOV     RAX,[RSI]               // Get double limb from Left data
         MUL     RCX                     // multiply it with current Right double limb's value --> RDX:RAX
-        ADD     RAX,[RDI]               // Add current value in Result data
-        ADC     RDX,0
-        ADD     RAX,RBX                 // Add "carry", i.e. top double limb from previous multiplcation
-        ADC     RDX,0
-        MOV     [RDI],RAX               // Store in Result
-        MOV     RBX,RDX                 // And save top double limb as "carry".
+        ADD     RAX,RBX                 // Add top limb from previous multiplication to RDX:RAX
+        ADC     RDX,R12
+        ADD     [RDI],RAX               // Add RAX to result array
+        ADC     RDX,R12                 // And adjust top limb again
+        MOV     RBX,RDX                 // And save top limb as "carry".
 
         MOV     RAX,[RSI + DLimbSize]
         MUL     RCX
-        ADD     RAX,[RDI + DLimbSize]
-        ADC     RDX,0
         ADD     RAX,RBX
-        ADC     RDX,0
-        MOV     [RDI + DLimbSize],RAX
+        ADC     RDX,R12
+        ADD     [RDI + DLimbSize],RAX
+        ADC     RDX,R12
         MOV     RBX,RDX
 
         MOV     RAX,[RSI + 2*DLimbSize]
         MUL     RCX
-        ADD     RAX,[RDI + 2*DLimbSize]
-        ADC     RDX,0
         ADD     RAX,RBX
-        ADC     RDX,0
-        MOV     [RDI + 2*DLimbSize],RAX
+        ADC     RDX,R12
+        ADD     [RDI + 2*DLimbSize],RAX
+        ADC     RDX,R12
         MOV     RBX,RDX
 
         MOV     RAX,[RSI + 3*DLimbSize]
         MUL     RCX
-        ADD     RAX,[RDI + 3*DLimbSize]
-        ADC     RDX,0
         ADD     RAX,RBX
-        ADC     RDX,0
-        MOV     [RDI + 3*DLimbSize],RAX
+        ADC     RDX,R12
+        ADD     [RDI + 3*DLimbSize],RAX
+        ADC     RDX,R12
         MOV     RBX,RDX
 
         LEA     RSI,[RSI + 4*DLimbSize]
@@ -4534,9 +4518,9 @@ asm
         MOV     RAX,[RSI]
         MUL     RCX
         ADD     RAX,[RDI]
-        ADC     RDX,0
+        ADC     RDX,R12
         ADD     RAX,RBX
-        ADC     RDX,0
+        ADC     RDX,R12
         MOV     [RDI],RAX
         MOV     RBX,RDX
         LEA     RSI,[RSI + DLimbSize]
@@ -4552,9 +4536,9 @@ asm
         MOV     RAX,[RSI]
         MUL     RCX
         ADD     RAX,[RDI]
-        ADC     RDX,0
+        ADC     RDX,R12
         ADD     RAX,RBX
-        ADC     RDX,0
+        ADC     RDX,R12
         MOV     [RDI],RAX
         MOV     [RDI + DLimbSize],RDX
         JMP     @NextOuterLoop
@@ -7454,9 +7438,7 @@ asm
         LEA     ECX,[@JumpsMain]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // Align jump table manually, with NOPs. Update if necessary.
-
-        NOP
+        .ALIGN  16
 
 @JumpsMain:
 
@@ -7531,11 +7513,7 @@ asm
         LEA     ECX,[@RestJumps]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // If necessary, align second jump table with NOPs
-
-        NOP
-        NOP
-        NOP
+        .ALIGN  16
 
 @RestJumps:
 
@@ -7818,11 +7796,8 @@ asm
         LEA     ECX,[@JumpsMain]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // Align jump table manually, with NOPs. Update if necessary.
+        .ALIGN  16
 
-        NOP
-
-        // Jump table.
 
 @JumpsMain:
 
@@ -7898,11 +7873,7 @@ asm
         LEA     ECX,[@RestJumps]
         JMP     [ECX + EDX*TYPE Pointer]
 
-        // If necessary, align second jump table with NOPs
-
-        NOP
-        NOP
-        NOP
+        .ALIGN  16
 
 @RestJumps:
 
@@ -7986,9 +7957,7 @@ asm
         LEA     RCX,[@MainJumps]
         JMP     [RCX + R9*TYPE Pointer]
 
-        // Align jump table. Update if necessary!
-
-        NOP
+        .ALIGN  16
 
 @MainJumps:
 
@@ -8510,7 +8479,7 @@ begin
     if not Exp.IsEven then
       Result := (Result * Base) mod AModulus;
     Exp := Exp shr 1;
-    Base := (Base * Base) mod AModulus;
+    Base := Sqr(Base) mod AModulus;
   end;
 end;
 
@@ -9159,7 +9128,7 @@ begin
   if ((Left.FSize and SizeMask) < KaratsubaThreshold) or ((Right.FSize and SizeMask) < KaratsubaThreshold) then
   begin
     // The following block is "Result := MultiplyBaseCase(Left, Right);" written out in full.
-    LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 1);
+    LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask));
     InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), Left.FSize and SizeMask,
       Right.FSize and SizeMask);
     LResult.Compact;
@@ -9431,9 +9400,7 @@ asm
         LEA     RAX,[@JumpTable]
         JMP     [RAX + R10*TYPE Pointer]
 
-        // Align jump table with NOPs
-
-        NOP
+        .ALIGN  16
 
 @JumpTable:
 
