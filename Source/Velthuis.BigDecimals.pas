@@ -1403,9 +1403,45 @@ end;
 
 {$IFDEF HasExtended}
 class operator BigDecimal.Explicit(const Value: BigDecimal): Extended;
+var
+  LSign, LExponent: Integer;
+  LMantissa: UInt64;
+  LDiff: Integer;
+  LLowBits: UInt64;
+  LExtendedRec: packed record
+    Man: UInt64;
+    Exp: Int16;
+  end;
+  LRem: UInt64;
 begin
-  // TODO: use binary data, see above.
-  Result := StrToFloat(Value.ToPlainString);
+  ConvertToFloatComponents(Value, 64, LSign, LMantissa, LExponent);
+
+  // Handle special values
+  // * Infinities
+  if LExponent > 16383 then
+    if LSign < 0 then
+      Result := NegInfinity
+    else
+      Result := Infinity
+  else
+  if LExponent < -16382 then
+  begin
+    LDiff := -16382 - LExponent;
+    if LDiff >= 64 then
+      Exit(0.0);
+    LLowBits := UInt64(1) shl LDiff;
+    LRem := LMantissa and (LLowBits - 1);
+    LMantissa := LMantissa shr LDiff;
+    if LRem + LRem >= LLowBits then
+      Inc(LMantissa);
+    LExtendedRec.Man := LMantissa;
+    LExtendedRec.Exp := 0;
+    if LSign < 0 then
+      LExtendedRec.Exp := LExtendedRec.Exp or $8000;
+    Result := PExtended(@LExtendedRec)^;
+  end
+  else
+    Result := Velthuis.FloatUtils.MakeExtended(LSign, LMantissa, LExponent);
 end;
 {$ENDIF}
 
