@@ -1177,7 +1177,7 @@ class function BigDecimal.Divide(const Left, Right: BigDecimal; Precision: Integ
   ARoundingMode: RoundingMode): BigDecimal;
 var
   LQuotient, LRemainder, LDivisor: BigInteger;
-  NewScale, TargetScale: Integer;
+  LScale, TargetScale: Integer;
   LSign: Integer;
   LMultiplier: Integer;
 begin
@@ -1187,6 +1187,12 @@ begin
   // (1 div 25 = 0).                                                                                       //
   // So the dividend must be scaled up by at least Precision powers of ten. The end result must be rounded //
   // toward the target scale, which is Left.Scale - Right.Scale.                                           //
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Is there a way to find out beforehand if we need the full precision? Take the above: 0.01/0.025 = 4   //
+  // So we would only need to scale up BigInteger(1) to BigInteger(100) and then divide. Is there a way to //
+  // determine this? OTOH, for 0.01/0.003 we need the full precision. Is there a way to determine if a     //
+  // division will result in a non-terminating decimal expansion or if it is terminating, where it will    //
+  // terminate?                                                                                            //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if Right.FValue = BigInteger.Zero then
@@ -1224,27 +1230,28 @@ begin
   *)
 
   // Determine minimum power of ten with which to multiply the dividend.
-  // The + 4 is empirical.
-//$$RV: removing the following reduces the time by 35%! (13.9s -> 8.8s)
-  LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
+  // Previous code used:
+  //   LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
+  // but the code below is 20% faster - Calculating precision can be slow.
+  LMultiplier := RangeCheckedScale(Precision + (Right.FValue.Size - Left.FValue.Size + 1) * 9 + 3);
 
   // Do the division of the scaled up dividend by the divisor. Quotient and remainder are needed.
 //  BigInteger.DivMod(BigInteger.Abs(Left.FValue) * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
   BigInteger.DivMod(Left.FValue * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
 
   // Calculate the scale that matches the division.
-  NewScale := RangeCheckedScale(TargetScale + LMultiplier);
+  LScale := RangeCheckedScale(TargetScale + LMultiplier);
 
   // Create a preliminary result.
-  Result.Create(LQuotient, NewScale);
+  Result.Create(LQuotient, LScale);
 
   // Reduce the precision, if necessary.
-  Result := Result.RoundToScale(RangeCheckedScale(NewScale + Precision - Result.Precision), ARoundingMode);
+  Result := Result.RoundToScale(RangeCheckedScale(LScale + Precision - Result.Precision), ARoundingMode);
 
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
-//$$RV: removing the following reduces the time by approx 20% (30s -> 24s).
-  InPlaceRemoveTrailingZeros(Result, TargetScale);
+  // This should be optional, as it is slower.
+//  InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
@@ -1424,6 +1431,7 @@ begin
     else
       Result := Infinity
   else
+  // * Denormals
   if LExponent < -16382 then
   begin
     LDiff := -16382 - LExponent;
@@ -1437,7 +1445,7 @@ begin
     LExtendedRec.Man := LMantissa;
     LExtendedRec.Exp := 0;
     if LSign < 0 then
-      LExtendedRec.Exp := LExtendedRec.Exp or $8000;
+      LExtendedRec.Exp := LExtendedRec.Exp or Int16($8000);
     Result := PExtended(@LExtendedRec)^;
   end
   else
