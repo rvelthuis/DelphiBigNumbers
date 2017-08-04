@@ -126,6 +126,10 @@
 {               So $123400000000000000000 div $4560000000000000000 is        }
 {               performed as $1234 div $456. The mod result is of course     }
 {               corrected.                                                   }
+{                                                                            }
+{   2017-01-15: Reworked SetBit, ClearBit and FlipBit.                       }
+{                                                                            }
+{   2017-07-14: Changed all manual aligns to use .ALIGN 16                   }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -133,6 +137,8 @@ unit Velthuis.BigIntegers;
 { TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc. }
 { TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
         bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time. }
+{ TODO: InternalMultiply (basecase): use MMX instead of plain registers. Also remove trailing loop, make 4
+        completely separate loop+trail parts. }
 
 { TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time.
   Should I do my own memory management? If so, how?
@@ -142,6 +148,27 @@ unit Velthuis.BigIntegers;
     @CopyRecord:     12.64%
 
   See BigIntSpeedTest.dpr
+}
+
+{ Note:
+  In a simple test,
+
+    T := T + BigMax; // where BigMax = 100000000000000000000
+
+  is twice as slow as
+
+    T.Add(BigMax);
+
+  I guess this is because T.Add(Other) is self-modifying (IOW, NOT immutable) and does not require a CopyRecord.
+
+  In other words, CopyRecord seems to be enormously costly. It doesn't make a lot of sense to optimize the
+  several InternalAddXXX functions as long as CopyRecord eats up most of the time.
+
+  Perhaps a
+
+    procedure BigInteger.Add(const Left, Right: BigInteger; var Result: BigInteger);
+
+  could make T := T + Other faster too?
 }
 
 interface
@@ -179,11 +206,9 @@ uses
 // For Delphi versions below XE8
 {$IF CompilerVersion < 29.0}
   {$IF (DEFINED(WIN32) OR DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
-    {$MESSAGE HINT 'Defining CPU32BITS'}
     {$DEFINE CPU32BITS}
   {$IFEND}
   {$IF (DEFINED(WIN64) OR DEFINED(CPUX64)) AND NOT DEFINED(CPU64BITS)}
-    {$MESSAGE HINT 'Defining CPU64BITS'}
     {$DEFINE CPU64BITS}
   {$IFEND}
 {$IFEND}
@@ -276,8 +301,8 @@ type
     {$ENDIF CPU64BITS}
   {$ELSE !PUREPASCAL}
     {$IFDEF CPU64BITS}                                          // 64A  = 64 bit, Assembler
-      KaratsubaThreshold             =  256;    // Checked
-      ToomCook3Threshold             =  768;    // Checked
+      KaratsubaThreshold             =   96;    // Checked
+      ToomCook3Threshold             =  256;    // Checked
       BurnikelZieglerThreshold       =  160;    // Checked
       BurnikelZieglerOffsetThreshold =   80;    // Unchecked
       KaratsubaSqrThreshold          =  256;    // Unchecked
@@ -502,37 +527,37 @@ type
     // -- Arithmetic operators --
 
     /// <summary>Adds two BigIntegers.</summary>
-    class operator Add(const Left, Right: BigInteger): BigInteger; inline;
+    class operator Add(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Subtracts the second BigInteger from the first.</summary>
-    class operator Subtract(const Left, Right: BigInteger): BigInteger; inline;
+    class operator Subtract(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Multiplies two BigIntegers.</summary>
-    class operator Multiply(const Left, Right: BigInteger): BigInteger; inline;
+    class operator Multiply(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Multiplies the specified BigInteger with the specified Word value.</summary>
-    class operator Multiply(const Left: BigInteger; Right: Word): BigInteger; inline;
+    class operator Multiply(const Left: BigInteger; Right: Word): BigInteger;
 
     /// <summary>multiplies the specified Wirdvalue with the specified BigInteger.</summary>
-    class operator Multiply(Left: Word; const Right: BigInteger): BigInteger; inline;
+    class operator Multiply(Left: Word; const Right: BigInteger): BigInteger;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left, Right: BigInteger): BigInteger; inline;
+    class operator IntDivide(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left: BigInteger; Right: UInt16): BigInteger; inline;
+    class operator IntDivide(const Left: BigInteger; Right: UInt16): BigInteger;
 
     /// <summary>Performs an integer divide of the first BigInteger by the second.
-    class operator IntDivide(const Left: BigInteger; Right: UInt32): BigInteger; inline;
+    class operator IntDivide(const Left: BigInteger; Right: UInt32): BigInteger;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left, Right: BigInteger): BigInteger; inline;
+    class operator Modulus(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left: BigInteger; Right: UInt32): BigInteger; inline;
+    class operator Modulus(const Left: BigInteger; Right: UInt32): BigInteger;
 
     /// <summary>Returns the remainder of an integer divide of the first BigInteger by the second.</summary>
-    class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger; inline;
+    class operator Modulus(const Left: BigInteger; Right: UInt16): BigInteger;
 
     /// <summary>Unary minus. Negates the value of the specified BigInteger.</summary>
     class operator Negative(const Value: BigInteger): BigInteger;
@@ -553,19 +578,19 @@ type
 
     /// <summary>Returns the result of the bitwise AND operation on its BigInteger operands. The result
     /// has two's complement semantics, e.g. '-1 and 7' returns '7'.</summary>
-    class operator BitwiseAnd(const Left, Right: BigInteger): BigInteger; inline;
+    class operator BitwiseAnd(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Returns the result of the bitwise OR operation on its BigInteger operands. The result
     /// has two's complement semantics, e.g. '-1 or 7' returns '-1'.</summary>
-    class operator BitwiseOr(const Left, Right: BigInteger): BigInteger; inline;
+    class operator BitwiseOr(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Returns the result of the bitwise XOR operation on its BigIntegers operands. The result
     /// has two's complement semantics, e.g. '-1 xor 7' returns '-8'.</summary>
-    class operator BitwiseXor(const Left, Right: BigInteger): BigInteger; inline;
+    class operator BitwiseXor(const Left, Right: BigInteger): BigInteger;
 
     /// <summary>Returns the result of the bitwise NOT operation on its BigInteger operand. The result
     /// has two's complement semantics, e.g. 'not 1' returns '-2'.</summary>
-    class operator LogicalNot(const Value: BigInteger): BigInteger; inline;
+    class operator LogicalNot(const Value: BigInteger): BigInteger;
 
 
     // -- Shift operators --
@@ -587,72 +612,72 @@ type
     // -- Comparison operators --
 
     /// <summary>Returns True if the specified BigIntegers have the same value.</summary>
-    class operator Equal(const Left, Right: BigInteger): Boolean; inline;
+    class operator Equal(const Left, Right: BigInteger): Boolean;
 
     /// <summary>Returns True if the specified BigInteger do not have the same value.</summary>
-    class operator NotEqual(const Left, Right: BigInteger): Boolean; inline;
+    class operator NotEqual(const Left, Right: BigInteger): Boolean;
 
     /// <summary>Returns true if the value of Left is mathematically greater than the value of Right.</summary>
-    class operator GreaterThan(const Left, Right: BigInteger): Boolean; inline;
+    class operator GreaterThan(const Left, Right: BigInteger): Boolean;
 
     /// <summary>Returns true if the value of Left is mathematically greater than or equal to the value
     ///   of Right.</summary>
-    class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
+    class operator GreaterThanOrEqual(const Left, Right: BigInteger): Boolean;
 
     /// <summary>Returns true if the value of Left is mathematically less than the value of Right.</summary>
-    class operator LessThan(const Left, Right: BigInteger): Boolean; inline;
+    class operator LessThan(const Left, Right: BigInteger): Boolean;
 
     /// <summary>Returns true if the value of Left is mathematically less than or equal to the
     ///   value of Right.</summary>
-    class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean; inline;
+    class operator LessThanOrEqual(const Left, Right: BigInteger): Boolean;
 
 
     // -- Implicit conversion operators --
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Integer to a BigInteger.</summary>
-    class operator Implicit(const Value: Integer): BigInteger; inline;
+    class operator Implicit(const Value: Integer): BigInteger;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Cardinal to a BigInteger.</summary>
-    class operator Implicit(const Value: Cardinal): BigInteger; inline;
+    class operator Implicit(const Value: Cardinal): BigInteger;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Int64 to a BigInteger.</summary>
-    class operator Implicit(const Value: Int64): BigInteger; inline;
+    class operator Implicit(const Value: Int64): BigInteger;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified UInt64 to a BigInteger.</summary>
-    class operator Implicit(const Value: UInt64): BigInteger; inline;
+    class operator Implicit(const Value: UInt64): BigInteger;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified string to a BigInteger. The BigInteger
     ///   is the result of a call to Parse(Value).</summary>
-    class operator Implicit(const Value: string): BigInteger; inline;
+    class operator Implicit(const Value: string): BigInteger;
 
 
     // -- Explicit conversion operators --
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Integer. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Integer; inline;
+    class operator Explicit(const Value: BigInteger): Integer;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Cardinal. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Cardinal; inline;
+    class operator Explicit(const Value: BigInteger): Cardinal;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Int64. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Int64; inline;
+    class operator Explicit(const Value: BigInteger): Int64;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an UInt64. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): UInt64; inline;
+    class operator Explicit(const Value: BigInteger): UInt64;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Double.</summary>
-    class operator Explicit(const Value: BigInteger): Double; inline;
+    class operator Explicit(const Value: BigInteger): Double;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified Double to a BigInteger.</summary>
-    class operator Explicit(const Value: Double): BigInteger; inline;
+    class operator Explicit(const Value: Double): BigInteger;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a string.</summary>
     /// <remarks>Calls Value.ToString to generate the result.</remarks>
-    class operator Explicit(const Value: BigInteger): string; inline;
+    class operator Explicit(const Value: BigInteger): string;
 
     // -- Conversion functions --
 
@@ -741,6 +766,7 @@ type
 
     // -- Self-referential operator functions --
 
+  {$IFNDEF BIGINTEGERIMMUTABLE}
     /// <summary>
     ///   <para>The functional equivalent to</para>
     ///   <code>    A := A + Other;</code>
@@ -762,6 +788,7 @@ type
 
     /// <summar>The functional equivalent to Self := Self * Other;</summary>
     function Multiply(const Other: BigInteger): PBigInteger; overload;
+  {$ENDIF}
 
 
     // -- Math functions --
@@ -1492,12 +1519,12 @@ var
   SignBit: Integer;
   Comparison: Integer;
 begin
-  if Pointer(Left.FData) = nil then
+  if not Assigned(Left.FData) then
   begin
     ShallowCopy(Right, Result);
     Exit;
   end
-  else if Pointer(Right.FData) = nil then
+  else if not Assigned(Right.FData) then
   begin
     ShallowCopy(Left, Result);
     Exit;
@@ -1515,8 +1542,7 @@ begin
   end
   else
   begin
-    Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask,
-                    Right.FSize and SizeMask);
+    Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
 
     if Comparison = 0 then
       Exit(Zero);
@@ -4275,6 +4301,25 @@ asm
         // Loop unrolled. Approx. 70% faster than simple loop.
 
         // TODO: Use MMX registers for multiplication and addition.
+        // E.g.
+        // MOV     MM7,ECX
+        // PXOR    MM6,MM6
+        // @Innerloop0:
+        // MOV     MM0,[ESI]
+        // MOV     MM1,[ESI + CLimbSize]
+        // MOV     MM2,[ESI + 2*CLimbSize]
+        // MOV     MM3,[ESI + 3*CLimbSize]
+        // PMULUDQ MM0,MM7
+        // PADDQ   MM6,MM0
+        // MOV     [ESI],MM6
+        // PSHRQ   MM6,32
+        // PMULUDQ MM1,MM7
+        // PADDQ   MM6,MM1
+        // MOV     [ESI+CLimbSize],MM6
+        // PSHRQ   MM6,32
+        // etc...
+        // @InnerLoopRest:
+        // Do the same as above, but add to existing content in [ESI+...]
 
         MOV     EAX,[ESI]                  // The following pattern is not faster:
         MUL     ECX                        // MOV    EAX,[ESI]
@@ -5383,11 +5428,13 @@ begin
   end;
 end;
 
+{$IFNDEF BIGINTEGERIMMUTABLE}
 function BigInteger.Divide(const Other: BigInteger): PBigInteger;
 begin
   Result := @Self;
   Self := Self div Other;
 end;
+{$ENDIF}
 
 class procedure BigInteger.DivMod(const Dividend, Divisor: BigInteger; var Quotient, Remainder: BigInteger);
 var
@@ -9181,6 +9228,7 @@ begin
   FSize := (FSize and SizeMask) or (Ord(Value < 0) * SignMask);
 end;
 
+{$IFNDEF BIGINTEGERIMMUTABLE}
 function BigInteger.Subtract(const Other: BigInteger): PBigInteger;
 var
   MinusOther: BigInteger;
@@ -9189,6 +9237,7 @@ begin
   MinusOther.FSize := MinusOther.FSize xor SignMask;
   Result := Add(MinusOther);
 end;
+{$ENDIF}
 
 class function BigInteger.Subtract(const Left, Right: BigInteger): BigInteger;
 const
@@ -9845,11 +9894,13 @@ begin
   end;
 end;
 
+{$IFNDEF BIGINTEGERIMMUTABLE}
 function BigInteger.Remainder(const Other: BigInteger): PBigInteger;
 begin
   Result := @Self;
   Self := Self mod Other;
 end;
+{$ENDIF}
 
 class operator BigInteger.RightShift(const Value: BigInteger; Shift: Integer): BigInteger;
 // Note: this emulates two's complement, more or less like the bitwise operators.
@@ -10009,6 +10060,7 @@ begin
   end;
 end;
 
+{$IFNDEF BIGINTEGERIMMUTABLE}
 function BigInteger.Add(const Other: BigInteger): PBigInteger;
 var
   SelfSize, OtherSize: Integer;
@@ -10054,6 +10106,7 @@ begin
   end;
   Compact;
 end;
+{$ENDIF}
 
 class procedure BigInteger.AvoidPartialFlagsStall(Value: Boolean);
 {$IFDEF PUREPASCAL}
@@ -10077,11 +10130,13 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF BIGINTEGERIMMUTABLE}
 function BigInteger.Multiply(const Other: BigInteger): PBigInteger;
 begin
   Result := @Self;
   Self := Self * Other;
 end;
+{$ENDIF}
 
 procedure FlipBigIntegerBit(var B: BigInteger; Index: Integer); inline;
 begin
