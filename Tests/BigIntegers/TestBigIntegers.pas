@@ -48,7 +48,7 @@ type
     procedure TestClearBit;
     procedure TestFlipBit;
     procedure TestAdd;
-    procedure TestAddFunction;
+//    procedure TestAddFunction;
     procedure TestInc;
     procedure TestDec;
     procedure TestSubtract;
@@ -268,30 +268,31 @@ begin
   end;
 end;
 
-procedure TTestBigInteger.TestAddFunction;
-var
-  I, J, N: Integer;
-begin
-  N := 0;
-  for I := 0 to High(Arguments) do
-  begin
-    A := Arguments[I];
-    for J := 0 to High(Arguments) do
-    begin
-      B := Arguments[J];
-      try
-        C := A;
-        C.Add(B);
-      except
-        on E: Exception do
-          Error(E.ClassName + ': ' + E.Message);
-      end;
-      D := AddResults[N].val;
-      Check(C = D, Format('(%d,%d) %s + %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
-      Inc(N);
-    end;
-  end;
-end;
+// Only test this if BIGINTEGERIMMUTABLE is NOT defined.
+//procedure TTestBigInteger.TestAddFunction;
+//var
+//  I, J, N: Integer;
+//begin
+//  N := 0;
+//  for I := 0 to High(Arguments) do
+//  begin
+//    A := Arguments[I];
+//    for J := 0 to High(Arguments) do
+//    begin
+//      B := Arguments[J];
+//      try
+//        C := A;
+//        C.Add(B);
+//      except
+//        on E: Exception do
+//          Error(E.ClassName + ': ' + E.Message);
+//      end;
+//      D := AddResults[N].val;
+//      Check(C = D, Format('(%d,%d) %s + %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
+//      Inc(N);
+//    end;
+//  end;
+//end;
 
 procedure TTestBigInteger.TestSetBit;
 var
