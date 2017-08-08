@@ -7246,10 +7246,10 @@ begin
   if Self.IsZero then
     Exit(0.0);
 
-  ConvertToFloatComponents(Self, ExtendedSignificandBits, LSign, LMantissa, LExponent);
+  ConvertToFloatComponents(Self, KExtendedSignificandBits, LSign, LMantissa, LExponent);
 
   // Handle overflow.
-  if LExponent > ExtendedMaxExponent then
+  if LExponent > KExtendedMaxExponent then
     if LSign < 0 then
       Result := NegInfinity
     else
