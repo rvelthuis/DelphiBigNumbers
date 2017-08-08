@@ -134,42 +134,20 @@
 
 unit Velthuis.BigIntegers;
 
-{ TODO: modular arithmetic. Modular inverse, modular division and multiplication. Barrett, Montgomery, etc. }
+{ TODO:
+  - Remove local BigIntegers where possible. Removing Res from class function BigInteger.Add sped
+    it up by 15%. Instead of a local BigInteger, Add now uses ResData and ResSize local variables.
+  - Remove inline from operators. Removing it from class operator Add sped it up by another 15%.
+    This is because inlining generated a try-finally around code like T := T + U; even in a tight
+    loop.
+  - Add a Compact(var Data, var Size) for the above.
+}
+{ TODO: modular arithmetic. Modular division and multiplication. Barrett, Montgomery, etc. }
 { TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
         bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time. }
 { TODO: InternalMultiply (basecase): use MMX instead of plain registers. Also remove trailing loop, make 4
         completely separate loop+trail parts. }
-
-{ TODO: Profiling showed that @DynArrayAsg, @DynArrayClear and @CopyRecord take up most of the time.
-  Should I do my own memory management? If so, how?
-
-    @DynArrayAsg:    40.46%
-    @DynArrayClear:  18.34%
-    @CopyRecord:     12.64%
-
-  See BigIntSpeedTest.dpr
-}
-
-{ Note:
-  In a simple test,
-
-    T := T + BigMax; // where BigMax = 100000000000000000000
-
-  is twice as slow as
-
-    T.Add(BigMax);
-
-  I guess this is because T.Add(Other) is self-modifying (IOW, NOT immutable) and does not require a CopyRecord.
-
-  In other words, CopyRecord seems to be enormously costly. It doesn't make a lot of sense to optimize the
-  several InternalAddXXX functions as long as CopyRecord eats up most of the time.
-
-  Perhaps a
-
-    procedure BigInteger.Add(const Left, Right: BigInteger; var Result: BigInteger);
-
-  could make T := T + Other faster too?
-}
+{ TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
 
 interface
 
@@ -222,6 +200,11 @@ uses
 {$IF CompilerVersion >= 22.0}
   {$CODEALIGN 16}
   {$ALIGN 16}
+{$IFEND}
+
+// For Win32:
+{$IF SizeOf(Extended) > SizeOf(Double)}
+  {$DEFINE HasExtended}
 {$IFEND}
 
 // Assembler is only supplied for Windows targets.
@@ -333,7 +316,7 @@ type
     constructor Create(const Limbs: array of TLimb; Negative: Boolean); overload;
 
     /// <summary>Creates a new BigInteger from the data in limbs and the sign specified in Negative.</summary>
-    /// <param name="Data">data for the magnitude of the BigInteger. The data is interpreted as unsigned,
+    /// <param name="Magnitude">data for the magnitude of the BigInteger. The data is interpreted as unsigned,
     ///   and comes low limb first.</param>
     /// <param name="Negative">Indicates if the BigInteger is negative.</param>
     constructor Create(const Magnitude: TMagnitude; Negative: Boolean); overload;
@@ -400,7 +383,7 @@ type
     ///   Returns False if this failed.</summary>
     /// <param name="S">The string that represents a big integer value in the specified numeric base.</param>
     /// <param name="Base">The numeric base that is assumed when parsing the string. Valid values are 2..36.</param>
-    /// <param name="Res">The resulting BigInteger, if the parsing succeeds. Res is undefined if the
+    /// <param name="Value">The resulting BigInteger, if the parsing succeeds. Value is undefined if the
     ///   parsing fails.</param>
     /// <returns>Returns True if S could be parsed into a valid BigInteger in Res. Returns False on failure.</returns>
     class function TryParse(const S: string; Base: TNumberBase; out Value: BigInteger): Boolean; overload; static;
@@ -417,7 +400,7 @@ type
     ///   numeric base.</summary>
     /// <param name="S">The string that represents a big integer value in the default numeric base, unless
     ///   specified otherwise. See <see cref="BigInteger.Base" /></param>
-    /// <param name="Res">The resulting BigInteger, if the parsing succeeds. Res is undefined if the parsing
+    /// <param name="Value">The resulting BigInteger, if the parsing succeeds. Value is undefined if the parsing
     ///   fails.</param>
     /// <returns>Returns True if S could be parsed into a valid BigInteger in Res. Returns False on failure.</returns>
     /// <remarks>
@@ -443,7 +426,7 @@ type
     ///     </param>
     ///   </para>
     /// </remarks>
-    class function TryParse(const S: string; out Res: BigInteger): Boolean; overload; static;
+    class function TryParse(const S: string; out Value: BigInteger): Boolean; overload; static;
 
     /// <summary>Parses the specified string into a BigInteger, using the default numeric base.</summary>
     class function Parse(const S: string): BigInteger; static;
@@ -520,8 +503,6 @@ type
     /// <summary>Returns the string interpretation of the specified BigInteger in numeric base 8. Equivalent
     ///   to ToString(8).</summary>
     function ToOctalString: string;
-
-    procedure FromString(const Value: string);
 
 
     // -- Arithmetic operators --
@@ -669,8 +650,16 @@ type
     ///   value of the BigInteger is truncated to fit in the result.</summary>
     class operator Explicit(const Value: BigInteger): UInt64;
 
+  {$IFDEF HasExtended}
+    /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Extended.</summary>
+    class operator Explicit(const Value: BigInteger): Extended;
+  {$ENDIF}
+
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Double.</summary>
     class operator Explicit(const Value: BigInteger): Double;
+
+    /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Single.</summary>
+    class operator Explicit(const Value: BigInteger): Single;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified Double to a BigInteger.</summary>
     class operator Explicit(const Value: Double): BigInteger;
@@ -679,11 +668,22 @@ type
     /// <remarks>Calls Value.ToString to generate the result.</remarks>
     class operator Explicit(const Value: BigInteger): string;
 
+
     // -- Conversion functions --
 
-    /// <summary>Converts the specified BigInteger to a Double, if this is possible. Returns an exception if the
+    /// <summary>Converts the specified BigInteger to a Single, if this is possible. Returns an infinity if the
+    ///   value of the BigInteger is too large.</summary>
+    function AsSingle: Single;
+
+    /// <summary>Converts the specified BigInteger to a Double, if this is possible. Returns an infinity if the
     ///   value of the BigInteger is too large.</summary>
     function AsDouble: Double;
+
+  {$IFDEF HasExtended}
+    /// <summary>Converts the specified BigInteger to an Extended, if this is possible. Returns an infinity if the
+    ///   value of the BigInteger is too large.</summary>
+    function AsExtended: Extended;
+  {$ENDIF}
 
     /// <summary>Converts the specified BigInteger to an Integer, if this is possible. Returns an exception if the
     ///   value of the BigInteger is too large.</summary>
@@ -706,9 +706,11 @@ type
 
     /// <summary>The function equivalent to the operator '+'.</summary>
     class function Add(const Left, Right: BigInteger): BigInteger; overload; static;
+    class procedure Add(const Left, Right: BigInteger; var Result: BigInteger); overload; static;
 
     /// <summary>The function equivalent to the operator '-'.</summary>
     class function Subtract(const Left, Right: BigInteger): BigInteger; overload; static;
+    class procedure Subtract(const Left, Right: BigInteger; var Result: BigInteger); overload; static;
 
     /// <summary>The function equivalent to the operator '*'.</summary>
     class function Multiply(const Left, Right: BigInteger): BigInteger; overload; static;
@@ -733,8 +735,9 @@ type
     class procedure DivModKnuth(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
 
     /// <summary>Recursive "schoolbook" division, as described by Burnikel and Ziegler. Faster than
-    /// <see cref="DivModBaseCase" />, but with more overhead, so should only be applied for
+    /// <see cref="DivModKnuth" />, but with more overhead, so should only be applied for
     ///   larger BigIntegers.</summary>
+    /// <remark>For smaller BigIntegers, this routine falls back to DivModKnuth.
     class procedure DivModBurnikelZiegler(const Left, Right: BigInteger; var Quotient, Remainder: BigInteger); static;
 
     /// <summary>The function equivalent to the operator 'div'.</summary>
@@ -965,14 +968,17 @@ type
     class procedure InternalDivideBy3(Value, Result: PLimb; ASize: Integer); static;
     // Internal function dividing magnitude by 100, in-place. Leaves quotient in place, returns remainder.
     class function InternalDivMod100(var X: NativeUInt): NativeUInt; static;
-    // Function performing int to string conversion, writing to WritePtr
+    // Function performing int to string conversion, writing to WritePtr.
     class procedure InternalIntToStrDecimal(const Value: NativeUInt; var WritePtr: PChar; MaxDigits: Integer); static;
+    // Function calculating floating point components out of a BigInteger.
   {$ELSE}
     // Internal function adding two magnitudes. Pure Pascal (non-assembler) implementation.
     class procedure InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     // Internal function subtracting two magnitudes. Pure Pascal (non-assembler) implementation.
     class procedure InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
   {$ENDIF}
+    class procedure ConvertToFloatComponents(const Value: BigInteger; SignificandSize: Integer;
+      var Sign: Integer; var Significand: UInt64; var Exponent: Integer); static;
     // Internal function comparing two magnitudes.
     class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer; static;
     // Internal function and-ing two magnitudes.
@@ -1047,8 +1053,9 @@ type
     // Raises exceptions depending on given error code.
     class procedure Error(ErrorCode: TErrorCode; const ErrorInfo: string = ''); static;
 
+    class procedure Compact(var Data: TMagnitude; var Size: Integer); overload; static;
     // Resets size thus that there are no leading zero limbs.
-    procedure Compact;
+    procedure Compact; overload;
     // Reallocates magnitude to ensure a given size.
     procedure EnsureSize(RequiredSize: Integer);
     // Creates a new magnitude.
@@ -1110,7 +1117,7 @@ uses
 {$IFDEF DEBUG}
   Winapi.Windows,
 {$ENDIF}
-  Velthuis.Sizes, Velthuis.Numerics;
+  Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils;
 
 {$POINTERMATH ON}
 
@@ -1486,6 +1493,19 @@ begin
   Move(Src^, Dest^, Count * CLimbSize);
 end;
 
+// Replacement for SetLength() only for TMagnitudes, i.e. dynamic arrays of TLimb.
+procedure AllocNewMagnitude(var FData: Pointer; RequiredSize: Integer);
+var
+  NewData: PByte;
+  NewSize: Integer;
+begin
+  NewSize := (RequiredSize + 4) and BigInteger.CapacityMask;
+  NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
+  PDynArrayRec(NewData).RefCnt := 1;
+  PDynArrayRec(NewData).Length := NewSize;
+  FData := NewData + SizeOf(TDynArrayRec);
+end;
+
 { BigInteger }
 
 procedure ShallowCopy(const Value: BigInteger; var Result: BigInteger); inline;
@@ -1513,11 +1533,17 @@ begin
 end;
 
 class function BigInteger.Add(const Left, Right: BigInteger): BigInteger;
+begin
+  Add(Left, Right, Result);
+end;
+
+class procedure BigInteger.Add(const Left, Right: BigInteger; var Result: BigInteger);
 var
-  Res: BigInteger;
-  LSize, RSize: Integer;
-  SignBit: Integer;
+  LSize, RSize, ResSize: Integer;
+  LSign, RSign, ResSign: Integer;
+  NewSize: Integer;
   Comparison: Integer;
+  ResData: TMagnitude;
 begin
   if not Assigned(Left.FData) then
   begin
@@ -1532,40 +1558,59 @@ begin
 
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
-  Res.MakeSize(IntMax(LSize, RSize) + 1);
+  LSign := Left.FSize and SignMask;
+  RSign := Right.FSize and SignMask;
+  ResSize := IntMax(LSize, RSize) + 1;
+  AllocNewMagnitude(Pointer(ResData), (ResSize + 3) and CapacityMask);
 
-  if ((Left.FSize xor Right.FSize) and SignMask) = 0 then
+  if LSign = RSign then
   begin
     // Same sign: add both magnitudes and transfer sign.
-    FInternalAdd(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
-    SignBit := Left.FSize and SignMask;
+    FInternalAdd(PLimb(Left.FData), PLimb(Right.FData), PLimb(ResData), LSize, RSize);
+    ResSign := LSign;
   end
   else
   begin
     Comparison := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
 
     if Comparison = 0 then
-      Exit(Zero);
+    begin
+      Result := Zero;
+      Exit;
+    end;
 
     if Comparison < 0 then
     begin
-      FInternalSubtract(PLimb(Right.FData), PLimb(Left.FData), PLimb(Res.FData), RSize, LSize);
-      SignBit := Right.FSize and SignMask;
+      FInternalSubtract(PLimb(Right.FData), PLimb(Left.FData), PLimb(ResData), RSize, LSize);
+      ResSign := RSign;
     end
     else
     begin
-      FInternalSubtract(PLimb(Left.FData), PLimb(Right.FData), PLimb(Res.FData), LSize, RSize);
-      SignBit := Left.FSize and SignMask;
+      FInternalSubtract(PLimb(Left.FData), PLimb(Right.FData), PLimb(ResData), LSize, RSize);
+      ResSign := LSign;
     end;
   end;
-  Res.FSize := (Res.FSize and SizeMask) or SignBit;
-  Res.Compact;
-  ShallowCopy(Res, Result);
+
+  NewSize := FindSize(PLimb(ResData), ResSize);
+  if NewSize = 0 then
+  begin
+    Result.FSize := 0;
+    Result.FData := nil;
+  end
+  else
+  begin
+  {$IFDEF RESETSIZE}
+    if NewSize < (2 * ResSize div 3) then
+      SetLength(ResData, NewSize);
+  {$ENDIF}
+    Result.FSize := NewSize or ResSign;
+    Result.FData := ResData;
+  end;
 end;
 
 class operator BigInteger.Add(const Left, Right: BigInteger): BigInteger;
 begin
-  Result := Add(Left, Right);
+  Add(Left, Right, Result);
 end;
 
 class procedure BigInteger.Binary;
@@ -2704,33 +2749,37 @@ begin
   DeepCopy(Self, Result);
 end;
 
-
-procedure BigInteger.Compact;
+class procedure BigInteger.Compact(var Data: TMagnitude; var Size: Integer);
 var
   NewSize: Integer;
 begin
-  if FData = nil then
+  if Data = nil then
   begin
-    FSize := 0;
+    Size := 0;
     Exit;
   end;
 
-  NewSize := FindSize(PLimb(FData), FSize and SizeMask);
-  if NewSize < (FSize and SizeMask) then
+  NewSize := FindSize(PLimb(Data), Size and SizeMask);
+  if NewSize < (Size and SizeMask) then
   begin
     if NewSize = 0 then
     begin
-      FSize := 0;
-      FData := nil;
+      Size := 0;
+      Data := nil;
     end
     else
     begin
-      FSize := SignBitOf(FSize) or NewSize;
+      Size := SignBitOf(Size) or NewSize;
     {$IFDEF RESETSIZE}
-      SetLength(FData, (NewSize + 4) and CapacityMask);
+      SetLength(Data, (NewSize + 4) and CapacityMask);
     {$ENDIF}
     end;
   end;
+end;
+
+procedure BigInteger.Compact;
+begin
+  Compact(FData, FSize);
 end;
 
 class function BigInteger.Compare(const Left, Right: BigInteger): Integer;
@@ -3200,13 +3249,12 @@ asm
         PUSH    EDI
         PUSH    EBX
 
-        MOV     ESI,EAX
-        MOV     EDI,EDX
-        MOV     EBX,ECX
+        MOV     ESI,EAX                 // ESI: Left
+        MOV     EDI,EDX                 // EDI: Right
+        MOV     EBX,ECX                 // EBX: Result
 
         MOV     ECX,RSize
         MOV     EDX,LSize
-
         CMP     EDX,ECX
         JAE     @SkipSwap
         XCHG    ECX,EDX
@@ -3215,16 +3263,14 @@ asm
 @SkipSwap:
 
         SUB     EDX,ECX
-        PUSH    EDX
-
-        XOR     EAX,EAX
-
-        MOV     EDX,ECX
-        AND     EDX,CunrollMask
-        SHR     ECX,CunrollShift
-
+        PUSH    EDX                     // Difference in sizes --> length of rest loop.
+        MOV     EDX,ECX                 // Smallest size.
+        AND     EDX,CUnrollMask         // 0, 1, 2 or 3 rest limbs in main loop.
+        SHR     ECX,CUnrollShift        // length of unrolled main loop.
         CLC
         JE      @MainTail
+
+        .ALIGN  16
 
 @MainLoop:
 
@@ -3248,9 +3294,7 @@ asm
         LEA     EDI,[EDI + CUnrollIncrement*CLimbSize]
         LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
 
-        LEA     ECX,[ECX - 1]
-        JECXZ   @Maintail
-        JMP     @Mainloop
+        LOOP    @Mainloop
 
 @MainTail:
 
@@ -3260,8 +3304,6 @@ asm
 
         LEA     ECX,[@JumpsMain]
         JMP     [ECX + EDX*TYPE Pointer]
-
-        .ALIGN  16
 
 @JumpsMain:
 
@@ -3291,17 +3333,15 @@ asm
 @DoRestLoop:
 
         SETC    AL                      // Save Carry Flag
-
         XOR     EDI,EDI
-
         POP     ECX
         MOV     EDX,ECX
         AND     EDX,CUnrollMask
         SHR     ECX,CUnrollShift
-
         ADD     AL,255                  // Restore Carry Flag.
-
         JECXZ   @RestLastN
+
+        .ALIGN  16
 
 @RestLoop:
 
@@ -3324,9 +3364,7 @@ asm
         LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
         LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
 
-        LEA     ECX,[ECX - 1]
-        JECXZ   @RestLastN
-        JMP     @RestLoop
+        LOOP    @RestLoop
 
 @RestLastN:
 
@@ -3335,8 +3373,6 @@ asm
 
         LEA     ECX,[@RestJumps]
         JMP     [ECX + EDX*TYPE Pointer]
-
-        .ALIGN  16
 
 @RestJumps:
 
@@ -3396,6 +3432,8 @@ asm
         CLC
         JE      @MainTail
 
+        .ALIGN  16
+
 @MainLoop:
 
         MOV     RAX,[R10]
@@ -3419,9 +3457,7 @@ asm
         LEA     RCX,[@MainJumps]
         JMP     [RCX + R9*TYPE Pointer]
 
-        // Align jump table manually, with NOPs.
-
-        DB      $90,$90,$90,$90
+        .ALIGN  16
 
 @MainJumps:
 
@@ -3483,6 +3519,8 @@ asm
 
         JECXZ   @RestLast3
 
+        .ALIGN  16
+
 @RestLoop:
 
         MOV     RAX,[R10]
@@ -3505,9 +3543,7 @@ asm
         LEA     RCX,[@RestJumps]
         JMP     [RCX + R9*TYPE Pointer]
 
-        // If necessary, align second jump table with NOPs.
-
-        DB      $90,$90,$90,$90,$90,$90
+        .ALIGN  16
 
 @RestJumps:
 
@@ -5149,7 +5185,7 @@ end;
 
 // By default, uses FBase as numeric base, otherwise, if string "starts" with $, 0x, 0b or 0o, uses
 // 16, 16 (both hex), 2 (binary) and 8 (octal) respectively.
-class function BigInteger.TryParse(const S: string; out Res: BigInteger): Boolean;
+class function BigInteger.TryParse(const S: string; out Value: BigInteger): Boolean;
 var
   LTrimmed: string;
   LIsNegative: Boolean;
@@ -5180,7 +5216,7 @@ begin
         case P^ of
           #0:
             begin
-              Res := Zero;
+              Value := Zero;
               Exit(True);
             end;
           'B':                  // 0b prefix indicates binary (equivalent to %2r)
@@ -5213,9 +5249,9 @@ begin
         LBase := LBaseNew;
       end;
   end;
-  Result := TryParse(P, LBase, Res);
+  Result := TryParse(P, LBase, Value);
   if Result and LIsNegative then
-    Res := -Res;
+    Value := -Value;
 end;
 
 // cf. Brent, Zimmermann, "Modern Computer Arithmetic", algorithm 1.23
@@ -7099,136 +7135,130 @@ begin
   Result := (FData[BitNum div 32] and (1 shl (BitNum and 31))) <> 0
 end;
 
-function BigInteger.AsDouble: Double;
-const
-  BitMasks: array[0..31] of Cardinal = // $FFFFFFFF shl (31 - Index)
-  (
-    $00000001, $00000003, $00000007, $0000000F, $0000001F, $0000003F, $0000007F, $000000FF,
-    $000001FF, $000003FF, $000007FF, $00000FFF, $00001FFF, $00003FFF, $00007FFF, $0000FFFF,
-    $0001FFFF, $0003FFFF, $0007FFFF, $000FFFFF, $001FFFFF, $003FFFFF, $007FFFFF, $00FFFFFF,
-    $01FFFFFF, $03FFFFFF, $07FFFFFF, $0FFFFFFF, $1FFFFFFF, $3FFFFFFF, $7FFFFFFF, $FFFFFFFF
-  );
-
-  // The four values below will result in exactly the same value as: Result := StrToFloat(Self.ToString);
-  ExponentBias = 1023;                  // DO NOT CHANGE!!!
-  SignificandBits = 52;                 // DO NOT CHANGE!!!
-  GuardOffset = SignificandBits + 2;    // DO NOT CHANGE!!!
-  ExponentBits = 11;                    // DO NOT CHANGE!!!
-
-  ExponentShift = SignificandBits - CUInt32Bits;
-  ExponentMask = Pred(1 shl ExponentBits);
-  SignificandMask = Pred(1 shl ExponentShift);
+class procedure BigInteger.ConvertToFloatComponents(const Value: BigInteger; SignificandSize: Integer;
+  var Sign: Integer; var Significand: UInt64; var Exponent: Integer);
 var
-  BitLen: Integer;
-  StickyIndex: Integer;
-  StickyBits: TLimb;
-  Guard, Round: Boolean;
-  NumLeadingZeroes, K, I: Integer;
-  LSize: Integer;
-  Res: packed record
-    case Byte of
-      0: (Dbl: Double);
-      1: (Bits: UInt64);
-      2: (Lo, Hi: UInt32);
-  end;
+  LRemainder, LLowBit, LSignificand: BigInteger;
+  LBitLen: Integer;
 begin
-  BitLen := BitLength;
-  if BitLen > 1025 then
-    if FSize < 0 then
-      Exit(NegInfinity)
-    else
-      Exit(Infinity);
-//    Error(ecConversion, 'Double');
-  if BitLen <= CInt64Bits then
-    Result := AsInt64
+  if Value.IsNegative then
+    Sign := -1
+  else
+    Sign := 1;
+
+  Exponent := 0;
+  LSignificand := BigInteger.Abs(Value);
+
+  LBitLen := LSignificand.BitLength;
+  if LBitLen > SignificandSize then
+  begin
+    // --- Shift down and adjust exponent.
+
+    // Get lowest bit.
+    LLowBit := BigInteger.One shl (LBitLen - SignificandSize);
+
+    // Mask out bits being shifted out and save them for later.
+    LRemainder := (LSignificand and (LLowBit - BigInteger.One)) shl 1;
+
+    // Shift significand until it fits in SignificandSize (in bits).
+    LSignificand := LSignificand shr (LBitLen - SignificandSize);
+    Inc(Exponent, LBitLen - 1);
+
+    // --- Round
+    if (LRemainder > LLowBit) or ((LRemainder = LLowBit) and not LSignificand.IsEven) then
+    begin
+      LSignificand := LSignificand + BigInteger.One;
+      if LSignificand.BitLength > SignificandSize then
+      begin
+        LSignificand := LSignificand shr 1;
+        Inc(Exponent);
+      end;
+    end;
+  end
   else
   begin
-    LSize := Size;
-
-    // Form significand from top 53 bits of BigInteger.
-    NumLeadingZeroes := (CLimbBits - BitLen) and 31;
-    if NumLeadingZeroes > 11 then
-    begin
-
-      // 53 bits spread over 3 limbs, e.g.:
-      // FData[LSize-1]                   FData[LSize-2]                   FData[LSize-3]
-      // 10----5----0----5----0----5----0 10----5----0----5----0----5----0 10----5----0----5----0----5----0
-      // 000000000000000000000000000AAAAA BBBBBBBBBBBBBBBbbbbbbbbbbbbbbbbb CCCCCCCCCCCCCCCC****************
-
-      K := NumLeadingZeroes - 11;
-      Res.Hi := (FData[LSize - 1] shl K) or (FData[LSize - 2] shr (CLimbBits - K)); { a shl K or b shr (31 - K) }
-      Res.Lo := (FData[LSize - 2] shl K) or (FData[LSize - 3] shr (CLimbBits - K)); { b shl K or c shr (31 - K) }
-
-      // Res.Hi                           Res.Lo
-      // 10----5----0----5----0----5----0 10----5----0----5----0----5----0
-      // 00000000000AAAAABBBBBBBBBBBBBBBB bbbbbbbbbbbbbbbbCCCCCCCCCCCCCCCC
-
-    end
-    else
-    begin
-
-      // 53 bits spread over 2 limbs, e.g.:
-      // FData[LSize-1]                   FData[LSize-2]
-      // 10----5----0----5----0----5----0 10----5----0----5----0----5----0
-      // 000000AAAAAAAAAAAAAAAAAAAAAaaaaa BBBBBBBBBBBBBBBBBBBBBBBBBBB*****
-
-      Res.Hi := FData[LSize - 1];
-      Res.Lo := FData[LSize - 2];
-      if NumLeadingZeroes < 11 then
-        Res.Bits := Res.Bits shr (11 - NumLeadingZeroes);
-
-      // Res.Hi                           Res.Lo
-      // 10----5----0----5----0----5----0 10----5----0----5----0----5----0
-      // 00000000000AAAAAAAAAAAAAAAAAAAAA aaaaaBBBBBBBBBBBBBBBBBBBBBBBBBBB
-
-    end;
-
-    // Rounding, using guard, round and sticky bit.
-    // Guard is bit directly below lowest bit of significand, Round bit is one below that,
-    // and Sticky bit is the accumulation of all bits below the other two.
-
-    // BGRS - Action (slightly modified; B is lowest bit of significand)
-    // x0xx - round down = do nothing (x means any bit value, 0 or 1)
-    // 0100 - round down = do nothing
-    // 1100 - round up
-    // x101 - round up
-    // x110 - round up
-    // x111 - round up
-    // In other words: round up if and only if G=1 and at least one of the other bits is set. See below.
-
-    // Collect all bits below round bit into sticky bit.
-    StickyIndex := BitLen - GuardOffset - 2;
-
-    StickyBits := 0;
-    // First collect from limbs below sticky bit.
-    for I := 0 to StickyIndex div 32 - 1 do
-      StickyBits := StickyBits or FData[I];
-    // Then include bits up to the sticky bit.
-    StickyBits := StickyBits or (FData[StickyIndex div CLimbBits] and BitMasks[StickyIndex and (ClimbBits - 1)]);
-
-    // Get guard and round bits.
-    Round := GetBitAt(PLimb(FData), StickyIndex + 1);
-    Guard := GetBitAt(PLimb(FData), StickyIndex + 2);
-
-    // See table above.
-    if Guard and (Odd(Res.Lo) or Round or (StickyBits <> 0)) then
-      Res.Bits := Res.Bits + 1;
-
-    // Beware of overflowing the significand!
-    if Res.Bits > $1FFFFFFFFFFFFF then
-    begin
-      Res.Bits := Res.Bits shr 1;
-      Inc(BitLen);
-    end;
-
-    // Remove hidden bit and place exponent and sign bit to form a complete Double.
-    Res.Hi := (Res.Hi and SignificandMask) or                           // top of significand, hidden bit removed
-              UInt32(((BitLen - 1 + ExponentBias) and ExponentMask) shl ExponentShift) or       // exponent, biased
-              UInt32(SignBitOf(FSize));                                                         // sign bit
-
-    Result := Res.Dbl;
+    LSignificand := LSignificand shl (SignificandSize - LBitLen);
+    Inc(Exponent, LBitLen - 1);
   end;
+  Significand := LSignificand.AsUInt64;
 end;
+
+const
+  // Number of bits in full significand (including hidden bit, if any)
+  // of IEEE-754 floating point types.
+  KSingleSignificandBits          = 24;
+  KDoubleSignificandBits          = 53;
+  KExtendedSignificandBits        = 64;
+
+  // Maximum possible exponents for IEEE-754 floating point types.
+  KSingleMaxExponent              = 127;
+  KDoubleMaxExponent              = 1023;
+  KExtendedMaxExponent            = 16383;
+
+function BigInteger.AsSingle: Single;
+var
+  LSign, LExponent: Integer;
+  LMantissa: UInt64;
+begin
+  if Self.IsZero then
+    Exit(0.0);
+
+  ConvertToFloatComponents(Self, KSingleSignificandBits, LSign, LMantissa, LExponent);
+
+  // Handle overflow.
+  if LExponent > KSingleMaxExponent then
+    if LSign < 0 then
+      Result := NegInfinity
+    else
+      Result := Infinity
+    // No need to check for denormals.
+  else
+    Result := Velthuis.FloatUtils.MakeSingle(LSign, LMantissa, LExponent);
+end;
+
+function BigInteger.AsDouble: Double;
+var
+  LSign, LExponent: Integer;
+  LMantissa: UInt64;
+begin
+  if Self.IsZero then
+    Exit(0.0);
+
+  ConvertToFloatComponents(Self, KDoubleSignificandBits, LSign, LMantissa, LExponent);
+
+  // Handle overflow.
+  if LExponent > KDoubleMaxExponent then
+    if LSign < 0 then
+      Result := NegInfinity
+    else
+      Result := Infinity
+    // No need to check for denormals.
+  else
+    Result := Velthuis.FloatUtils.MakeDouble(LSign, LMantissa, LExponent);
+end;
+
+{$IFDEF HasExtended}
+function BigInteger.AsExtended: Extended;
+var
+  LSign, LExponent: Integer;
+  LMantissa: UInt64;
+begin
+  if Self.IsZero then
+    Exit(0.0);
+
+  ConvertToFloatComponents(Self, ExtendedSignificandBits, LSign, LMantissa, LExponent);
+
+  // Handle overflow.
+  if LExponent > ExtendedMaxExponent then
+    if LSign < 0 then
+      Result := NegInfinity
+    else
+      Result := Infinity
+    // No need to check for denormals.
+  else
+    Result := Velthuis.FloatUtils.MakeExtended(LSign, LMantissa, LExponent);
+end;
+{$ENDIF}
 
 function BigInteger.AsInt64: Int64;
 begin
@@ -9240,23 +9270,31 @@ end;
 {$ENDIF}
 
 class function BigInteger.Subtract(const Left, Right: BigInteger): BigInteger;
+begin
+  Subtract(Left, Right, Result);
+end;
+
+class procedure BigInteger.Subtract(const Left, Right: BigInteger; var Result: BigInteger);
 const
   BoolMasks: array[Boolean] of Integer = (SignMask, 0);
 var
   Largest, Smallest: PBigInteger;
-  InternalResult: BigInteger;
+  LSize, SSize: Integer;
+  ResData: TMagnitude;
+  ResSize: Integer;
+  NewSize: Integer;
   Comparison: Integer;
 begin
   if Left.FData = nil then
   begin
-    ShallowCopy(Right, Result);
+    Result := Right;
     if Result.FSize <> 0 then
       Result.FSize := Result.FSize xor SignMask;
     Exit;
   end;
   if Right.FData = nil then
   begin
-    ShallowCopy(Left, Result);
+    Result := Left;
     Exit;
   end;
 
@@ -9264,7 +9302,7 @@ begin
                   Right.FSize and SizeMask);
   if (Comparison = 0) and (Left.Sign = Right.Sign) then
   begin
-    ShallowCopy(Zero, Result);
+    Result := Zero;
     Exit;
   end;
 
@@ -9279,21 +9317,40 @@ begin
     Smallest := @Left;
   end;
 
-  InternalResult.MakeSize((Largest^.FSize and SizeMask) + 1);
+  SSize := Smallest^.FSize and SizeMask;
+  LSize := Largest^.FSize and SizeMask;
+  ResSize := LSize + 1;
+  SetLength(ResData, (ResSize + 3) and CapacityMask);
+
   if Largest^.Sign = Smallest^.Sign then
-    FInternalSubtract(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(InternalResult.FData),
-      Largest^.FSize and SizeMask, Smallest^.FSize and SizeMask)
+    // Same sign: subtract magnitudes.
+    FInternalSubtract(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(ResData), LSize, SSize)
   else
-    FInternalAdd(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(InternalResult.FData),
-      Largest^.FSize and SizeMask, Smallest^.FSize and SizeMask);
-  InternalResult.FSize := (InternalResult.FSize and SizeMask) or BoolMasks[(Largest^.FSize < 0) xor (Largest = @Left)];
-  InternalResult.Compact;
-  Result := InternalResult;
+    // Different sign: add magnitudes.
+    FInternalAdd(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(ResData), LSize, SSize);
+
+  // Compact and set sign.
+  NewSize := FindSize(PLimb(ResData), ResSize);
+  if NewSize = 0 then
+  begin
+    Result := Zero;
+    Exit;
+  end
+  else
+  begin
+    {$IFDEF RESETSIZE}
+    if NewSize < (ResSize + 3) and CapacityMask then
+      SetLength(ResData, (NewSize + 3) and CapacityMask);
+    {$ENDIF}
+    // Set sign and size.
+    Result.FSize := NewSize or BoolMasks[(Largest^.FSize < 0) xor (Largest = @Left)];
+    Result.FData := ResData;
+  end;
 end;
 
 class operator BigInteger.Subtract(const Left, Right: BigInteger): BigInteger;
 begin
-  Result := Subtract(Left, Right);
+  Subtract(Left, Right, Result);
 end;
 
 procedure BigInteger.EnsureSize(RequiredSize: Integer);
@@ -9302,19 +9359,6 @@ begin
   if RequiredSize > Length(FData) then
     SetLength(FData, (RequiredSize + 4) and CapacityMask);
   FSize := (FSize and SignMask) or RequiredSize;
-end;
-
-// Replacement for SetLength() only for TMagnitudes, i.e. dynamic arrays of TLimb.
-procedure AllocNewMagnitude(var FData: Pointer; RequiredSize: Integer); inline;
-var
-  NewData: PByte;
-  NewSize: Integer;
-begin
-  NewSize := (RequiredSize + 4) and BigInteger.CapacityMask;
-  NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
-  PDynArrayRec(NewData).RefCnt := 1;
-  PDynArrayRec(NewData).Length := NewSize;
-  FData := NewData + SizeOf(TDynArrayRec);
 end;
 
 procedure BigInteger.MakeSize(RequiredSize: Integer);
@@ -9998,9 +10042,21 @@ begin
     Error(ecParse, Value);
 end;
 
+{$IFDEF HasExtended}
+class operator BigInteger.Explicit(const Value: BigInteger): Extended;
+begin
+  Result := Value.AsExtended;
+end;
+{$ENDIF}
+
 class operator BigInteger.Explicit(const Value: BigInteger): Double;
 begin
   Result := Value.AsDouble;
+end;
+
+class operator BigInteger.Explicit(const Value: BigInteger): Single;
+begin
+  Result := Value.AsSingle;
 end;
 
 class operator BigInteger.Explicit(const Value: Double): BigInteger;
@@ -10049,15 +10105,6 @@ begin
   else
     InternalDecrement(PLimb(Result.FData), (Result.FSize and SizeMask));
   Result.Compact;
-end;
-
-procedure BigInteger.FromString(const Value: string);
-begin
-  if not TryParse(Value, Self) then
-  begin
-    Self.FData := nil;
-    Self.FSize := 0;
-  end;
 end;
 
 {$IFNDEF BIGINTEGERIMMUTABLE}
