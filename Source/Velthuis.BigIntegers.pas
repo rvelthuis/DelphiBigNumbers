@@ -2863,30 +2863,6 @@ const
   CMantissaBits = 52;
   CMaxShift     = 62;
 
-function IsDenormal(const ADouble: Double): Boolean; inline;
-begin
-  Result := (PUInt64(@ADouble)^ and (UInt64($7FF) shl CMantissaBits)) = 0
-end;
-
-function MantissaOf(const ADouble: Double): UInt64; inline;
-begin
-  Result := PUInt64(@ADouble)^ and (UInt64(-1) shr (64 - CMantissaBits));
-  if not IsDenormal(ADouble) then
-    Result := Result or (UInt64(1) shl CMantissaBits);
-end;
-
-function ExponentOf(const ADouble: Double): Integer;
-begin
-  Result := ((PUInt64(@ADouble)^ shr CMantissaBits) and $7FF) - 1023;
-  if Result = -1023 then
-    Result := -1022;
-end;
-
-function SignOf(const ADouble: Double): Boolean;
-begin
-  Result := PInt64(@ADouble)^ < 0;
-end;
-
 constructor BigInteger.Create(const Value: Double);
 var
   Exponent: Integer;
@@ -2903,9 +2879,9 @@ begin
     Error(ecOverflow);
 
   // Get the required values from TDoubleHelper.
-  Mantissa := MantissaOf(Value);
-  Exponent := ExponentOf(Value);
-  Sign := SignOf(Value);
+  Mantissa := GetMantissa(Value);
+  Exponent := GetExponent(Value);
+  Sign := PInt64(@Value)^ < 0;
 
   // Make 0 for denormal values and values < 0.5.
   if FRoundingMode <> rmTruncate then
