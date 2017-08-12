@@ -2901,7 +2901,7 @@ begin
   if Shift > CMaxShift then
     Shift := CMaxShift;
 
-  // Guard, Round and Sticky bits are used to determine rounding, see comments in function AsDouble.
+  // Guard, Round and Sticky bits are used to determine rounding.
   Guard := False;
   Round := False;
   Sticky := False;
@@ -3043,7 +3043,7 @@ end;
 
 function BigInteger.IsOne: Boolean;
 begin
-  Result := (FSize = 1) and (FData[0] = 1);
+  Result := (FData <> nil) and (FData[0] = 1) and (FSize = 1);
 end;
 
 function BigInteger.IsPositive: Boolean;
@@ -3976,6 +3976,10 @@ end;
 
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer);
+type
+  LongRec = record
+      Lo, Hi: UInt32;
+    end;
 var
   I: Integer;
   Carry, InterCarry: TLimb;
@@ -3984,8 +3988,6 @@ var
   Sum: TLimb;
 {$IFDEF CPU64BITS}
   Left64, Sum64, Carry64, InterCarry64: UInt64;
-{$ELSE}
-  Left32: TLimb;
 {$ENDIF}
 begin
   if LSize < RSize then
@@ -4030,35 +4032,43 @@ begin
     PUInt64(Result)[1] := Sum64;
     Carry64 := InterCarry64 or Ord(Sum64 < Carry64);
 {$ELSE !CPU64BITS}
-    Left32 := Left[0];
-    Sum := Left32 + Right[0];
-    InterCarry := TLimb(Sum < Left32);
-    Inc(Sum, Carry);
-    Result[0] := Sum;
-    Carry := InterCarry or TLimb(Sum < Carry);
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    //  The following code treats the TMagnitude as a sequence of 16 bit limbs. This is a lot      //
+    //  faster (36%) than emulating the carry or using 64 bit intermediate results.                //
+    /////////////////////////////////////////////////////////////////////////////////////////////////
 
-    Left32 := Left[1];
-    Sum := Left32 + Right[1];
-    InterCarry := TLimb(Sum < Left32);
-    Inc(Sum, Carry);
-    Result[1] := Sum;
-    Carry := InterCarry or TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[0] + PUInt16(Right)[0] + Carry;
+    PUInt16(Result)[0] := UInt16(Sum);
+    Carry := Sum shr 16;
 
-    Left32 := Left[2];
-    Sum := Left32 + Right[2];
-    InterCarry := TLimb(Sum < Left32);
-    Inc(Sum, Carry);
-    Result[2] := Sum;
-    Carry := InterCarry or TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[1] + PUInt16(Right)[1] + Carry;
+    PUInt16(Result)[1] := UInt16(Sum);
+    Carry := Sum shr 16;
 
-    Left32 := Left[3];
-    Sum := Left32 + Right[3];
-    InterCarry := TLimb(Sum < Left32);
-    Inc(Sum, Carry);
-    Result[3] := Sum;
-    Carry := InterCarry or TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[2] + PUInt16(Right)[2] + Carry;
+    PUInt16(Result)[2] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[3] + PUInt16(Right)[3] + Carry;
+    PUInt16(Result)[3] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[4] + PUInt16(Right)[4] + Carry;
+    PUInt16(Result)[4] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[5] + PUInt16(Right)[5] + Carry;
+    PUInt16(Result)[5] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[6] + PUInt16(Right)[6] + Carry;
+    PUInt16(Result)[6] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[7] + PUInt16(Right)[7] + Carry;
+    PUInt16(Result)[7] := UInt16(Sum);
+    Carry := Sum shr 16;
 {$ENDIF}
-
     Inc(Left, CUnrollIncrement);
     Inc(Right, CUnrollIncrement);
     Inc(Result, CUnrollIncrement);
@@ -4068,14 +4078,23 @@ begin
 {$IFDEF CPU64BITS}
   Carry := Carry64;
 {$ENDIF}
-
   while LTail > 0 do
   begin
+{$IFDEF CPU64BITS}
     Sum := Left[0] + Right[0];
     InterCarry := TLimb(Sum < Left[0]);
     Inc(Sum, Carry);
     Result[0] := Sum;
-    Carry := TLimb(Sum < Carry) or InterCarry;
+    Carry := InterCarry or TLimb(Sum < Carry);
+{$ELSE}
+    Sum := PUInt16(Left)[0] + PUInt16(Right)[0] + Carry;
+    PUInt16(Result)[0] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[1] + PUInt16(Right)[1] + Carry;
+    PUInt16(Result)[1] := UInt16(Sum);
+    Carry := Sum shr 16;
+{$ENDIF}
 
     Inc(Left);
     Inc(Right);
@@ -4101,21 +4120,37 @@ begin
     PUInt64(Result)[1] := Sum64;
     Carry64 := Ord(Sum64 < Carry64);
 {$ELSE}
-    Sum := Left[0] + Carry;
-    Result[0] := Sum;
-    Carry := TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[0] + Carry;
+    PUInt16(Result)[0] := UInt16(Sum);
+    Carry := Sum shr 16;
 
-    Sum := Left[1] + Carry;
-    Result[1] := Sum;
-    Carry := TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[1] + Carry;
+    PUInt16(Result)[1] := UInt16(Sum);
+    Carry := Sum shr 16;
 
-    Sum := Left[2] + Carry;
-    Result[2] := Sum;
-    Carry := TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[2] + Carry;
+    PUInt16(Result)[2] := UInt16(Sum);
+    Carry := Sum shr 16;
 
-    Sum := Left[3] + Carry;
-    Result[3] := Sum;
-    Carry := TLimb(Sum < Carry);
+    Sum := PUInt16(Left)[3] + Carry;
+    PUInt16(Result)[3] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[4] + Carry;
+    PUInt16(Result)[4] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[5] + Carry;
+    PUInt16(Result)[5] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[6] + Carry;
+    PUInt16(Result)[6] := UInt16(Sum);
+    Carry := Sum shr 16;
+
+    Sum := PUInt16(Left)[7] + Carry;
+    PUInt16(Result)[7] := UInt16(Sum);
+    Carry := Sum shr 16;
 {$ENDIF}
 
     Inc(Left, CUnrollIncrement);
