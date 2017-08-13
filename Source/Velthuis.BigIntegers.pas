@@ -151,6 +151,7 @@ unit Velthuis.BigIntegers;
 { TODO: InternalMultiply (basecase): use MMX instead of plain registers. Also remove trailing loop, make 4
         completely separate loop+trail parts. }
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
+{ TODO: Improve speed of InternalSubtractPurePascal too. }
 
 interface
 
@@ -4690,6 +4691,8 @@ asm
         CMP     R11D,0
         JE      @SkipFinalLoop
 
+        .ALIGN  16
+
 @FinalLoop:
 
         MOV     RAX,[RSI]
@@ -4700,8 +4703,8 @@ asm
         ADC     RDX,0
         MOV     [RDI],RAX
         MOV     RBX,RDX
-        LEA     ESI,[ESI + DLimbSize]
-        LEA     EDI,[EDI + DLimbSize]
+        LEA     RSI,[RSI + DLimbSize]
+        LEA     RDI,[RDI + DLimbSize]
         DEC     R11D
         JNE     @FinalLoop
 
