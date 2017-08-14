@@ -151,7 +151,6 @@ unit Velthuis.BigIntegers;
 { TODO: InternalMultiply (basecase): use MMX instead of plain registers. Also remove trailing loop, make 4
         completely separate loop+trail parts. }
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
-{ TODO: Improve speed of InternalSubtractPurePascal too. }
 
 interface
 
@@ -162,7 +161,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -722,11 +721,11 @@ type
     class function Multiply(const Left, Right: BigInteger): BigInteger; overload; static;
 
     /// <summary>Function performing "schoolbook" multiplication.</summary>
-    class function MultiplyBaseCase(const Left, Right: BigInteger): BigInteger; static;
+    class procedure MultiplyBaseCase(const Left, Right: BigInteger; var Result: BigInteger); static;
 
     /// <summary>Function performing multiplcation using Karatsuba algorithm. Has more overhead, so only
     ///  applied to large BigIntegers.</summary>
-    class function MultiplyKaratsuba(const Left, Right: BigInteger): BigInteger; static;
+    class procedure MultiplyKaratsuba(const Left, Right: BigInteger; var Result: BigInteger); static;
 
     /// <summary>Function performing multiplication using Toom-Cook 3-way algorithm. Faster than Karatsuba, but,
     /// due to its overhead, only for very large BigIntegers.</summary>
@@ -937,7 +936,7 @@ type
     type
       TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse,
                     ecNegativeExponent);
-      TDyadicOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
+      TBinaryOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
       // The limbs of the magnitude, least significant limb at lowest address.
       FData: TMagnitude;
@@ -953,8 +952,8 @@ type
 
       // The internal functions used to add and subtract. These differ depending on the need to avoid
       // a partial flag stall.
-      FInternalAdd: TDyadicOperator;
-      FInternalSubtract: TDyadicOperator;
+      FInternalAdd: TBinaryOperator;
+      FInternalSubtract: TBinaryOperator;
   {$ENDREGION}
 
   {$REGION 'private functions'}
@@ -999,7 +998,7 @@ type
     class procedure InternalNotAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static; inline;
     // Internal function performing bitwise operations. The bitwise operations share similar code.
     class procedure InternalBitwise(const Left, Right: BigInteger; var Result: BigInteger;
-      PlainOp, OppositeOp, InversionOp: TDyadicOperator); static;
+      PlainOp, OppositeOp, InversionOp: TBinaryOperator); static;
     // Internal function icrementing a magnitude by one, in-place.
     class procedure InternalIncrement(Limbs: PLimb; Size: Integer); static;
     // Internal function decrementing a magnitude by one, in-place.
@@ -3977,10 +3976,6 @@ end;
 
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer);
-type
-  LongRec = record
-      Lo, Hi: UInt32;
-    end;
 var
   I: Integer;
   Carry, InterCarry: TLimb;
@@ -8214,9 +8209,11 @@ end;
 
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer);
+type
+  PUInt16 = ^UInt16;
 var
-  LDiff: TLimb;
-  LBorrow, LInterBorrow: TLimb;
+  LDiff: Int32;
+  LBorrow, LInterBorrow: Int32;
   LTail: Integer;
   LCount: Integer;
 {$IFDEF CPU64BITS}
@@ -8249,6 +8246,9 @@ begin
     ///                                                                              ///
     ///  ... turned out to be slower than the following carry emulating code, even   ///
     ///  for 64 bit targets.                                                         ///
+    ///                                                                              ///
+    ///  Just like for Addition, subtraction using 16 bit limbs is faster than       ///
+    ///  emulating a borrow in 32 bit.                                               ///
     ////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -8271,29 +8271,37 @@ begin
     PUInt64(Result)[1] := LDiff64;
     LBorrow64 := LInterBorrow64 or Ord(LDiff64 = UInt64(-1)) and LBorrow64;
   {$ELSE}
-    LDiff := Larger[0] - Smaller[0];
-    LInterBorrow := Ord(LDiff > Larger[0]);   // there was a LBorrow if R0 > Larger[0].
-    LDiff := LDiff - LBorrow;
-    Result[0] := LDiff;
-    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow; // there was a LBorrow if R > R0.
+    LDiff := PUInt16(Larger)[0] - PUInt16(Smaller)[0] - LBorrow;
+    PUInt16(Result)[0] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
-    LDiff := Larger[1] - Smaller[1];
-    LInterBorrow := Ord(LDiff > Larger[1]);
-    Dec(LDiff, LBorrow);
-    Result[1] := LDiff;
-    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[1] - PUInt16(Smaller)[1] - LBorrow;
+    PUInt16(Result)[1] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
-    LDiff := Larger[2] - Smaller[2];
-    LInterBorrow := Ord(LDiff > Larger[2]);
-    Dec(LDiff, LBorrow);
-    Result[2] := LDiff;
-    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[2] - PUInt16(Smaller)[2] - LBorrow;
+    PUInt16(Result)[2] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
-    LDiff := Larger[3] - Smaller[3];
-    LInterBorrow := Ord(LDiff > Larger[3]);
-    Dec(LDiff, LBorrow);
-    Result[3] := LDiff;
-    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[3] - PUInt16(Smaller)[3] - LBorrow;
+    PUInt16(Result)[3] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[4] - PUInt16(Smaller)[4] - LBorrow;
+    PUInt16(Result)[4] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[5] - PUInt16(Smaller)[5] - LBorrow;
+    PUInt16(Result)[5] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[6] - PUInt16(Smaller)[6] - LBorrow;
+    PUInt16(Result)[6] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[7] - PUInt16(Smaller)[7] - LBorrow;
+    PUInt16(Result)[7] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
   {$ENDIF}
 
     Inc(Larger, CUnrollIncrement);
@@ -8308,11 +8316,13 @@ begin
 
   while LTail > 0 do
   begin
-    LDiff := Larger[0] - Smaller[0];
-    LInterBorrow := Ord(LDiff > Larger[0]);
-    Dec(LDiff, LBorrow);
-    Result[0] := LDiff;
-    LBorrow := LInterBorrow or Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[0] - PUInt16(Smaller)[0] - LBorrow;
+    PUInt16(Result)[0] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[1] - PUInt16(Smaller)[1] - LBorrow;
+    PUInt16(Result)[1] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
     Inc(Larger);
     Inc(Smaller);
@@ -8339,21 +8349,37 @@ begin
     PUInt64(Result)[1] := LDiff64;
     LBorrow64 := Ord(LDiff64 = UInt64(-1)) and LBorrow64;
   {$ELSE}
-    LDiff := Larger[0] - LBorrow;
-    Result[0] := LDiff;
-    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[0] - LBorrow;
+    PUInt16(Result)[0] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
-    LDiff := Larger[1] - LBorrow;
-    Result[1] := LDiff;
-    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[1] - LBorrow;
+    PUInt16(Result)[1] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
-    LDiff := Larger[2] - LBorrow;
-    Result[2] := LDiff;
-    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[2] - LBorrow;
+    PUInt16(Result)[2] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
-    LDiff := Larger[3] - LBorrow;
-    Result[3] := LDiff;
-    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[3] - LBorrow;
+    PUInt16(Result)[3] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[4] - LBorrow;
+    PUInt16(Result)[4] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[5] - LBorrow;
+    PUInt16(Result)[5] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[6] - LBorrow;
+    PUInt16(Result)[6] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[7] - LBorrow;
+    PUInt16(Result)[7] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
   {$ENDIF}
 
     Inc(Larger, CUnrollIncrement);
@@ -8367,9 +8393,13 @@ begin
 
   while LTail > 0 do
   begin
-    LDiff := Larger[0] - LBorrow;
-    Result[0] := LDiff;
-    LBorrow := Ord(LDiff = $FFFFFFFF) and LBorrow;
+    LDiff := PUInt16(Larger)[0] - LBorrow;
+    PUInt16(Result)[0] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
+
+    LDiff := PUInt16(Larger)[1] - LBorrow;
+    PUInt16(Result)[1] := UInt16(LDiff);
+    LBorrow := (LDiff shr 16) and 1;
 
     Inc(Larger);
     Inc(Result);
@@ -8923,14 +8953,17 @@ begin
   Result.Compact;
 end;
 
-class function BigInteger.MultiplyKaratsuba(const Left, Right: BigInteger): BigInteger;
+class procedure BigInteger.MultiplyKaratsuba(const Left, Right: BigInteger; var Result: BigInteger);
 var
   k, LSign: Integer;
   z0, z1, z2: BigInteger;
   x, y: TArray<BigInteger>;
 begin
   if ((Left.FSize and SizeMask) < KaratsubaThreshold) or ((Right.FSize and SizeMask) < KaratsubaThreshold) then
-    Exit(MultiplyBaseCase(Left, Right));
+  begin
+    MultiplyBaseCase(Left, Right, Result);
+    Exit;
+  end;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   ///  This is a so called divide and conquer algorithm, solving a big task by dividing it up    ///
@@ -8978,9 +9011,10 @@ begin
   y := Right.Split(k, 2);
 
   // Recursion further reduces the number of multiplications!
-  z2 := MultiplyKaratsuba(x[1], y[1]);
-  z0 := MultiplyKaratsuba(x[0], y[0]);
-  z1 := MultiplyKaratsuba(x[1] - x[0], y[0] - y[1]) + (z2 + z0);
+  MultiplyKaratsuba(x[1], y[1], z2);
+  MultiplyKaratsuba(x[0], y[0], z0);
+  MultiplyKaratsuba(x[1] - x[0], y[0] - y[1], z1);
+  Add(z1, z2 + z0, z1);
 
   Result := z0;
   Result.AddWithOffset(z2, k * 2);
@@ -9151,7 +9185,10 @@ var
 begin
   // Step 1: if n < threshold then return KaratsubaMultiply(A, B)
   if ((Left.FSize and SizeMask) < ToomCook3Threshold) and ((Right.FSize and SizeMask) < ToomCook3Threshold) then
-    Exit(MultiplyKaratsuba(Left, Right));
+  begin
+    MultiplyKaratsuba(Left, Right, Result);
+    Exit;
+  end;
 
   Sign := (Left.FSize xor Right.FSize) and SignMask;
 
@@ -9261,13 +9298,13 @@ begin
   else
   begin
     if ((Left.FSize and SizeMask) < ToomCook3Threshold) and ((Right.FSize and SizeMask) < ToomCook3Threshold) then
-      Result := MultiplyKaratsuba(Left, Right)
+      MultiplyKaratsuba(Left, Right, Result)
     else
       Result := MultiplyToomCook3(Left, Right);
   end;
 end;
 
-class function BigInteger.MultiplyBaseCase(const Left, Right: BigInteger): BigInteger;
+class procedure BigInteger.MultiplyBaseCase(const Left, Right: BigInteger; var Result: BigInteger);
 var
   LResult: BigInteger; // Avoid prematurely overwriting result when it is same as one of the operands.
 begin
@@ -9597,7 +9634,7 @@ begin
 end;
 
 class procedure BigInteger.InternalBitwise(const Left, Right: BigInteger;
-  var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TDyadicOperator);
+  var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TBinaryOperator);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///  The code for the bitwise operators AND, OR and XOR does not differ much.                                     ///
