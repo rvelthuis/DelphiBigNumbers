@@ -161,7 +161,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  {$DEFINE PUREPASCAL}
+  { $DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -10048,12 +10048,14 @@ begin
     if LSize = 0 then
     begin
       ShallowCopy(MinusOne, Result);
+      FreeMem(P);
       Exit;
     end;
     ShiftOffset := Shift shr 5;
     if ShiftOffset >= LSize then
     begin
       ShallowCopy(MinusOne, Result);
+      FreeMem(P);
       Exit;
     end;
     Shift := Shift and $1F;
