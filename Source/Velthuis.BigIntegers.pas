@@ -148,30 +148,14 @@
 
 unit Velthuis.BigIntegers;
 
-{///////////////////////////////////////////////////////////////////////////////////////////////
-
-   FastMM4 complains about buffer overruns (corrupted block footers)
-   =================================================================
-
-   - Got rid of the one in TryParse, caused by InternalMultiplyAndAdd16.
-   - Got rid of the one in UncheckedDivModKnuth.
-   - Must update InternalMultiplyAndAdd32 too (code almost the same as InternalMultiplyAndAdd16).
-   - Must revert TryParse(... Base, ...) to old version and check that too.
-
- ///////////////////////////////////////////////////////////////////////////////////////////////}
-
 { TODO:
   - Remove local BigIntegers where possible. Removing Res from class function BigInteger.Add sped
     it up by 15%. Instead of a local BigInteger, Add now uses ResData and ResSize local variables.
-  - Remove inline from operators. Removing it from class operator Add sped it up by another 15%.
-    This is because inlining generated a try-finally around code like T := T + U; even in a tight
-    loop.
-  - Add a Compact(var Data, var Size) for the above.
 }
 { TODO: modular arithmetic. Modular division and multiplication. Barrett, Montgomery, etc. }
 { TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
         bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time. }
-{ TODO: InternalMultiply (basecase): use MMX instead of plain registers. Also remove trailing loop, make 4
+{ TODO: InternalMultiply (basecase): use MMX instead of plain registers? Also remove trailing loop, make 4
         completely separate loop+trail parts. }
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
 
