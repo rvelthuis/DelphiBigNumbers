@@ -407,10 +407,10 @@ type
     /// <summary>Tries to parse the specified string into a valid BigInteger value in the specified numeric base.
     ///   Returns False if this failed.</summary>
     /// <param name="S">The string that represents a big integer value in the specified numeric base.</param>
-    /// <param name="Base">The numeric base that is assumed when parsing the string. Valid values are 2..36.</param>
-    /// <param name="Value">The resulting BigInteger, if the parsing succeeds. Value is undefined if the
+    /// <param name="ABase">The numeric base that is assumed when parsing the string. Valid values are 2..36.</param>
+    /// <param name="AValue">The resulting BigInteger, if the parsing succeeds. AValue is undefined if the
     ///   parsing fails.</param>
-    /// <returns>Returns True if S could be parsed into a valid BigInteger in Res. Returns False on failure.</returns>
+    /// <returns>Returns True if S could be parsed into a valid BigInteger in AVaLue. Returns False on failure.</returns>
     class function TryParse(const S: string; ABase: TNumberBase; var AValue: BigInteger): Boolean; overload; static;
 
     // -------------------------------------------------------------------------------------------------------------//
@@ -1531,15 +1531,12 @@ procedure AllocNewMagnitude(var FData: TMagnitude; RequiredSize: Integer);
 var
   NewData: PByte;
   NewSize: Integer;
-  NewMag: TMagnitude;
 begin
   NewSize := (RequiredSize + 3) and BigInteger.CapacityMask;
-  // $$RV: debug
-  SetLength(FData, NewSize);
-//  NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
-//  PDynArrayRec(NewData).RefCnt := 1;
-//  PDynArrayRec(NewData).Length := NewSize;
-//  FData := NewData + SizeOf(TDynArrayRec);
+  NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
+  PDynArrayRec(NewData).RefCnt := 1;
+  PDynArrayRec(NewData).Length := NewSize;
+  PByte(FData) := NewData + SizeOf(TDynArrayRec);
 end;
 
 { BigInteger }
@@ -5280,16 +5277,12 @@ var
   LTrimmed: string;
   LVal: Integer;
   P: PChar;
-  ValData: TMagnitude;
-  ValSize: Integer;
-  BigIntBase: BigInteger;
 begin
   Result := False;
   LTrimmed := Trim(S);
   if LTrimmed = '' then
     Exit;
   LIsNegative := False;
-  BigIntBase := Base;
 
   AValue := BigInteger.Zero;
 
@@ -5340,14 +5333,25 @@ begin
 end;
 
 const
-  PowersOfTen: array[1..9] of Integer = (10, 100, 1000, 10*1000, 100*1000, 1000*1000,
-                                         10*1000*1000, 100*1000*1000, 1000*1000*1000);
+  CIntPowersOfTen: array[1..9] of Integer =
+  (
+                10,
+               100,
+              1000,
+           10*1000,
+          100*1000,
+         1000*1000,
+      10*1000*1000,
+     100*1000*1000,
+    1000*1000*1000
+  );
 
 class function BigInteger.InternalParseDecimal(P: PChar; var Value: BigInteger): Boolean;
 var
   Cumulative: Cardinal;
   N: Integer;
 begin
+  Value := BigInteger.Zero;
   Result := False;
   while P^ <> #0 do
   begin
@@ -5371,7 +5375,7 @@ begin
       Inc(N);
       Inc(P);
     end;
-    Value := Value * PowersOfTen[N] + Cumulative;
+    Value := Value * CIntPowersOfTen[N] + Cumulative;
   end;
   Result := True;
 end;
@@ -9105,7 +9109,7 @@ begin
   if ((Left.FSize and SizeMask) < KaratsubaThreshold) or ((Right.FSize and SizeMask) < KaratsubaThreshold) then
   begin
     // The following block is "Result := MultiplyBaseCase(Left, Right);" written out in full.
-    LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask));
+    LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 1);
     InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), Left.FSize and SizeMask,
       Right.FSize and SizeMask);
     LResult.Compact;
