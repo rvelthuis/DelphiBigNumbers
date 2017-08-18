@@ -139,6 +139,9 @@
 {               InternalShiftLeft. All after using FastMM4 in full debug     }
 {               mode (which adds extra footer bytes to every allocation).    }
 {                                                                            }
+{   2017-08-18: Some more buffer overruns (badly dimensioned magnitudes)     }
+{               removed.                                                     }
+{                                                                            }
 {----------------------------------------------------------------------------}
 {   Also see GitHub commit comments.                                         }
 {----------------------------------------------------------------------------}
