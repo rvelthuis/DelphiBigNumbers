@@ -1058,10 +1058,7 @@ type
     // Internal function dividing magnitude by given base value. Leaves quotient in place, returns remainder.
     class function InternalDivideByBase(Mag: PLimb; Base: Integer; var Size: Integer): UInt32; static;
     // Internal function multiplying by 16 bit integer and then adding 16 bit value. Used by parser.
-    class procedure InternalMultiplyAndAdd16(const Multiplicand: TMagnitude; var Result: TMagnitude; MSize: Integer; Multiplicator, Addend: Word); static;
-    // Internal function multiplying by 32 bit integer and then adding 32 bit value. Used by parser.
-    class procedure InternalMultiplyAndAdd32(const Multiplicand: TMagnitude; Multiplicator, Addend: UInt32;
-      const Res: TMagnitude); static;
+    class procedure InternalMultiply16(const Left: TMagnitude; var Result: TMagnitude; LSize: Integer; Right: Word); static;
     // Internal function negating magnitude (treating it as two's complement).
     class procedure InternalNegate(Source, Dest: PLimb; Size: Integer); static;
 
@@ -5276,134 +5273,70 @@ begin
     Value := -Value;
 end;
 
-const
-  KDigitValues: array['0'..'z'] of Integer =
-  (
-  // 0   1   2   3   4   5   6   7   8   9   :   ;   <   =   >   ?   @
-     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1, -1,
-  // A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   _   `
-    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, -1, -1, -1, -1, -1, -1,
-  // a   b   c   d   e   f   g   h   i   j   k   l   m   n   o   p   q   r   s   t   u   v   w   x   y   z
-    10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35
-  );
-
 // cf. Brent, Zimmermann, "Modern Computer Arithmetic", algorithm 1.23
-//class function BigInteger.TryParse(const S: string; Base: TNumberBase; var Value: BigInteger): Boolean;
-//var
-//  LIsNegative: Boolean;
-//  LTrimmed: string;
-//  LVal: Integer;
-//  P: PChar;
-//  ValData: TMagnitude;
-//  ValSize: Integer;
-//  BigIntBase: BigInteger;
-//  Res, Res2: BigInteger;
-//begin
-//  Result := False;
-//  LTrimmed := Trim(S);
-//  if LTrimmed = '' then
-//    Exit;
-//  LIsNegative := False;
-//  BigIntBase := Base;
-//
-//  Res := BigInteger.Zero;
-//  Res2 := BigInteger.Zero;
-//  Value.FSize := 0;
-//  Value.FData := nil;
-////  Value.MakeSize(Length(S) div CStringMinLengths[Base] + 4);
-//
-//  P := PChar(LTrimmed);
-//  if (P^ = '-') or (P^ = '+') then
-//  begin
-//    LIsNegative := (P^ = '-');
-//    Inc(P);
-//  end;
-////  if Base = 10 then
-////    Result := InternalParseDecimal(P, Value)
-////  else if Base = 16 then
-////    Result := InternalParseHex(P, Value)
-////  else
-//  begin
-//    while P^ <> #0 do
-//    begin
-//      if (P^ = '_') or (P^ = ' ') or (P^ = ',') then
-//      begin
-//        Inc(P);
-//        Continue;
-//      end;
-//      LVal := Ord(P^);
-//      Inc(P);
-//      if LVal in [Ord('0')..Ord('9')] then
-//        Dec(LVal, CNumBase)
-//      else if LVal >= CAlphaBase then
-//      begin
-//        if LVal >= Ord('a') then
-//          Dec(LVal, 32);
-//        Dec(LVal, CAlphaBase - 10);
-//      end
-//      else
-//        Exit;
-//      if LVal >= Base then
-//        Exit;
-//      //$$RV: debug
-//      Res2 := Res * Base;
-//      Res := Res2 + LVal;// + LVal;
-//      Writeln(Res.ToString);
-////      Value := Value * Base + LVal;
-//      //$$RV: ~debug
-////      InternalMultiplyAndAdd16(Value.FData, Base, LVal, Value.FData);
-//    end;
-//    Result := True;
-//  end;
-//  if not Result then
-//  begin
-//    Value := BigInteger.Zero;
-//    Exit;
-//  end;
-////  Value := Res;
-////  Value.Compact;
-//  if LIsNegative then
-//    Value := -Value;
-//end;
-
 class function BigInteger.TryParse(const S: string; ABase: TNumberBase; var AValue: BigInteger): Boolean;
 var
+  LIsNegative: Boolean;
+  LTrimmed: string;
   LVal: Integer;
   P: PChar;
-  LTrimmed: string;
-  LNegative: Boolean;
+  ValData: TMagnitude;
+  ValSize: Integer;
+  BigIntBase: BigInteger;
 begin
-  LNegative := False;
-  AValue := BigInteger.Zero;
+  Result := False;
   LTrimmed := Trim(S);
+  if LTrimmed = '' then
+    Exit;
+  LIsNegative := False;
+  BigIntBase := Base;
+
+  AValue := BigInteger.Zero;
+
   P := PChar(LTrimmed);
-  if (P^ = '+') or (P^ = '-') then
+  if (P^ = '-') or (P^ = '+') then
   begin
-    LNegative := P^ = '-';
+    LIsNegative := (P^ = '-');
     Inc(P);
   end;
-  while P^ <> #0 do
+  if ABase = 10 then
+    Result := InternalParseDecimal(P, AValue)
+  else if ABase = 16 then
+    Result := InternalParseHex(P, AValue)
+  else
   begin
-    if (P^ = '_') or (P^ = ' ') or (P^ = ',') then
+    while P^ <> #0 do
     begin
+      if (P^ = '_') or (P^ = ' ') or (P^ = ',') then
+      begin
+        Inc(P);
+        Continue;
+      end;
+      LVal := Ord(P^);
       Inc(P);
-      Continue;
+      if LVal in [Ord('0')..Ord('9')] then
+        Dec(LVal, CNumBase)
+      else if LVal >= CAlphaBase then
+      begin
+        if LVal >= Ord('a') then
+          Dec(LVal, 32);
+        Dec(LVal, CAlphaBase - 10);
+      end
+      else
+        Exit;
+      if LVal >= ABase then
+        Exit;
+      AValue := AValue * ABase + LVal;
     end;
-    if (P^ >= '0') and (P^ <= 'z') then
-    begin
-      LVal := KDigitValues[P^];
-      if (LVal = -1) or (LVal >= ABase) then
-        Exit(False);
-      AValue := AValue * ABase + BigInteger(LVal);
-      // AValue := AValue * BigInteger(ABase) + BigInteger(LVal);
-    end
-    else
-      Exit(False);
-    Inc(P);
+    Result := True;
   end;
-  if LNegative then
+  if not Result then
+  begin
+    AValue := BigInteger.Zero;
+    Exit;
+  end;
+  if LIsNegative then
     AValue := -AValue;
-  Result := True;
 end;
 
 const
@@ -5438,7 +5371,7 @@ begin
       Inc(N);
       Inc(P);
     end;
-    InternalMultiplyAndAdd32(Value.FData, PowersOfTen[N], Cumulative, Value.FData);
+    Value := Value * PowersOfTen[N] + Cumulative;
   end;
   Result := True;
 end;
@@ -5680,11 +5613,11 @@ begin
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
 
-//  if (LSize <> 0) and (RSize <> 0) then
-//  begin
-//    Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
-//  end
-//  else
+  if (LSize <> 0) and (RSize <> 0) then
+  begin
+    Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
+  end
+  else
     Offset := 0;
 
   case InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize) of
@@ -5706,7 +5639,7 @@ begin
     else
       begin
         Q.MakeSize(LSize - RSize + 1);
-        R.MakeSize(RSize);
+        R.MakeSize(RSize + 1); // RSize should be enough, but apparently in 64 mode asm, it overwrites one extra limb.
         if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData),
                  PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
           Error(ecInvalidBase);
@@ -8717,211 +8650,46 @@ begin
   Result := Remainder(Left, Right);
 end;
 
-class procedure BigInteger.InternalMultiplyAndAdd32(const Multiplicand: TMagnitude; Multiplicator, Addend: UInt32; const Res: TMagnitude);
-{$IFDEF PUREPASCAL}
-type
-  CardRec = packed record
-    Lo, Hi: Cardinal;
-  end;
-var
-  I: Integer;
-  LProduct: UInt64;
-  LHighCard: UInt32;
-  LLength: Integer;
-begin
-  Assert(Multiplicand <> nil);
-  LLength := Length(Multiplicand);
-  LHighCard:= 0;
-  I := 0;
-  while I < LLength do
-  begin
-    LProduct := UInt64(Multiplicand[I]) * Multiplicator + LHighCard;
-    Res[I] := TLimb(LProduct);
-    LHighCard := CardRec(LProduct).Hi;
-    Inc(I);
-  end;
-  Res[I] := LHighCard;
-  I := 0;
-  LHighCard := 0;
-  while (LLength > 0) do
-  begin
-    Res[I] := Res[I] + Addend + LHighCard;
-    LHighCard := Ord(Res[I] < Addend + LHighCard);
-    if LHighCard = 0 then
-      Break;
-    Addend := 0;
-    Dec(LLength);
-    Inc(I);
-  end;
-end;
-{$ELSE !PUREPASCAL}
-{$IFDEF WIN32}
-var
-  LLength: Integer;
-  LExtra: UInt32;
-  LMultiplicator: UInt32;
-  LProduct: Cardinal;
-asm
-       PUSH    EBX
-       PUSH    ESI
-       PUSH    EDI
-
-       MOV     LExtra,ECX
-       MOV     LMultiplicator,EDX
-
-       MOV     ESI,EAX
-       MOV     EDI,Res
-
-       // EAX should never be nil. Nil should be caught earlier.
-       MOV     EAX,[EAX - TYPE NativeInt]
-
-       MOV     LLength,EAX
-       XOR     ECX,ECX                          // ECX used for overflow.
-       XOR     EBX,EBX                          // EBX = I
-       CMP     EBX,LLength
-       JNB     @SkipMult
-
-@MultLoop:
-
-       MOV     EAX,[ESI + CLimbSize*EBX]        // EAX,EDX required for multiplication.
-       MOV     EDX,LMultiplicator
-       MUL     EDX
-       ADD     EAX,ECX                          // Add in overflow of previous multiplication.
-       ADC     EDX,0
-       MOV     [EDI + CLimbSize*EBX],EAX
-       MOV     ECX,EDX                          // Overflow.
-       LEA     EBX,[EBX + 1]
-       CMP     EBX,LLength
-       JB      @MultLoop
-
-@SkipMult:
-
-       MOV     [EDI + CLimbSize*EBX],EDX
-
-       MOV     ECX,LLength
-       XOR     EBX,EBX
-       MOV     EAX,LExtra
-
-@AddLoop:
-
-       ADC     [EDI + CLimbSize*EBX],EAX
-       JNC     @Exit
-       MOV     EAX,0
-       LEA     EBX,[EBX + 1]
-       LEA     ECX,[ECX - 1]
-       JECXZ   @Exit
-       JMP     @AddLoop
-
-@Exit:
-
-       POP     EDI
-       POP     ESI
-       POP     EBX
-end;
-{$ELSE WIN64}
-asm
-      .PUSHNV  RBX
-
-       PUSH    R8                       // PUSH Extra
-       MOV     R8D,EDX                  // R8D = Multiplicator
-       MOV     R10,RCX
-
-       // R10 is never nil!
-       MOV     R10,[R10 - TYPE NativeInt] // R10D = Length(Multiplicand)
-
-       XOR     R11D,R11D                // R11D = I
-       XOR     EBX,EBX
-       CMP     R11D,R10D
-       JNB     @SkipMult
-@MultLoop:
-       MOV     EAX,[RCX + CLimbSize*R11]
-       MUL     EAX,R8D
-       ADD     EAX,EBX
-       ADC     EDX,0
-       MOV     [R9 + CLimbSize*R11],EAX
-       MOV     EBX,EDX
-       INC     R11D
-       CMP     R11D,R10D
-       JB      @MultLoop
-@SkipMult:
-       MOV     [R9 + CLimbSize*R11],EDX
-       POP     RDX                      // POP Extra
-       XOR     EBX,EBX
-@AddLoop:
-       ADC     [R9 + CLimbSize*RBX],EDX
-       JNC     @Exit
-       MOV     EDX,0                    //
-       INC     EBX                      // These 3 instructions should not modify the carry flag!
-       DEC     R10D                     //
-       JNE     @AddLoop
-@Exit:
-end;
-{$ENDIF WIN64}
-{$ENDIF PUREPASACL}
-
-// There is a chance that Multiplicand is longer than Res. Must pass the sizes!
-class procedure BigInteger.InternalMultiplyAndAdd16(const Multiplicand: TMagnitude; var Result: TMagnitude; MSize: Integer; Multiplicator, Addend: Word);
+class procedure BigInteger.InternalMultiply16(const Left: TMagnitude; var Result: TMagnitude; LSize: Integer; Right: Word);
 {$IF DEFINED(PUREPASCAL)}
 type
-  WordRec = packed record
-    Lo, Hi: Word;
+  TUInt32 = packed record
+    Lo, Hi: UInt16;
   end;
 var
   I: Integer;
   LProduct: UInt32;
-  LHighWord: Word;
-  LLength: Integer;
+  LHi16: UInt16;
 begin
-  Assert(Addend < Multiplicator);
-  LLength := MSize * 2;
-  LHighWord := 0;
+  LSize := LSize * 2;
+  LHi16 := 0;
   I := 0;
-  while I < LLength do
+  while I < LSize do
   begin
-    LProduct := UInt32(PWord(Multiplicand)[I]) * Multiplicator + LHighWord;
-    PWord(Result)[I] := WordRec(LProduct).Lo;
-    LHighWord := WordRec(LProduct).Hi;
+    LProduct := UInt32(PUInt16(Left)[I]) * Right + LHi16;
+    PUInt16(Result)[I] := TUInt32(LProduct).Lo;
+    LHi16 := TUInt32(LProduct).Hi;
     Inc(I);
   end;
-  PWord(Result)[I] := LHighWord;
-  if LHighWord > 0 then
-    Inc(LLength);
-  I := 0;
-  LHighword := 0;
-  while I < LLength do
-  begin
-    LProduct := PUInt16(Result)[I] + Addend + LHighWord;
-    PUInt16(Result)[I] := WordRec(LProduct).Lo;
-    LHighWord := WordRec(LProduct).Hi;
-    if LHighWord = 0 then
-      Exit;
-    Inc(I);
-  end;
-  if LHighWord > 0 then
-    Inc(PWord(Result)[I]);
+  PUInt16(Result)[I] := LHi16;
 end;
 {$ELSEIF DEFINED(WIN32)}
-var
-  LLength: Integer;
-  LExtra: Word;
-  LMultiplicator: Word;
-  LProduct: Cardinal;
-  LResult: PLimb;
 asm
         PUSH    EBX
         PUSH    ESI
         PUSH    EDI
 
+        JECXZ   @Exit
         MOV     ESI,EAX
         MOV     EDI,[EDX]
-        MOV     LLength,ECX
-        MOV     LResult,EDI
         XOR     EBX,EBX
+        CMP     Right,0
+        JE      @Exit
 
 @MultLoop:
 
         MOV     EAX,[ESI]
-        MOVZX   EDX,Multiplicator
+        MOVZX   EDX,Right
         MUL     EDX
         ADD     EAX,EBX
         ADC     EDX,0
@@ -8937,23 +8705,6 @@ asm
 
         MOV     [EDI],EBX
 
-        MOV     ECX,LLength
-        MOVZX   EBX,Addend
-        OR      EBX,EBX
-        JE      @Exit
-        MOV     EDI,LResult
-        CLC
-
-@AddLoop:
-
-        ADC     [EDI],EBX
-        JNC     @Exit
-        MOV     EBX,0
-        LEA     EDI,[EDI + CLimbSize]
-        LEA     ECX,[ECX - 1]
-        JECXZ   @Exit
-        JMP     @AddLoop
-
 @Exit:
 
         POP     EDI
@@ -8966,14 +8717,14 @@ asm
         .PUSHNV RDI
         .PUSHNV RSI
 
-        MOVZX   R10D,Addend             // R10D = Addend
+        OR      R8D,R8D
+        JE      @Exit
+        OR      R9D,R9D
+        JE      @Exit
         MOV     R11,[RDX]               // R11 = SaveResult
         MOV     RDI,R11                 // RDI = Result
-        MOV     RSI,RCX                 // RSI = Multiplicand
+        MOV     RSI,RCX                 // RSI = Left
         MOV     ECX,R8D                 // ECX = MSize
-        JECXZ   @SkipMult
-        OR      R9D,R9D                 // R9D = Multiplicator
-        JE      @SkipMult
         XOR     EBX,EBX                 // EBX = Carry
 
 @MultLoop:
@@ -8994,32 +8745,9 @@ asm
 
         MOV     [RDI],EBX
 
-@SkipMult:
-
-        MOV     RDI,R11
-        MOV     ECX,R8D
-
-        ADD     [RDI],R10D
-        JNC     @Exit
-        LEA     RDI,[RDI + CLimbSize]
-        LEA     ECX,[ECX-1]
-        JECXZ   @Exit
-        MOV     R10D,0
-
-@CarryLoop:
-
-        ADC     [RDI],R10D
-        JNC     @Exit
-        LEA     RDI,[RDI + CLimbSize]
-        LEA     ECX,[ECX - 1]
-        JECXZ   @Exit
-        JMP     @CarryLoop
-
 @Exit:
 end;
 {$IFEND}
-
-
 
 class operator BigInteger.Multiply(const Left: BigInteger; Right: Word): BigInteger;
 var
@@ -9030,9 +8758,8 @@ begin
     Exit(Zero);
   ResSize := (Left.FSize and SizeMask) + 2;
   SetLength(ResData, ResSize);
-  InternalMultiplyAndAdd16(Left.FData, ResData, (Left.FSize and SizeMask), Right, 0);
+  InternalMultiply16(Left.FData, ResData, (Left.FSize and SizeMask), Right);
   Assert(Result.FData <> ResData);
-  //Deliberate error: After InternalMultiplyAndAdd16, ResData is invalid.
   Result.FData := ResData;
   Result.FSize := (Left.FSize and SignMask) or ResSize;
   Result.Compact;
