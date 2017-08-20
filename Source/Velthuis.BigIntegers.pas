@@ -149,6 +149,14 @@
 unit Velthuis.BigIntegers;
 
 { TODO:
+  ==========================================================================
+  Revisit InternalMultiply16 and make it InternalMultiplyBaseAndAddDigit.
+  ADigit must be < ABase. Then, there can be no carry for the addition!
+  See comments on InternalMultiply16.
+  ==========================================================================
+}
+
+{ TODO:
   - Remove local BigIntegers where possible. Removing Res from class function BigInteger.Add sped
     it up by 15%. Instead of a local BigInteger, Add now uses ResData and ResSize local variables.
 }
@@ -168,7 +176,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -1046,6 +1054,8 @@ type
     class function InternalDivideByBase(Mag: PLimb; Base: Integer; var Size: Integer): UInt32; static;
     // Internal function multiplying by 16 bit integer and then adding 16 bit value. Used by parser.
     class procedure InternalMultiply16(const Left: TMagnitude; var Result: TMagnitude; LSize: Integer; Right: Word); static;
+    // Internal function multiplying by a base and adding a digit. Condition: ADigit < ABase. Size is updated if necessary.
+    class procedure InternalMultiplyAndAdd16(Value: PLimb; ABase, ADigit: Word; var Size: Integer); static;
     // Internal function negating magnitude (treating it as two's complement).
     class procedure InternalNegate(Source, Dest: PLimb; Size: Integer); static;
 
@@ -5271,7 +5281,8 @@ begin
     Exit;
   LIsNegative := False;
 
-  AValue := BigInteger.Zero;
+  AValue.MakeSize(Length(S) div CStringMinLengths[ABase] + 1);
+  AValue.FSize := 0;
 
   P := PChar(LTrimmed);
   if (P^ = '-') or (P^ = '+') then
@@ -5306,7 +5317,7 @@ begin
         Exit;
       if LVal >= ABase then
         Exit;
-      AValue := AValue * ABase + LVal;
+      InternalMultiplyAndAdd16(PLimb(AValue.FData), ABase, LVal, AValue.FSize);
     end;
     Result := True;
   end;
@@ -5315,6 +5326,9 @@ begin
     AValue := BigInteger.Zero;
     Exit;
   end;
+{$IFDEF RESETSIZE}
+  AValue.Compact;     // FSize is already correct, but Compact also reallocates down, if RESETSIZE requires it.
+{$ENDIF}
   if LIsNegative then
     AValue := -AValue;
 end;
@@ -8641,6 +8655,161 @@ begin
   Result := Remainder(Left, Right);
 end;
 
+// Note: this can only be used to multiply by a base and add a digit, i.e. ADigit must be < ABase!
+class procedure BigInteger.InternalMultiplyAndAdd16(Value: PLimb; ABase, ADigit: Word; var Size: Integer);
+{$IFDEF PUREPASCAL}
+type
+  TUInt32 = packed record
+    Lo, Hi: UInt16;
+  end;
+var
+  I: Integer;
+  LProduct: UInt32;
+  LHi16: UInt16;
+begin
+  Size := Size shl 1;
+  LHi16 := 0;
+  I := 0;
+  LProduct := 0;
+  while I < Size do
+  begin
+    LProduct := UInt32(PUInt16(Value)[I]) * ABase + TUInt32(LProduct).Hi;
+    PUInt16(Value)[I] := TUInt32(LProduct).Lo;
+  end;
+  if TUInt32(LProduct).Hi <> 0 then
+  begin
+    PUInt16(Value)[I] := TUInt32(LProduct).Hi;
+    Inc(Size);
+  end;
+  if ADigit > 0 then
+  begin
+    Inc(Value[0], ADigit);
+    if Size = 0 then
+      Size := 1;
+  end;
+end;
+{$ELSEIF DEFINED(Win32)}
+var
+  LValue: PLimb;
+  LDigit: UInt16;
+asm
+        PUSH    ESI
+        PUSH    EDI
+        PUSH    EBX
+
+        MOV     ESI,EAX
+        MOV     LValue,EAX
+        MOVZX   EDI,DX
+        MOV     LDigit,CX
+        MOV     ECX,Size
+        MOV     ECX,[ECX]
+        JECXZ   @DoAdd
+        XOR     EBX,EBX
+
+@MultLoop:
+
+        MOV     EAX,[ESI]
+        MUL     EAX,EDI
+        ADD     EAX,EBX
+        ADC     EDX,0
+        MOV     [ESI],EAX
+        MOV     EBX,EDX
+        LEA     ESI,[ESI + CLimbSize]
+        LEA     ECX,[ECX - 1]
+        JECXZ   @CheckLastLimb
+        JMP     @MultLoop
+
+@CheckLastLimb:
+
+        OR      EBX,EBX
+        JE      @DoAdd
+        MOV     [ESI],EBX               // Carry not zero, so increment size and store carry
+        MOV     ECX,Size
+        INC     DWORD PTR [ECX]
+
+@DoAdd:
+
+        MOVZX   EAX,LDigit
+        OR      EAX,EAX
+        JZ      @Exit                   // Skip if ADigit is 0 anyway.
+        MOV     ECX,Size
+        CMP     DWORD PTR [ECX],0       // If Size = 0 and ADigit <> 0, must add 1 to size
+        JNZ     @SkipInc
+        INC     DWORD PTR [ECX]
+
+@SkipInc:
+
+        MOV     ESI,LValue
+        ADD     [ESI],EAX               // Note that allocated size is always > 1.
+
+@Exit:
+
+        POP     EBX
+        POP     EDI
+        POP     ESI
+end;
+{$ELSE WIN64}
+asm
+        .PUSHNV RSI
+
+        PUSH    RCX                     // Save Value
+        MOV     RSI,RCX                 // RSI = Value
+        MOV     R10D,EDX                // R10D = ABase
+        XOR     R11D,R11D               // Multiplication "carry"
+        MOV     RCX,R9                  // Size
+        MOV     ECX,[RCX]               // Size^
+        JECXZ   @DoAdd
+
+@MultLoop:
+
+        MOV     EAX,[RSI]
+        MUL     EAX,R10D
+        ADD     EAX,R11D
+        ADC     EDX,0
+        MOV     [RSI],EAX
+        MOV     R11D,EDX
+        LEA     RSI,[RSI + CLimbSize]
+        LEA     ECX,[ECX - 1]
+        JECXZ   @CheckLastLimb
+        JMP     @MultLoop
+
+@CheckLastLimb:
+
+        OR      EDX,EDX
+        JE      @DoAdd
+        MOV     [RSI],EDX
+        INC     DWORD PTR [R9]
+
+@DoAdd:
+
+        POP     RCX                     // Restore Value
+        OR      R8D,R8D                 // If ADigit is 0 then we are finished
+        JZ      @Exit
+        CMP     [R9],0                  // If Size = 0, and ADigit isn't, then increment size
+        JNE     @SkipInc
+        INC     DWORD PTR [R9]
+
+@SkipInc:
+
+        ADD     [RCX],R8D               // Add ADigit
+
+@Exit:
+
+end;
+{$IFEND}
+
+
+{ TODO: It dawned to me that if you multiply by Base, and then add a number that is < Base, there can *never* be a
+        carry. Even $FFFFFFFF x 36, the lowest limb will be $FFFFFFFF - 35 ($FFFFFFDC), so adding 35 ($23) can not
+        cause a carry. Tried that with other multiplicators too.
+
+        This can be applied to MultiplyAndAdd32 too.
+
+        So just call it InternalMultiplyBaseAndAdd. Addend must be < Base, and there will never be a carry.
+        This means it is possible to pre-allocate and pass the size. This routine must update size if it sets the top
+        limb. So there can be a Size and it must be a var parameter. Just add the addend to the lowest limb. No need
+        to carry.
+}
 class procedure BigInteger.InternalMultiply16(const Left: TMagnitude; var Result: TMagnitude; LSize: Integer; Right: Word);
 {$IF DEFINED(PUREPASCAL)}
 type
@@ -8662,7 +8831,12 @@ begin
     LHi16 := TUInt32(LProduct).Hi;
     Inc(I);
   end;
-  PUInt16(Result)[I] := LHi16;
+  if LHi16 <> 0 then
+  begin
+    PUInt16(Result)[I] := LHi16;
+    // var parameter Size := I;
+    // Size should be the fifth parameter, so it can easily be set from 64 bit code.
+  end;
 end;
 {$ELSEIF DEFINED(WIN32)}
 asm
