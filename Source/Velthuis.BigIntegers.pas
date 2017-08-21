@@ -8212,7 +8212,7 @@ type
   PUInt16 = ^UInt16;
 var
   LDiff: Int32;
-  LBorrow, LInterBorrow: Int32;
+  LBorrow: Int32;
   LTail: Integer;
   LCount: Integer;
 {$IFDEF CPU64BITS}
@@ -8660,16 +8660,16 @@ type
 var
   I: Integer;
   LProduct: UInt32;
-  LHi16: UInt16;
+  LSize: Integer;
 begin
-  Size := Size shl 1;
-  LHi16 := 0;
+  LSize := Size shl 1;
   I := 0;
   LProduct := 0;
-  while I < Size do
+  while I < LSize do
   begin
     LProduct := UInt32(PUInt16(Value)[I]) * ABase + TUInt32(LProduct).Hi;
     PUInt16(Value)[I] := TUInt32(LProduct).Lo;
+    Inc(I);
   end;
   if TUInt32(LProduct).Hi <> 0 then
   begin
