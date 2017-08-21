@@ -149,21 +149,13 @@
 unit Velthuis.BigIntegers;
 
 { TODO:
-  ==========================================================================
-  Revisit InternalMultiply16 and make it InternalMultiplyBaseAndAddDigit.
-  ADigit must be < ABase. Then, there can be no carry for the addition!
-  See comments on InternalMultiply16.
-  ==========================================================================
-}
-
-{ TODO:
   - Remove local BigIntegers where possible. Removing Res from class function BigInteger.Add sped
     it up by 15%. Instead of a local BigInteger, Add now uses ResData and ResSize local variables.
 }
 { TODO: modular arithmetic. Modular division and multiplication. Barrett, Montgomery, etc. }
 { TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
         bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time. }
-{ TODO: InternalMultiply (basecase): use MMX instead of plain registers? Also remove trailing loop, make 4
+{ TODO: InternalMultiply (basecase) Win32: use MMX instead of plain registers? Also remove trailing loop, make 4
         completely separate loop+trail parts. }
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
 
@@ -176,7 +168,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -290,13 +282,13 @@ type
 
   {$IFDEF PUREPASCAL}
     {$IFDEF CPU64BITS}                                          // 64PP = 64 bit, Pure Pascal
-      KaratsubaThreshold             =   96;    // Checked
+      KaratsubaThreshold             =   80;    // Checked
       ToomCook3Threshold             =  272;    // Checked
       BurnikelZieglerThreshold       =   91;    // Checked
       BurnikelZieglerOffsetThreshold =    5;    // Unchecked
       KaratsubaSqrThreshold          =   48;    // Unchecked
     {$ELSE CPU32BITS}                                           // 32PP = 32 bit, Pure Pascal
-      KaratsubaThreshold             =   56;    // Checked
+      KaratsubaThreshold             =   40;    // Checked
       ToomCook3Threshold             =  144;    // Checked
       BurnikelZieglerThreshold       =   91;    // Checked
       BurnikelZieglerOffsetThreshold =    5;    // Unchecked
@@ -304,13 +296,13 @@ type
     {$ENDIF CPU64BITS}
   {$ELSE !PUREPASCAL}
     {$IFDEF CPU64BITS}                                          // 64A  = 64 bit, Assembler
-      KaratsubaThreshold             =   96;    // Checked
-      ToomCook3Threshold             =  256;    // Checked
+      KaratsubaThreshold             =  128;    // Checked
+      ToomCook3Threshold             = 1024;    // Checked
       BurnikelZieglerThreshold       =  160;    // Checked
       BurnikelZieglerOffsetThreshold =   80;    // Unchecked
       KaratsubaSqrThreshold          =  256;    // Unchecked
     {$ELSE CPU32BITS}                                           // 32A  = 32 bit, Assembler
-      KaratsubaThreshold             =   96;    // Checked
+      KaratsubaThreshold             =   64;    // Checked
       ToomCook3Threshold             =  256;    // Checked
       BurnikelZieglerThreshold       =   80;    // Checked
       BurnikelZieglerOffsetThreshold =   40;    // Unchecked
@@ -1054,8 +1046,11 @@ type
     class function InternalDivideByBase(Mag: PLimb; Base: Integer; var Size: Integer): UInt32; static;
     // Internal function multiplying by 16 bit integer and then adding 16 bit value. Used by parser.
     class procedure InternalMultiply16(const Left: TMagnitude; var Result: TMagnitude; LSize: Integer; Right: Word); static;
+
     // Internal function multiplying by a base and adding a digit. Condition: ADigit < ABase. Size is updated if necessary.
+    // Cf. code of TryParse on how to set up Value.
     class procedure InternalMultiplyAndAdd16(Value: PLimb; ABase, ADigit: Word; var Size: Integer); static;
+
     // Internal function negating magnitude (treating it as two's complement).
     class procedure InternalNegate(Source, Dest: PLimb; Size: Integer); static;
 
