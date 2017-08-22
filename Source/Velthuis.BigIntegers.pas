@@ -8263,100 +8263,30 @@ end;
 
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalSubtractPurePascal(Larger, Smaller, Result: PLimb; LSize, SSize: Integer);
-type
-  PUInt16 = ^UInt16;
+{$IFDEF CPU64BITS}
 var
-  LDiff: Int32;
-  LBorrow: Int32;
-  LTail: Integer;
-  LCount: Integer;
-{$IFDEF CPU64BITS}
-  LDiff64, LBorrow64, LInterBorrow64, LLarger64: UInt64;
-{$ENDIF}
+  LDiff: NativeInt;
+  LTail, LCount: Integer;
 begin
-{$IFDEF CPU64BITS}
-  LBorrow64 := 0;
-{$ELSE}
-  LBorrow := 0;
-{$ENDIF}
-
   Dec(LSize, SSize);
+
   LTail := SSize and CUnrollMask;
   LCount := SSize shr CUnrollShift;
+  LDiff := 0;
 
-  // Subtract, with LBorrow, Smallest from Largest and store result in Result.
   while LCount > 0 do
   begin
+    LDiff := Int64(Larger[0]) - Smaller[0] + Int32(LDiff shr 32);
+    Result[0] := TLimb(LDiff);
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    ///  Tests with 64 bit intermediate results like:                                ///
-    ///                                                                              ///
-    ///    LResult := Int64(Larger[0]) - Smaller[0] + Integer(TUInt64(LResult).Hi);  ///
-    ///    Result[0] := TLimb(LResult);                                              ///
-    ///                                                                              ///
-    ///    LResult := Int64(Larger[1]) - Smaller[1] + Integer(TUInt64(LResult).Hi);  ///
-    ///    Result[1] := TLimb(LResult);                                              ///
-    ///    // etc...                                                                 ///
-    ///                                                                              ///
-    ///  ... turned out to be slower than the following carry emulating code, even   ///
-    ///  for 64 bit targets.                                                         ///
-    ///                                                                              ///
-    ///  Just like for Addition, subtraction using 16 bit limbs is faster than       ///
-    ///  emulating a borrow in 32 bit.                                               ///
-    ////////////////////////////////////////////////////////////////////////////////////
+    LDiff := Int64(Larger[1]) - Smaller[1] + Int32(LDiff shr 32);
+    Result[1] := TLimb(LDiff);
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    /// Tests with loop unrolling by a factor > 4 did not improve results at all.    ///
-    ////////////////////////////////////////////////////////////////////////////////////
+    LDiff := Int64(Larger[2]) - Smaller[2] + Int32(LDiff shr 32);
+    Result[2] := TLimb(LDiff);
 
-  {$IFDEF CPU64BITS}
-    // add UInt64s instead of limbs.
-    LLarger64 := PUInt64(Larger)[0];
-    LDiff64 := LLarger64 - PUInt64(Smaller)[0];
-    LInterBorrow64 := Ord(LDiff64 > LLarger64);
-    LDiff64 := LDiff64 - LBorrow64;
-    PUInt64(Result)[0] := LDiff64;
-    LBorrow64 := LInterBorrow64 or Ord(LDiff64 = UInt64(-1)) and LBorrow64;
-
-    LLarger64 := PUInt64(Larger)[1];
-    LDiff64 := LLarger64 - PUInt64(Smaller)[1];
-    LInterBorrow64 := Ord(LDiff64 > LLarger64);
-    LDiff64 := LDiff64 - LBorrow64;
-    PUInt64(Result)[1] := LDiff64;
-    LBorrow64 := LInterBorrow64 or Ord(LDiff64 = UInt64(-1)) and LBorrow64;
-  {$ELSE}
-    LDiff := PUInt16(Larger)[0] - PUInt16(Smaller)[0] - LBorrow;
-    PUInt16(Result)[0] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[1] - PUInt16(Smaller)[1] - LBorrow;
-    PUInt16(Result)[1] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[2] - PUInt16(Smaller)[2] - LBorrow;
-    PUInt16(Result)[2] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[3] - PUInt16(Smaller)[3] - LBorrow;
-    PUInt16(Result)[3] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[4] - PUInt16(Smaller)[4] - LBorrow;
-    PUInt16(Result)[4] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[5] - PUInt16(Smaller)[5] - LBorrow;
-    PUInt16(Result)[5] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[6] - PUInt16(Smaller)[6] - LBorrow;
-    PUInt16(Result)[6] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[7] - PUInt16(Smaller)[7] - LBorrow;
-    PUInt16(Result)[7] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-  {$ENDIF}
+    LDiff := Int64(Larger[3]) - Smaller[3] + Int32(LDiff shr 32);
+    Result[3] := TLimb(LDiff);
 
     Inc(Larger, CUnrollIncrement);
     Inc(Smaller, CUnrollIncrement);
@@ -8364,19 +8294,10 @@ begin
     Dec(LCount);
   end;
 
-{$IFDEF CPU64BITS}
-  LBorrow := TLimb(LBorrow64);
-{$ENDIF}
-
   while LTail > 0 do
   begin
-    LDiff := PUInt16(Larger)[0] - PUInt16(Smaller)[0] - LBorrow;
-    PUInt16(Result)[0] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[1] - PUInt16(Smaller)[1] - LBorrow;
-    PUInt16(Result)[1] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
+    LDiff := Int64(Larger[0]) - Smaller[0] + Int32(LDiff shr 32);
+    Result[0] := TLimb(LDiff);
 
     Inc(Larger);
     Inc(Smaller);
@@ -8387,79 +8308,140 @@ begin
   LTail := LSize and CUnrollMask;
   LCount := LSize shr CUnrollShift;
 
-{$IFDEF CPU64BITS}
-  LBorrow64 := LBorrow;
-{$ENDIF}
-
-  // Subtract, with LBorrow, 0 from Largest and store result in Result.
   while LCount > 0 do
   begin
-  {$IFDEF CPU64BITS}
-    LDiff64 := PUInt64(Larger)[0] - LBorrow64;
-    PUInt64(Result)[0] := LDiff64;
-    LBorrow64 := Ord(LDiff64 = UInt64(-1)) and LBorrow64;
+    LDiff := Int64(Larger[0]) + Int32(LDiff shr 32);
+    Result[0] := TLimb(LDiff);
 
-    LDiff64 := PUInt64(Larger)[1] - LBorrow64;
-    PUInt64(Result)[1] := LDiff64;
-    LBorrow64 := Ord(LDiff64 = UInt64(-1)) and LBorrow64;
-  {$ELSE}
-    LDiff := PUInt16(Larger)[0] - LBorrow;
-    PUInt16(Result)[0] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
+    LDiff := Int64(Larger[1]) + Int32(LDiff shr 32);
+    Result[1] := TLimb(LDiff);
 
-    LDiff := PUInt16(Larger)[1] - LBorrow;
-    PUInt16(Result)[1] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
+    LDiff := Int64(Larger[2]) + Int32(LDiff shr 32);
+    Result[2] := TLimb(LDiff);
 
-    LDiff := PUInt16(Larger)[2] - LBorrow;
-    PUInt16(Result)[2] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[3] - LBorrow;
-    PUInt16(Result)[3] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[4] - LBorrow;
-    PUInt16(Result)[4] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[5] - LBorrow;
-    PUInt16(Result)[5] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[6] - LBorrow;
-    PUInt16(Result)[6] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[7] - LBorrow;
-    PUInt16(Result)[7] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-  {$ENDIF}
+    LDiff := Int64(Larger[3]) + Int32(LDiff shr 32);
+    Result[3] := TLimb(LDiff);
 
     Inc(Larger, CUnrollIncrement);
     Inc(Result, CUnrollIncrement);
     Dec(LCount);
   end;
 
-{$IFDEF CPU64BITS}
-  LBorrow := TLimb(LBorrow64);
-{$ENDIF}
-
   while LTail > 0 do
   begin
-    LDiff := PUInt16(Larger)[0] - LBorrow;
-    PUInt16(Result)[0] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
-
-    LDiff := PUInt16(Larger)[1] - LBorrow;
-    PUInt16(Result)[1] := UInt16(LDiff);
-    LBorrow := (LDiff shr 16) and 1;
+    LDiff := Int64(Larger[0]) + Int32(LDiff shr 32);
+    Result[0] := TLimb(LDiff);
 
     Inc(Larger);
     Inc(Result);
     Dec(LTail);
   end;
 end;
+{$ELSE}
+var
+  LDiff: NativeInt;
+  LCount, LTail: Integer;
+begin
+  Dec(LSize, SSize);
+  LDiff := 0;
+
+  LTail := SSize and CUnrollMask;
+  LCount := SSize shr CUnrollShift;
+
+  while LCount > 0 do
+  begin
+    LDiff := Int32(PUInt16(Larger)[0]) - PUInt16(Smaller)[0] + Int16(LDiff shr 16);
+    PUInt16(Result)[0] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[1]) - PUInt16(Smaller)[1] + Int16(LDiff shr 16);
+    PUInt16(Result)[1] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[2]) - PUInt16(Smaller)[2] + Int16(LDiff shr 16);
+    PUInt16(Result)[2] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[3]) - PUInt16(Smaller)[3] + Int16(LDiff shr 16);
+    PUInt16(Result)[3] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[4]) - PUInt16(Smaller)[4] + Int16(LDiff shr 16);
+    PUInt16(Result)[4] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[5]) - PUInt16(Smaller)[5] + Int16(LDiff shr 16);
+    PUInt16(Result)[5] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[6]) - PUInt16(Smaller)[6] + Int16(LDiff shr 16);
+    PUInt16(Result)[6] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[7]) - PUInt16(Smaller)[7] + Int16(LDiff shr 16);
+    PUInt16(Result)[7] := UInt16(LDiff);
+
+    Inc(Larger, CUnrollIncrement);
+    Inc(Smaller, CUnrollIncrement);
+    Inc(Result, CUnrollIncrement);
+    Dec(LCount);
+  end;
+
+  while LTail > 0 do
+  begin
+    LDiff := Int32(PUInt16(Larger)[0]) - PUInt16(Smaller)[0] + Int16(LDiff shr 16);
+    PUInt16(Result)[0] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[1]) - PUInt16(Smaller)[1] + Int16(LDiff shr 16);
+    PUInt16(Result)[1] := UInt16(LDiff);
+
+    Inc(Larger);
+    Inc(Smaller);
+    Inc(Result);
+    Dec(LTail);
+  end;
+
+  LTail := LSize and CUnrollMask;
+  LCount := LSize shr CUnrollShift;
+
+  while LCount > 0 do
+  begin
+    LDiff := Int32(PUInt16(Larger)[0]) + Int16(LDiff shr 16);
+    PUInt16(Result)[0] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[1]) + Int16(LDiff shr 16);
+    PUInt16(Result)[1] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[2]) + Int16(LDiff shr 16);
+    PUInt16(Result)[2] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[3]) + Int16(LDiff shr 16);
+    PUInt16(Result)[3] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[4]) + Int16(LDiff shr 16);
+    PUInt16(Result)[4] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[5]) + Int16(LDiff shr 16);
+    PUInt16(Result)[5] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[6]) + Int16(LDiff shr 16);
+    PUInt16(Result)[6] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[7]) + Int16(LDiff shr 16);
+    PUInt16(Result)[7] := UInt16(LDiff);
+
+    Inc(Larger, CUnrollIncrement);
+    Inc(Result, CUnrollIncrement);
+    Dec(LCount);
+  end;
+
+  while LTail > 0 do
+  begin
+    LDiff := Int32(PUInt16(Larger)[0]) + Int16(LDiff shr 16);
+    PUInt16(Result)[0] := UInt16(LDiff);
+
+    LDiff := Int32(PUInt16(Larger)[1]) + Int16(LDiff shr 16);
+    PUInt16(Result)[1] := UInt16(LDiff);
+
+    Inc(Larger);
+    Inc(Result);
+    Dec(LTail);
+  end;
+end;
+{$ENDIF}
 {$ENDIF}
 
 function BigInteger.IsZero: Boolean;
