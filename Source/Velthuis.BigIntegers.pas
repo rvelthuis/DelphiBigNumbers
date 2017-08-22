@@ -168,7 +168,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -1313,7 +1313,7 @@ resourcestring
   SNoInverse                 = 'No modular inverse possible';
   SNegativeExponent          = 'Negative exponent %s not allowed';
 
-{$RANGECHECKS ON}
+{$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
 {$POINTERMATH ON}
 {$STACKFRAMES OFF}
@@ -3984,15 +3984,12 @@ end;
 
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer);
+{$IFDEF CPU64BITS}
 var
   I: Integer;
-  CarryIn, CarryOut: Boolean;
   PTemp: PLimb;
   LCount, LTail: Integer;
-  Sum: TLimb;
-{$IFDEF CPU64BITS}
-  Left64, Sum64, Carry64, CarryOut64: UInt64;
-{$ENDIF}
+  Sum: NativeUInt;
 begin
   if LSize < RSize then
   begin
@@ -4003,80 +4000,37 @@ begin
     LSize := RSize;
     RSize := I;
   end;
-  // From here on,
-  // - Left is larger and LSize is its size,
-  // - Right is smaller and RSize is its size.
 
-  // Emulate ADC (add with carry)
-{$IFNDEF CPU64BITS}
-  CarryIn := False;
-{$ELSE}
-  Carry64 := 0;
-{$ENDIF}
-  Dec(LSize, RSize);
+  Sum := 0;
+
+  Dec(LSize, RSize);          // LSize is length of non-overlapping part.
 
   LTail := RSize and CUnrollMask;
   LCount := RSize shr CUnrollShift;
 
   while LCount > 0 do
   begin
-{$IFDEF CPU64BITS}
-    Left64 := PUInt64(Left)[0];
-    Sum64 := Left64 + PUInt64(Right)[0];
-    CarryOut64 := Ord(Sum64 < Left64);
-    Inc(Sum64, Carry64);
-    PUInt64(Result)[0] := Sum64;
-    Carry64 := CarryOut64 or Ord(Sum64 < Carry64);
+    Sum := UInt64(Left[0]) + Right[0] + (Sum shr 32);
+    Result[0] := TLimb(Sum);
 
-    Left64 := PUInt64(Left)[1];
-    Sum64 := Left64 + PUInt64(Right)[1];
-    CarryOut64 := Ord(Sum64 < Left64);
-    Inc(Sum64, Carry64);
-    PUInt64(Result)[1] := Sum64;
-    Carry64 := CarryOut64 or Ord(Sum64 < Carry64);
-{$ELSE !CPU64BITS}
-    Sum := Left[0] + Right[0];
-    CarryOut := Sum < Left[0];
-    Inc(Sum, Byte(CarryIn));
-    Result[0] := Sum;
-    CarryIn := (Sum < Byte(CarryIn)) or CarryOut;
+    Sum := UInt64(Left[1]) + Right[1] + (Sum shr 32);
+    Result[1] := TLimb(Sum);
 
-    Sum := Left[1] + Right[1];
-    CarryOut := Sum < Left[1];
-    Inc(Sum, Byte(CarryIn));
-    Result[1] := Sum;
-    CarryIn := (Sum < Byte(CarryIn)) or CarryOut;
+    Sum := UInt64(Left[2]) + Right[2] + (Sum shr 32);
+    Result[2] := TLimb(Sum);
 
-    Sum := Left[2] + Right[2];
-    CarryOut := Sum < Left[2];
-    Inc(Sum, Byte(CarryIn));
-    Result[2] := Sum;
-    CarryIn := (Sum < Byte(CarryIn)) or CarryOut;
+    Sum := UInt64(Left[3]) + Right[3] + (Sum shr 32);
+    Result[3] := TLimb(Sum);
 
-    Sum := Left[3] + Right[3];
-    CarryOut := Sum < Left[3];
-    Inc(Sum, Byte(CarryIn));
-    Result[3] := Sum;
-    CarryIn := (Sum < Byte(CarryIn)) or CarryOut;
-{$ENDIF}
     Inc(Left, CUnrollIncrement);
     Inc(Right, CUnrollIncrement);
     Inc(Result, CUnrollIncrement);
     Dec(LCount);
   end;
-
-{$IFDEF CPU64BITS}
-  CarryIn := Boolean(Carry64);
-{$ELSE}
-//  Carry := Byte(CarryIn);
-{$ENDIF}
   while LTail > 0 do
   begin
-    Sum := Left[0] + Right[0];
-    CarryOut := Sum < Left[0];
-    Inc(Sum, Byte(CarryIn));
-    Result[0] := Sum;
-    CarryIn := (Sum < Byte(CarryIn)) or CarryOut;
+    Sum := UInt64(Left[0]) + Right[0] + (Sum shr 32);
+    Result[0] := TLimb(Sum);
 
     Inc(Left);
     Inc(Right);
@@ -4087,61 +4041,162 @@ begin
   LTail := LSize and CUnrollMask;
   LCount := LSize shr CUnrollShift;
 
-{$IFDEF CPU64BITS}
-  Carry64 := Byte(CarryIn);
-{$ENDIF}
-
   while LCount > 0 do
   begin
-{$IFDEF CPU64BITS}
-    Sum64 := PUInt64(Left)[0] + Carry64;
-    PUInt64(Result)[0] := Sum64;
-    Carry64 := Ord(Sum64 < Carry64);
+    Sum := UInt64(Left[0]) + (Sum shr 32);
+    Result[0] := TLimb(Sum);
 
-    Sum64 := PUInt64(Left)[1] + Carry64;
-    PUInt64(Result)[1] := Sum64;
-    Carry64 := Ord(Sum64 < Carry64);
-{$ELSE}
-    Sum := Left[0] + Byte(CarryIn);
-    Result[0] := Sum;
-    CarryIn := (Sum < Byte(CarryIn));
+    Sum := UInt64(Left[1]) + (Sum shr 32);
+    Result[1] := TLimb(Sum);
 
-    Sum := Left[1] + Byte(CarryIn);
-    Result[1] := Sum;
-    CarryIn := (Sum < Byte(CarryIn));
+    Sum := UInt64(Left[2]) + (Sum shr 32);
+    Result[2] := TLimb(Sum);
 
-    Sum := Left[2] + Byte(CarryIn);
-    Result[2] := Sum;
-    CarryIn := (Sum < Byte(CarryIn));
-
-    Sum := Left[3] + Byte(CarryIn);
-    Result[3] := Sum;
-    CarryIn := (Sum < Byte(CarryIn));
-
-{$ENDIF}
+    Sum := UInt64(Left[3]) + (Sum shr 32);
+    Result[3] := TLimb(Sum);
 
     Inc(Left, CUnrollIncrement);
     Inc(Result, CUnrollIncrement);
     Dec(LCount);
   end;
 
-{$IFDEF CPU64BITS}
-  CarryIn := Boolean(Carry64);
-{$ENDIF}
-
   while LTail > 0 do
   begin
-    Sum := Left[0] + Byte(CarryIn);
-    Result[0] := Sum;
-    CarryIn := (Sum < Byte(CarryIn));
+    Sum := UInt64(Left[0]) + (Sum shr 32);
+    Result[0] := TLimb(Sum);
 
     Inc(Left);
     Inc(Result);
     Dec(LTail);
   end;
 
-  Result[0] := Byte(CarryIn);
+  Result[0] := Sum shr 32;
+
 end;
+{$ELSE}
+type
+  TUInt32 = packed record
+    Lo, Hi: UInt16;
+  end;
+var
+  I: Integer;
+  PTemp: PLimb;
+  Sum: NativeUInt;
+  LCount, LTail: Integer;
+begin
+  if LSize < RSize then
+  begin
+    PTemp := Left;
+    Left := Right;
+    Right := PTemp;
+    I := LSize;
+    LSize := RSize;
+    RSize := I;
+  end;
+
+  Sum := 0;
+  Dec(LSize, RSize);
+
+  LTail := RSize and CUnrollMask;
+  LCount := RSize shr CUnrollShift;
+
+  while LCount > 0 do
+  begin
+    Sum := UInt32(PUInt16(Left)[0]) + PUInt16(Right)[0] + (Sum shr 16);
+    PUInt16(Result)[0] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[1]) + PUInt16(Right)[1] + (Sum shr 16);
+    PUInt16(Result)[1] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[2]) + PUInt16(Right)[2] + (Sum shr 16);
+    PUInt16(Result)[2] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[3]) + PUInt16(Right)[3] + (Sum shr 16);
+    PUInt16(Result)[3] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[4]) + PUInt16(Right)[4] + (Sum shr 16);
+    PUInt16(Result)[4] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[5]) + PUInt16(Right)[5] + (Sum shr 16);
+    PUInt16(Result)[5] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[6]) + PUInt16(Right)[6] + (Sum shr 16);
+    PUInt16(Result)[6] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[7]) + PUInt16(Right)[7] + (Sum shr 16);
+    PUInt16(Result)[7] := UInt16(Sum);
+
+    Inc(Left, CUnrollIncrement);
+    Inc(Right, CUnrollIncrement);
+    Inc(Result, CUnrollIncrement);
+    Dec(LCount);
+  end;
+
+  while LTail > 0 do
+  begin
+    Sum := UInt32(PUInt16(Left)[0]) + PUInt16(Right)[0] + (Sum shr 16);
+    PUInt16(Result)[0] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[1]) + PUInt16(Right)[1] + (Sum shr 16);
+    PUInt16(Result)[1] := UInt16(Sum);
+
+    Inc(Left);
+    Inc(Right);
+    Inc(Result);
+    Dec(LTail);
+  end;
+
+  LTail := LSize and CUnrollMask;
+  LCount := LSize shr CUnrollShift;
+
+  while LCount > 0 do
+  begin
+    Sum := UInt32(PUInt16(Left)[0]) + (Sum shr 16);
+    PUInt16(Result)[0] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[1]) + (Sum shr 16);
+    PUInt16(Result)[1] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[2]) + (Sum shr 16);
+    PUInt16(Result)[2] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[3]) + (Sum shr 16);
+    PUInt16(Result)[3] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[4]) + (Sum shr 16);
+    PUInt16(Result)[4] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[5]) + (Sum shr 16);
+    PUInt16(Result)[5] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[6]) + (Sum shr 16);
+    PUInt16(Result)[6] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[7]) + (Sum shr 16);
+    PUInt16(Result)[7] := UInt16(Sum);
+
+    Inc(Left, CUnrollIncrement);
+    Inc(Result, CUnrollIncrement);
+    Dec(LCount);
+  end;
+
+  while LTail > 0 do
+  begin
+    Sum := UInt32(PUInt16(Left)[0]) + (Sum shr 16);
+    PUInt16(Result)[0] := UInt16(Sum);
+
+    Sum := UInt32(PUInt16(Left)[1]) + (Sum shr 16);
+    PUInt16(Result)[1] := UInt16(Sum);
+
+    Inc(Left);
+    Inc(Result);
+    Dec(LTail);
+  end;
+
+  Result[0] := Sum shr 16;
+
+end;
+{$ENDIF}
 {$ENDIF}
 
 class procedure BigInteger.InternalMultiply(Left, Right, Result: PLimb; LSize, RSize: Integer);
