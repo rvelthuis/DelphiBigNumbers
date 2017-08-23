@@ -3984,7 +3984,6 @@ end;
 
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer);
-{$IFDEF CPU64BITS}
 var
   I: Integer;
   PTemp: PLimb;
@@ -4010,6 +4009,7 @@ begin
 
   while LCount > 0 do
   begin
+  {$IFDEF CPU64BITS}
     Sum := UInt64(Left[0]) + Right[0] + (Sum shr 32);
     Result[0] := TLimb(Sum);
 
@@ -4021,87 +4021,7 @@ begin
 
     Sum := UInt64(Left[3]) + Right[3] + (Sum shr 32);
     Result[3] := TLimb(Sum);
-
-    Inc(Left, CUnrollIncrement);
-    Inc(Right, CUnrollIncrement);
-    Inc(Result, CUnrollIncrement);
-    Dec(LCount);
-  end;
-  while LTail > 0 do
-  begin
-    Sum := UInt64(Left[0]) + Right[0] + (Sum shr 32);
-    Result[0] := TLimb(Sum);
-
-    Inc(Left);
-    Inc(Right);
-    Inc(Result);
-    Dec(LTail);
-  end;
-
-  LTail := LSize and CUnrollMask;
-  LCount := LSize shr CUnrollShift;
-
-  while LCount > 0 do
-  begin
-    Sum := UInt64(Left[0]) + (Sum shr 32);
-    Result[0] := TLimb(Sum);
-
-    Sum := UInt64(Left[1]) + (Sum shr 32);
-    Result[1] := TLimb(Sum);
-
-    Sum := UInt64(Left[2]) + (Sum shr 32);
-    Result[2] := TLimb(Sum);
-
-    Sum := UInt64(Left[3]) + (Sum shr 32);
-    Result[3] := TLimb(Sum);
-
-    Inc(Left, CUnrollIncrement);
-    Inc(Result, CUnrollIncrement);
-    Dec(LCount);
-  end;
-
-  while LTail > 0 do
-  begin
-    Sum := UInt64(Left[0]) + (Sum shr 32);
-    Result[0] := TLimb(Sum);
-
-    Inc(Left);
-    Inc(Result);
-    Dec(LTail);
-  end;
-
-  Result[0] := Sum shr 32;
-
-end;
-{$ELSE}
-type
-  TUInt32 = packed record
-    Lo, Hi: UInt16;
-  end;
-var
-  I: Integer;
-  PTemp: PLimb;
-  Sum: NativeUInt;
-  LCount, LTail: Integer;
-begin
-  if LSize < RSize then
-  begin
-    PTemp := Left;
-    Left := Right;
-    Right := PTemp;
-    I := LSize;
-    LSize := RSize;
-    RSize := I;
-  end;
-
-  Sum := 0;
-  Dec(LSize, RSize);
-
-  LTail := RSize and CUnrollMask;
-  LCount := RSize shr CUnrollShift;
-
-  while LCount > 0 do
-  begin
+  {$ELSE}
     Sum := UInt32(PUInt16(Left)[0]) + PUInt16(Right)[0] + (Sum shr 16);
     PUInt16(Result)[0] := UInt16(Sum);
 
@@ -4125,20 +4045,25 @@ begin
 
     Sum := UInt32(PUInt16(Left)[7]) + PUInt16(Right)[7] + (Sum shr 16);
     PUInt16(Result)[7] := UInt16(Sum);
+  {$ENDIF}
 
     Inc(Left, CUnrollIncrement);
     Inc(Right, CUnrollIncrement);
     Inc(Result, CUnrollIncrement);
     Dec(LCount);
   end;
-
   while LTail > 0 do
   begin
+  {$IFDEF CPU64BITS}
+    Sum := UInt64(Left[0]) + Right[0] + (Sum shr 32);
+    Result[0] := TLimb(Sum);
+  {$ELSE}
     Sum := UInt32(PUInt16(Left)[0]) + PUInt16(Right)[0] + (Sum shr 16);
     PUInt16(Result)[0] := UInt16(Sum);
 
     Sum := UInt32(PUInt16(Left)[1]) + PUInt16(Right)[1] + (Sum shr 16);
     PUInt16(Result)[1] := UInt16(Sum);
+  {$ENDIF}
 
     Inc(Left);
     Inc(Right);
@@ -4151,6 +4076,19 @@ begin
 
   while LCount > 0 do
   begin
+  {$IFDEF CPU64BITS}
+    Sum := UInt64(Left[0]) + (Sum shr 32);
+    Result[0] := TLimb(Sum);
+
+    Sum := UInt64(Left[1]) + (Sum shr 32);
+    Result[1] := TLimb(Sum);
+
+    Sum := UInt64(Left[2]) + (Sum shr 32);
+    Result[2] := TLimb(Sum);
+
+    Sum := UInt64(Left[3]) + (Sum shr 32);
+    Result[3] := TLimb(Sum);
+  {$ELSE}
     Sum := UInt32(PUInt16(Left)[0]) + (Sum shr 16);
     PUInt16(Result)[0] := UInt16(Sum);
 
@@ -4174,6 +4112,7 @@ begin
 
     Sum := UInt32(PUInt16(Left)[7]) + (Sum shr 16);
     PUInt16(Result)[7] := UInt16(Sum);
+  {$ENDIF}
 
     Inc(Left, CUnrollIncrement);
     Inc(Result, CUnrollIncrement);
@@ -4182,23 +4121,32 @@ begin
 
   while LTail > 0 do
   begin
+  {$IFDEF CPU64BITS}
+    Sum := UInt64(Left[0]) + (Sum shr 32);
+    Result[0] := TLimb(Sum);
+  {$ELSE}
     Sum := UInt32(PUInt16(Left)[0]) + (Sum shr 16);
     PUInt16(Result)[0] := UInt16(Sum);
 
     Sum := UInt32(PUInt16(Left)[1]) + (Sum shr 16);
     PUInt16(Result)[1] := UInt16(Sum);
+  {$ENDIF}
 
     Inc(Left);
     Inc(Result);
     Dec(LTail);
   end;
 
+{$IFDEF CPU64BITS}
+  Result[0] := Sum shr 32;
+{$ELSE}
   Result[0] := Sum shr 16;
+{$ENDIF};
 
 end;
 {$ENDIF}
-{$ENDIF}
 
+// TODO: In Win32, check if 16 bit limbs (like in InternalAddPurePascal) are faster for the PUREPASCAL code.
 class procedure BigInteger.InternalMultiply(Left, Right, Result: PLimb; LSize, RSize: Integer);
 {$IFDEF PUREPASCAL}
 type
@@ -4262,7 +4210,7 @@ begin
       while LCount > 0 do
       begin
         Product := UInt64(PLeft[0]) * CurrentRightLimb + PDest[0] + TUInt64(Product).Hi;
-        PDest[0] := TUInt64(Product).Lo;
+        PDest[0] := TLimb(Product);
         Product := UInt64(PLeft[1]) * CurrentRightLimb + PDest[1] + TUInt64(Product).Hi;
         PDest[1] := TUInt64(Product).Lo;
         Product := UInt64(PLeft[2]) * CurrentRightLimb + PDest[2] + TUInt64(Product).Hi;
@@ -4761,7 +4709,7 @@ end;
 
 function BigInteger.ToByteArray: TArray<Byte>;
 var
-  Neg: TMagnitude;
+  Mag: TMagnitude;
   Bytes, Bits: Integer;
   ExtraByte: Byte;
 begin
@@ -4777,17 +4725,17 @@ begin
   Bytes := (Bytes + 7) shr 3;
   if FSize > 0 then
   begin
-    Neg := FData;
+    Mag := FData;
     ExtraByte := $00;
   end
   else
   begin
-    SetLength(Neg, Size);
-    InternalNegate(PLimb(FData), PLimb(Neg), Size);
+    SetLength(Mag, Size);
+    InternalNegate(PLimb(FData), PLimb(Mag), Size);
     ExtraByte := $FF;
   end;
   SetLength(Result, Bytes + Byte(Bits = 0));
-  Move(Neg[0], Result[0], Bytes);
+  Move(Mag[0], Result[0], Bytes);
   if Bits = 0 then
     Result[Bytes] := ExtraByte;
 end;
@@ -5157,6 +5105,7 @@ function BigInteger.ToString: string;
 begin
   Result := ToString(FBase);
 end;
+
 function BigInteger.ToString(Base: Integer): string;
 var
   WritePtr: PChar;
