@@ -1,6 +1,6 @@
 ## BSD 2-Clause License
 
-Copyright &copy; 2017, Rudy Velthuis
+Copyright &copy; 2017, Rudy Velthuis<br>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
