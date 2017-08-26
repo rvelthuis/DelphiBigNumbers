@@ -142,8 +142,11 @@
 {   2017-08-18: Some more buffer overruns (badly dimensioned magnitudes)     }
 {               removed.                                                     }
 {                                                                            }
+{   2017-08-22: Improved speed of Win32 InternalAddPurePascal by using 16    }
+{               bit additions, removing need for costly carry emulation.     }
+{                                                                            }
 {----------------------------------------------------------------------------}
-{   Also see GitHub commit comments.                                         }
+{   See GitHub commit comments too.                                          }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
@@ -168,7 +171,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  {$DEFINE PUREPASCAL}
+  { $DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -1046,7 +1049,6 @@ type
     class function InternalDivideByBase(Mag: PLimb; Base: Integer; var Size: Integer): UInt32; static;
     // Internal function multiplying by 16 bit integer and then adding 16 bit value. Used by parser.
     class procedure InternalMultiply16(const Left: TMagnitude; var Result: TMagnitude; LSize: Integer; Right: Word); static;
-
     // Internal function multiplying by a base and adding a digit. Condition: ADigit < ABase. Size is updated if necessary.
     // Cf. code of TryParse on how to set up Value.
     class procedure InternalMultiplyAndAdd16(Value: PLimb; ABase, ADigit: Word; var Size: Integer); static;
@@ -1100,22 +1102,22 @@ type
     /// <summary>Magnitude, dynamic array of TLimb, containing the (unsigned) value of the BigInteger</summary>
     property Magnitude: TMagnitude read FData;
 
-    // Global numeric base for BigIntegers
+    /// <summary>Global numeric base for BigIntegers</summary>
     class property Base: TNumberBase read FBase write SetBase;
-    // Global flag indicating if partial flag stall is avoided
+    /// <summary>Global flag indicating if partial flag stall is avoided</summary>
     class property StallAvoided: Boolean read FAvoidStall;
-    // Global rounding mode used for conversion to floating point.
+    /// <summary>Global rounding mode used for conversion to floating point</summary>
     class property RoundingMode: TRoundingMode read FRoundingMode write FRoundingMode;
   {$ENDREGION}
 
   end;
 
-// Returns sign bit (top bit) of an integer.
+/// <summary>Returns sign bit (top bit) of an integer.</summary>
 function SignBitOf(Value: Integer): Integer; inline;
 
-// Returns the minimum of two BigIntegers.
+/// <summary>Returns the minimum of two BigIntegers.</summary>
 function Min(const A, B: BigInteger): BigInteger; overload; inline;
-// Returns the maximum of two BigIntegers.
+/// <summary>Returns the maximum of two BigIntegers.</summary>
 function Max(const A, B: BigInteger): BigInteger; overload; inline;
 
 var
@@ -1140,7 +1142,9 @@ implementation
 
 uses
 {$IFDEF DEBUG}
+  {$IFDEF MSWINDOWS}
   Winapi.Windows,
+  {$ENDIF}
 {$ENDIF}
   Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils;
 
@@ -1182,9 +1186,15 @@ begin
   if IsConsole then
     // Write to console.
     Writeln(System.ErrOutput, Format(Msg, Params))
+{$IFDEF MSWINDOWS}
   else
+
     // Inside the IDE, this will be displayed in the Event Log.
     OutputDebugString(PChar(Format(Msg, Params)));
+{$ELSE}
+    ;
+{$ENDIF}
+
 end;
 
 procedure Debug(const Msg: string); overload;
@@ -1279,7 +1289,6 @@ var
   T1, T2, T3: UInt64;
   I1, I2: UInt64;
 begin
-  Randomize;
   repeat
     Timing(T1, T2, T3);
     I1 := T2 - T1;
@@ -4146,9 +4155,20 @@ begin
 end;
 {$ENDIF}
 
-// TODO: In Win32, check if 16 bit limbs (like in InternalAddPurePascal) are faster for the PUREPASCAL code.
 class procedure BigInteger.InternalMultiply(Left, Right, Result: PLimb; LSize, RSize: Integer);
 {$IFDEF PUREPASCAL}
+
+//////////////////////////////////////////////////////////////////////////////
+// Tests with using a UInt32 Product and emulating 16 bit limbs produced    //
+// 50% slower code.                                                         //
+// 64 bit multiplication and addition doesn't generate optimal code, but    //
+// it is apparently still faster than faking 16 bit limbs.                  //
+//////////////////////////////////////////////////////////////////////////////
+// What is really needed is a function that multiplies two UInt32 and       //
+// produces an UInt64 directly, i.e. without conversion of the UInt32s into //
+// UInt64 first. This is easy in assembler, but not in PUREPASCAL.          //
+//////////////////////////////////////////////////////////////////////////////
+
 type
   TUInt64 = packed record
     Lo, Hi: TLimb;
@@ -4158,7 +4178,9 @@ var
   LTail, LCount: Integer;
   CurrentRightLimb: TLimb;
   PLeft, PDest, PRight, PDestRowStart: PLimb;
+  LCarry: TLimb;
 begin
+  // Ensure that Left is the longer of both magnitudes.
   if RSize > LSize then
   begin
     PDest := Left;
@@ -4169,6 +4191,7 @@ begin
     RSize := LTail;
   end;
 
+  // Each new row is one limb further to the left.
   PRight := Right;
   PDestRowStart := Result;
 
@@ -4180,11 +4203,15 @@ begin
   TUInt64(Product).Hi := 0;
   Dec(RSize);
   LCount := LSize;
+  LCarry := 0;
 
+  // First row. No previous result, so no need to add it in.
   while LCount > 0 do
   begin
-    Product := UInt64(PLeft^) * CurrentRightLimb + TUInt64(Product).Hi;
+    Product := UInt64(PLeft^) * CurrentRightLimb;
+    Inc(Product, LCarry);
     PDest^ := TUInt64(Product).Lo;
+    LCarry := TUInt64(Product).Hi;
     Inc(PLeft);
     Inc(PDest);
     Dec(LCount);
@@ -4203,20 +4230,53 @@ begin
 
     if CurrentRightLimb <> 0 then
     begin
-      TUInt64(Product).Hi := 0;
+      LCarry := 0;
       LCount := LSize;
 
       // Inner loop, unrolled.
       while LCount > 0 do
       begin
-        Product := UInt64(PLeft[0]) * CurrentRightLimb + PDest[0] + TUInt64(Product).Hi;
+
+        // Note: The following will not produce an overflow.
+        // Proof: say B = High(TLimb) + 1 = $100000000
+        // Assume PLeft[0], CurrentRightLimb, PRight[0] and Product.Hi are all
+        // the maximum value (B - 1) (i.e. $FFFFFFFF).
+        // Then Product = (B - 1)^2 + (B - 1) + (B - 1)
+        //              = B^2 - 2*B + 1 + 2*B - 2
+        //              = B^2 - 1 = $FFFFFFFFFFFFFFFF = High(UInt64)
+        // so no overflow possible!
+
+        // Note2: The previous code was
+        //
+        //          Product := UInt64(PLeft[0]) * CurrentRightLimb + PDest[0] + TUInt64(Product).Hi;
+        //          etc...
+        //
+        //        The following source produces shorter generated code, but is only slightly faster
+        //        than the above (3% speed increase).
+
+        Product := UInt64(PLeft[0]) * CurrentRightLimb;
+        Inc(Product, PDest[0]);
+        Inc(Product, LCarry);
         PDest[0] := TLimb(Product);
-        Product := UInt64(PLeft[1]) * CurrentRightLimb + PDest[1] + TUInt64(Product).Hi;
-        PDest[1] := TUInt64(Product).Lo;
-        Product := UInt64(PLeft[2]) * CurrentRightLimb + PDest[2] + TUInt64(Product).Hi;
-        PDest[2] := TUInt64(Product).Lo;
-        Product := UInt64(PLeft[3]) * CurrentRightLimb + PDest[3] + TUInt64(Product).Hi;
-        PDest[3] := TUInt64(Product).Lo;
+        LCarry := TUInt64(Product).Hi;
+
+        Product := UInt64(PLeft[1]) * CurrentRightLimb;
+        Inc(Product, PDest[1]);
+        Inc(Product, LCarry);
+        PDest[1] := TLimb(Product);
+        LCarry := TUInt64(Product).Hi;
+
+        Product := UInt64(PLeft[2]) * CurrentRightLimb;
+        Inc(Product, PDest[2]);
+        Inc(Product, LCarry);
+        PDest[2] := TLimb(Product);
+        LCarry := TUInt64(Product).Hi;
+
+        Product := UInt64(PLeft[3]) * CurrentRightLimb;
+        Inc(Product, PDest[3]);
+        Inc(Product, LCarry);
+        PDest[3] := TLimb(Product);
+        LCarry := TUInt64(Product).Hi;
 
         Inc(PLeft, CUnrollIncrement);
         Inc(PDest, CunrollIncrement);
@@ -4227,8 +4287,12 @@ begin
       LCount := LTail;
       while LCount > 0 do
       begin
-        Product := UInt64(PLeft^) * CurrentRightLimb + PDest^ + TUInt64(Product).Hi;
+        Product := UInt64(PLeft^) * CurrentRightLimb;
+        Inc(Product, PDest^);
+        Inc(Product, LCarry);
+        LCarry := TUInt64(Product).Hi;
         PDest^ := TUInt64(Product).Lo;
+
         Inc(PLeft);
         Inc(PDest);
         Dec(LCount);

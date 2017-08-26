@@ -462,20 +462,20 @@ type
   {$IFDEF HasExtended}
     /// <summary>Returns an Extended with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     class operator Explicit(const Value: BigDecimal): Extended;
   {$ENDIF}
 
     /// <summary>Returns a Double with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     class operator Explicit(const Value: BigDecimal): Double;
 
     /// <summary>Returns a Single with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     class operator Explicit(const Value: BigDecimal): Single;
 
@@ -634,7 +634,7 @@ type
 
     /// <summary>Rounds the current BigDecimal to a value with at most Digits digits, using the given rounding
     /// mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     /// <remarks><para>The System.Math.RoundTo function uses the floating point equivalent of rmNearestEven, while
     /// System.Math.SimpleRoundTo uses the equivalent of rmNearestUp. This function is more versatile.</para>
@@ -644,7 +644,7 @@ type
 
     /// <summary>Rounds the current BigDecimal to a value with at most Digits digits, using the default rounding
     /// mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     /// <remarks><para>The System.Math.RoundTo function uses the floating point equivalent of rmNearestEven, while
     /// System.Math.SimpleRoundTo uses the equivalent of rmNearestUp. This function is more versatile.</para>
@@ -654,12 +654,12 @@ type
 
     /// <summary>Rounds the current BigDecimal to a value with the given scale, using the given rounding
     /// mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     function RoundToScale(NewScale: Integer; ARoundingMode: RoundingMode): BigDecimal;
 
     /// <summary>Rounds the current Bigdecimal to a certain precision (number of significant digits).</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     function RoundToPrecision(APrecision: Integer): BigDecimal; overload;
 
@@ -1212,31 +1212,13 @@ begin
 //  LDivisor := BigInteger.Abs(Right.FValue);
   LDivisor := Right.FValue;
 
-  (* $$RV:
-
-     Assume L.Precision = 12, R.Precision = 4 and desired precision = 10, then the following results in:
-
-       LMultiplier = 10 + 4 - 12 + 4 = 6
-
-     * Q: Do we really need that?
-     * Q: Can't we calculate a rough precision instead, i.e. not use .Precision? Does that help?
-       A: We should try to avoid calculating the BigDecimal.Precision at all.
-     * Q: Could it be that all this scaling up and down is too expensive, and that we should try to get it right
-          at once?
-       A: YES!
-     * Q: What about using a NativeUInt instead of a BigInteger for "small" values of .FValue (below MaxInt or
-          some such).
-
-  *)
-
   // Determine minimum power of ten with which to multiply the dividend.
   // Previous code used:
-  //   LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
+  //  LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
   // but the code below is 20% faster - Calculating precision can be slow.
   LMultiplier := RangeCheckedScale(Precision + (Right.FValue.Size - Left.FValue.Size + 1) * 9 + 3);
 
   // Do the division of the scaled up dividend by the divisor. Quotient and remainder are needed.
-//  BigInteger.DivMod(BigInteger.Abs(Left.FValue) * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
   BigInteger.DivMod(Left.FValue * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
 
   // Calculate the scale that matches the division.
@@ -1246,7 +1228,9 @@ begin
   Result.Create(LQuotient, LScale);
 
   // Reduce the precision, if necessary.
+  // Wow! This is slow. Time reduction of >50% if it can be omitted, e.g. because division is accurate enough already.
   Result := Result.RoundToScale(RangeCheckedScale(LScale + Precision - Result.Precision), ARoundingMode);
+  // Can this be combined with InPlaceRemoveTrailingZeros?
 
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.

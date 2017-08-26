@@ -125,7 +125,22 @@ end;
 
 procedure TTestBigInteger.SetUp;
 begin
-//  BigInteger.AvoidPartialFlagsStall(True);
+  Status(Format('Compiler version: %0.1f', [System.CompilerVersion], TFormatSettings.Invariant));
+{$IFDEF WIN64}
+  Status('Win64');
+{$ENDIF}
+{$IFDEF WIN32}
+  Status('Win32');
+{$ENDIF}
+  if Velthuis.BigIntegers.PurePascal then
+    Status('PUREPASCAL')
+  else
+  begin
+    if BigInteger.StallAvoided then
+      Status('Asssembler: partial flag stall code used')
+    else
+      Status('Assembler: plain code');
+  end;
 end;
 
 procedure TTestBigInteger.TearDown;
@@ -145,7 +160,7 @@ end;
 
 procedure TTestBigInteger.TestIsPositive;
 begin
-  A.FromString('-1');
+  A := '-1';
   B := '1';
   C := '0';
 
@@ -451,10 +466,10 @@ begin
   for I := 1 to 20 do
   begin
     B := BigInteger.Create((BigInteger.KaratsubaThreshold + Random(100)) * 32, R);
-    C := BigInteger.MultiplyKaratsuba(A, B);
+    BigInteger.MultiplyKaratsuba(A, B, C);
 
     // It is safe to assume that result given by MultiplyBaseCase is correct.
-    D := BigInteger.MultiplyBaseCase(A, B);
+    BigInteger.MultiplyBaseCase(A, B, D);
 
     Check(C = D, Format('(%d x %d): %s * %s = %s (%s), diff = %s', [A.Size, B.Size, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16), (C - D).ToString(16)]));
     A := B;
@@ -474,7 +489,7 @@ begin
     C := BigInteger.MultiplyToomCook3(A, B);
 
     // It is safe to assume that result given by MultiplyBaseCase is correct.
-    D := BigInteger.MultiplyBaseCase(A, B);
+    BigInteger.MultiplyBaseCase(A, B, D);
 
     Check(C = D, Format('(%d x %d): %s * %s = %s (%s), diff = %s', [A.Size, B.Size, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16), (C - D).ToString(16)]));
     A := B;
@@ -585,7 +600,7 @@ begin
       B := Arguments[J];
       TR := InvModResults[N];
       Inc(N);
-      // Only test if B <> 0 and A and B are coprime.
+      // Only test if B <> 0 and A, B are coprime.
       if B.IsZero or (BigInteger.GreatestCommonDivisor(A, B) <> BigInteger.One) then
         Continue;
       try
@@ -661,7 +676,7 @@ end;
 procedure TTestBigInteger.TestModulus32;
 var
   I, J: Integer;
-  W32: UInt16;
+  W32: UInt32;
 begin
   for I := 0 to High(Arguments) do
   begin
@@ -1016,6 +1031,11 @@ begin
   end;
 end;
 
+function Dbl2Hex(const D: Double): string;
+begin
+  Result := Format('%.8X', [PUInt64(@D)^]);
+end;
+
 procedure TTestBigInteger.TestAsDouble;
 var
   I: Integer;
@@ -1031,7 +1051,7 @@ begin
     else if IsNan(D1) then
       Check(IsNan(D2))
     else
-      Check(SameValue(D1, D2), Format('%d: Double(%s) = %0.15f (%0.15f)', [I, A.ToString, D1, D2]));
+      Check(SameValue(D1, D2), Format('(%d): Double(%s) = %0.15f # $%s (%0.15f # $%s)', [I, A.ToString, D1, Dbl2Hex(D1), D2, Dbl2Hex(D2)]));
   end;
 end;
 
