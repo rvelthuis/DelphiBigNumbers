@@ -1,0 +1,10 @@
+You can run the project from NetBeans 8.
+
+* Start NetBeans
+* Navigate to this directory
+* Open the BigIntegerTestDataGenerator project
+* Run menu -> Set Main Project... and select this project.
+* Run menu -> Run Project (BigIntegerTestDataGenerator)
+
+Now the file will generate the BigInteger test data include files 
+in the **\BigNumbers\Tests\BigIntegers directory.
