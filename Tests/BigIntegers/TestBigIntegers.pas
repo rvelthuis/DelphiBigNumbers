@@ -33,6 +33,7 @@ type
     procedure TearDown; override;
   published
     procedure TestParse;
+    procedure TestTryParse;
     procedure TestCreateBytes;
     procedure TestCreateRandom;
     procedure TestCreateDouble;
@@ -241,6 +242,20 @@ begin
     S2 := HexResults[I].val;
     Check(S1 = S2);
     BigInteger.Decimal;
+  end;
+end;
+
+procedure TTestBigInteger.TestTryParse;
+var
+  I: Integer;
+  Res: TTryParseResult;
+begin
+  for I := Low(TryParseResults) to High(TryParseResults) do
+  begin
+    Res := TryParseResults[I];
+    Check(BigInteger.TryParse(Res.Str, Res.Base, A) = Res.Result);
+    if Res.Result then
+      Check(A.ToString(10) = Res.Str10);
   end;
 end;
 
