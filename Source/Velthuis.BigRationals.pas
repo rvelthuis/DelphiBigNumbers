@@ -49,11 +49,11 @@ uses
 // For Delphi versions below XE8
 {$IF CompilerVersion < 29.0}
   {$IF (DEFINED(WIN32) OR DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
-    {$MESSAGE HINT 'Defining CPU32BITS'}
+    { $MESSAGE HINT 'Defining CPU32BITS'}
     {$DEFINE CPU32BITS}
   {$IFEND}
   {$IF (DEFINED(WIN64) OR DEFINED(CPUX64)) AND NOT DEFINED(CPU64BITS)}
-    {$MESSAGE HINT 'Defining CPU64BITS'}
+    { $MESSAGE HINT 'Defining CPU64BITS'}
     {$DEFINE CPU64BITS}
   {$IFEND}
 {$IFEND}
@@ -71,11 +71,11 @@ uses
 
 // For Delphi 2010 and up.
 {$IF CompilerVersion >= 21.0}
-  {$DEFINE HASCLASSCONSTRUCTORS}
+  {$DEFINE HasClassConstructors}
 {$IFEND}
 
 {$IF SizeOf(Extended) > SizeOf(Double)}
-  {$DEFINE HASEXTENDED}
+  {$DEFINE HasExtended}
 {$IFEND}
 
 type
@@ -142,7 +142,7 @@ type
       /// <summary>Predefined BigRational value 10.</summary>
       Ten: BigRational;
 
-{$IFDEF HASCLASSCONSTRUCTORS}
+{$IFDEF HasClassConstructors}
     class constructor Initialize;
 {$ENDIF}
 
@@ -385,6 +385,83 @@ begin
   FNumerator := Value;
   FDenominator := BigInteger.One;
 end;
+
+(*
+https://rosettacode.org/wiki/Convert_decimal_number_to_rational#Ada
+
+procedure Real_To_Rational (R: Real;
+                            Bound: Positive;
+                            Nominator: out Integer;
+                            Denominator: out  Positive) is
+   Error: Real;
+   Best: Positive := 1;
+   Best_Error: Real := Real'Last;
+begin
+   if R = 0.0 then
+      Nominator := 0;
+      Denominator := 1;
+      return;
+   elsif R < 0.0 then
+      Real_To_Rational(-R, Bound, Nominator, Denominator);
+      Nominator := - Nominator;
+      return;
+   else
+      for I in 1 .. Bound loop
+         Error := abs(Real(I) * R - Real'Rounding(Real(I) * R));
+         if Error < Best_Error then
+            Best := I;
+            Best_Error := Error;
+         end if;
+      end loop;
+   end if;
+   Denominator := Best;
+   Nominator   := Integer(Real'Rounding(Real(Denominator) * R));
+
+end Real_To_Rational;
+
+// --------------------------------------
+
+with Ada.Text_IO; With Real_To_Rational;
+
+procedure Convert_Decimal_To_Rational is
+
+   type My_Real is new Long_Float; -- change this for another "Real" type
+
+   package FIO is new Ada.Text_IO.Float_IO(My_Real);
+   procedure R2R is new Real_To_Rational(My_Real);
+
+   Nom, Denom: Integer;
+   R: My_Real;
+
+begin
+   loop
+      Ada.Text_IO.New_Line;
+      FIO.Get(R);
+      FIO.Put(R, Fore => 2, Aft => 9, Exp => 0);
+      exit when R = 0.0;
+      for I in 0 .. 4 loop
+         R2R(R, 10**I, Nom, Denom);
+         Ada.Text_IO.Put("  " & Integer'Image(Nom) &
+                         " /" & Integer'Image(Denom));
+      end loop;
+   end loop;
+end Convert_Decimal_To_Rational;
+
+// Output: -----------------------------
+
+> ./convert_decimal_to_rational < input.txt
+
+ 0.750000000   1 / 1   3 / 4   3 / 4   3 / 4   3 / 4
+ 0.518518000   1 / 1   1 / 2   14 / 27   14 / 27   14 / 27
+ 0.905405400   1 / 1   9 / 10   67 / 74   67 / 74   67 / 74
+ 0.142857143   0 / 1   1 / 7   1 / 7   1 / 7   1 / 7
+ 3.141592654   3 / 1   22 / 7   22 / 7   355 / 113   355 / 113
+ 2.718281828   3 / 1   19 / 7   193 / 71   1457 / 536   25946 / 9545
+-0.423310825   0 / 1  -3 / 7  -11 / 26  -69 / 163  -1253 / 2960
+31.415926536   31 / 1   157 / 5   377 / 12   3550 / 113   208696 / 6643
+ 0.000000000
+
+*)
 
 constructor BigRational.Create(const Value: Double);
 var
@@ -653,7 +730,7 @@ begin
 end;
 
 // $$RV: have normal initialize function for non-class-constructor versions.
-{$IFDEF HASCLASSCONSTRUCTORS}
+{$IFDEF HasClassConstructors}
 class constructor BigRational.Initialize;
 {$ELSE}
 procedure Init;
@@ -819,7 +896,7 @@ begin
 end;
 
 
-{$IFNDEF HASCLASSCONSTRUCTORS}
+{$IFNDEF HasClassConstructors}
 initialization
   Init;
 {$ENDIF}

@@ -42,11 +42,15 @@ uses
   Velthuis.BigIntegers;
 
 type
-  /// <summary>Type indicating primality of a number</summary>
-  /// <param name="primComposite">number is definitely composite</param>
-  /// <param name="primProbablyPrime">number is probably prime</param>
-  /// <param name="primPrime">number is definitely prime</param>
-  TPrimality = (primComposite, primProbablyPrime, primPrime);
+  /// <summary>Type indicating primality of a number.</summary>
+  TPrimality = (
+    /// <summary>Number is definitely composite.</summary>
+    primComposite,
+    /// <summary>Number is probably prime.</summary>
+    primProbablyPrime,
+    /// <summary>Number is definitely prime.</summary>
+    primPrime
+  );
 
 /// <summary>Detects if N is probably prime according to a Miller-Rabin test.</summary>
 /// <param name="N">The number to be tested</param>
@@ -62,13 +66,13 @@ function IsProbablePrime(const N: BigInteger; Precision: Integer): Boolean;
 ///  primPrime if N is definitely prime.</returns>
 function IsPrime(const N: BigInteger; Precision: Integer): TPrimality;
 
-/// <summary>Returns a random probably prime number</summary>
+/// <summary>Returns a random probably prime number.</summary>
 /// <param name="NumBits">Maximum number of bits of th random number</param>
 /// <param name="Precision">Precision to be used for IsProbablyPrime</param>
 /// <returns> a random prime number that is probably prime with the given precision.</returns>
 function RandomProbablePrime(NumBits: Integer; Precision: Integer): BigInteger;
 
-/// <summary>Returns a probable prime >= N</summary>
+/// <summary>Returns a probable prime >= N.</summary>
 /// <param name="N">Number to start with</param>
 /// <param name="Precision">Precision for primality test</param>
 /// <returns>A number >= N that is probably prime with the given precision.</returns>
@@ -256,4 +260,5 @@ initialization
   Random := TRandom.Create(Round(Now * SecsPerDay * MSecsPerSec));
 
 end.
+
 
