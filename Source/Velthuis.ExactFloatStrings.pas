@@ -185,7 +185,7 @@ begin
   if DecimalPoint = 0 then
     Result := Result + '.0'                                             // e.g. 123.0
   else if DecimalPoint >= Len then
-    Result := '0.' + StringOfChar('0', DecimalPoint - Len) + Result       // e.g. 0.00123
+    Result := '0.' + StringOfChar('0', DecimalPoint - Len) + Result     // e.g. 0.00123
   else
     Result := Copy(Result, 1, Len - DecimalPoint) + '.' + Copy(Result, Len - DecimalPoint + 1, Len); // e.g. 12.3
 
