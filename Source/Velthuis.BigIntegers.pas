@@ -1581,12 +1581,14 @@ var
 begin
   if not Assigned(Left.FData) then
   begin
-    ShallowCopy(Right, Result);
+    Result.FSize := Right.FSize;
+    Result.FData := Right.FData;
     Exit;
   end
   else if not Assigned(Right.FData) then
   begin
-    ShallowCopy(Left, Result);
+    Result.FSize := Left.FSize;
+    Result.FData := Left.FData;
     Exit;
   end;
 
@@ -1609,7 +1611,8 @@ begin
 
     if Comparison = 0 then
     begin
-      Result := Zero;
+      Result.FSize := 0;
+      Result.FData := nil;
       Exit;
     end;
 
@@ -2748,12 +2751,14 @@ begin
   // Special handling for 0.
   if Left.FData = nil then
   begin
-    ShallowCopy(Right, Result);
+    Result.FSize := Right.FSize;
+    Result.FData := Right.FData;
     Exit;
   end
   else if Right.FData = nil then
   begin
-    ShallowCopy(Left, Result);
+    Result.FSize := Left.FSize;
+    Result.FData := Left.FData;
     Exit;
   end;
 
@@ -2817,15 +2822,13 @@ begin
 end;
 
 class function BigInteger.Compare(const Left, Right: BigInteger): Integer;
-type
-  PInteger = ^Integer;
+var
+  LSize, RSize: Integer;
 begin
+  LSize := Left.FSize and SizeMask;
+  RSize := Right.FSize and SizeMask;
   // Avoid comparing -0 and +0, so make all zeroes simply 0.
-  if Left.FData = nil then
-    PInteger(@Left.FSize)^ := 0;
-  if Right.FData = nil then
-    PInteger(@Right.FSize)^ := 0;
-  Result := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), Left.FSize and SizeMask, Right.FSize and SizeMask);
+  Result := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
   if Left.FSize < 0 then
     if Right.FSize < 0 then
       Result := -Result
