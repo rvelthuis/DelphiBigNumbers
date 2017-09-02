@@ -1,4 +1,4 @@
-﻿{----------------------------------------------------------------------------}
+﻿{----------------------------------------------------------------------------}                                                                                                            qf
 {                                                                            }
 { File:       Velthuis.BigIntegers.pas                                       }
 { Function:   A big integer implementation, with critical parts written in   }
@@ -279,6 +279,12 @@ type
       Ten: BigInteger;
 
     const
+{$IFDEF BIGINTEGERIMMUTABLE}
+      Immutable    = True;
+{$ELSE}
+      Immutable    = False;
+{$ENDIF}
+
       CapacityMask = High(Integer) - 3; // Mask ensuring that FData lengths are a multiple of 4, e.g. $7FFFFFFC
       SizeMask     = High(Integer);     // Mask to extract size part of FSize member, e.g. $7FFFFFFF
       SignMask     = Low(Integer);      // Mask to extract sign bit of FSize member, e.g. $80000000
