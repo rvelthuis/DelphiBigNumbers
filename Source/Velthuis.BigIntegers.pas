@@ -3370,28 +3370,28 @@ asm
 
 @RestLoop:
 
-        // TODO: This loop can be exited as soon as carry clear.
-        // Have two loops?
+        /////////////////////////////////////////////////////////////////////
+        // Tests showed that branching out of the loop as soon as the      //
+        // carry is clear (using JNC @label, where @label is in a second   //
+        // loop that only copies and does not add anymore) actually makes  //
+        // the code slightly SLOWER, most of the time.                     //
+        /////////////////////////////////////////////////////////////////////
 
         MOV     EAX,[ESI]
         ADC     EAX,EDI
         MOV     [EBX],EAX
-        JNC     @RestLoopStore0
 
         MOV     EAX,[ESI + CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + CLimbSize],EAX
-        JNC     @RestLoopStore1
 
         MOV     EAX,[ESI + 2*CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + 2*CLimbSize],EAX
-        JNC     @RestLoopStore2
 
         MOV     EAX,[ESI + 3*CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + 3*CLimbSize],EAX
-        JNC     @RestLoopStore3
 
         LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
         LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
@@ -3436,72 +3436,6 @@ asm
 @LastLimb:
 
         ADC     EDI,EDI
-        MOV     [EBX],EDI
-
-        JMP     @Exit
-
-@RestLoopStore:
-
-        MOV     EAX,[ESI]
-        MOV     [EBX],EAX
-
-@RestLoopStore0:
-
-        MOV     EAX,[ESI + CLimbSize]
-        MOV     [EBX + CLimbSize],EAX
-
-@RestLoopStore1:
-
-        MOV     EAX,[ESI + 2*CLimbSize]
-        MOV     [EBX + 2*CLimbSize],EAX
-
-@RestLoopStore2:
-
-        MOV     EAX,[ESI + 3*CLimbSize]
-        MOV     [EBX + 3*CLimbSize],EAX
-
-@RestLoopStore3:
-
-        LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
-        LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
-
-        LOOP    @RestLoopStore
-
-@RestLastNStore:
-
-        LEA     ESI,[ESI + EDX*CLimbSize]
-        LEA     EBX,[EBX + EDX*CLimbSize]
-
-        LEA     ECX,[@RestJumpsStore]
-        JMP     [ECX + EDX*TYPE Pointer]
-
-        .ALIGN  4
-
-@RestJumpsStore:
-
-        DD      @LastLimbStore
-        DD      @Rest1Store
-        DD      @Rest2Store
-        DD      @Rest3Store
-
-@Rest3Store:
-
-        MOV     EAX,[ESI - 3*CLimbSize]
-        MOV     [EBX - 3*CLimbSize],EAX
-
-@Rest2Store:
-
-        MOV     EAX,[ESI - 2*CLimbSize]
-        MOV     [EBX - 2*CLimbSize],EAX
-
-@Rest1Store:
-
-        MOV     EAX,[ESI - CLimbSize]
-        MOV     [EBX + CLimbSize],EAX
-
-@LastLimbStore:
-
-        XOR     EDI,EDI
         MOV     [EBX],EDI
 
 @Exit:
