@@ -3376,18 +3376,22 @@ asm
         MOV     EAX,[ESI]
         ADC     EAX,EDI
         MOV     [EBX],EAX
+        JNC     @RestLoopStore0
 
         MOV     EAX,[ESI + CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + CLimbSize],EAX
+        JNC     @RestLoopStore1
 
         MOV     EAX,[ESI + 2*CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + 2*CLimbSize],EAX
+        JNC     @RestLoopStore2
 
         MOV     EAX,[ESI + 3*CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + 3*CLimbSize],EAX
+        JNC     @RestLoopStore3
 
         LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
         LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
@@ -3432,6 +3436,72 @@ asm
 @LastLimb:
 
         ADC     EDI,EDI
+        MOV     [EBX],EDI
+
+        JMP     @Exit
+
+@RestLoopStore:
+
+        MOV     EAX,[ESI]
+        MOV     [EBX],EAX
+
+@RestLoopStore0:
+
+        MOV     EAX,[ESI + CLimbSize]
+        MOV     [EBX + CLimbSize],EAX
+
+@RestLoopStore1:
+
+        MOV     EAX,[ESI + 2*CLimbSize]
+        MOV     [EBX + 2*CLimbSize],EAX
+
+@RestLoopStore2:
+
+        MOV     EAX,[ESI + 3*CLimbSize]
+        MOV     [EBX + 3*CLimbSize],EAX
+
+@RestLoopStore3:
+
+        LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
+        LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
+
+        LOOP    @RestLoopStore
+
+@RestLastNStore:
+
+        LEA     ESI,[ESI + EDX*CLimbSize]
+        LEA     EBX,[EBX + EDX*CLimbSize]
+
+        LEA     ECX,[@RestJumpsStore]
+        JMP     [ECX + EDX*TYPE Pointer]
+
+        .ALIGN  4
+
+@RestJumpsStore:
+
+        DD      @LastLimbStore
+        DD      @Rest1Store
+        DD      @Rest2Store
+        DD      @Rest3Store
+
+@Rest3Store:
+
+        MOV     EAX,[ESI - 3*CLimbSize]
+        MOV     [EBX - 3*CLimbSize],EAX
+
+@Rest2Store:
+
+        MOV     EAX,[ESI - 2*CLimbSize]
+        MOV     [EBX - 2*CLimbSize],EAX
+
+@Rest1Store:
+
+        MOV     EAX,[ESI - CLimbSize]
+        MOV     [EBX + CLimbSize],EAX
+
+@LastLimbStore:
+
+        XOR     EDI,EDI
         MOV     [EBX],EDI
 
 @Exit:
@@ -8632,11 +8702,10 @@ begin
     ShallowCopy(Right, Result);
 end;
 
-// Knuth, TAOCP, Vol 2 Algorithm X, p 342, but using BigIntegers.
-// Similar to https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
+// https://www.di-mgt.com.au/euclidean.html#code-modinv
 class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
 var
-  u1, u3, v1, v3, t1, t3, q: BigInteger;
+  u1, u3, v1, v3, temp1, temp3, q: BigInteger;
   iter: Integer;
 begin
   // Step X1. Initialise
@@ -8653,13 +8722,13 @@ begin
   while not v3.IsZero do
   begin
     // Step X3. Divide and Subtract
-    DivMod(u3, v3, q, t3);
-    t1 := Add(u1, BigInteger.Multiply(q, v1));
+    DivMod(u3, v3, q, temp3);
+    temp1 := Add(u1, BigInteger.Multiply(q, v1));
     // Swap
     u1 := v1;
-    v1 := t1;
+    v1 := temp1;
     u3 := v3;
-    v3 := t3;
+    v3 := temp3;
     Inc(iter);
   end;
   // Ensure u3, i.e. gcd(Value, Modulus) = 1
