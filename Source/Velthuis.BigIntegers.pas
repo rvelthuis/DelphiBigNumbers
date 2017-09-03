@@ -1,4 +1,4 @@
-﻿{----------------------------------------------------------------------------}                                                                                                            qf
+﻿{----------------------------------------------------------------------------}
 {                                                                            }
 { File:       Velthuis.BigIntegers.pas                                       }
 { Function:   A big integer implementation, with critical parts written in   }
@@ -8633,6 +8633,7 @@ begin
 end;
 
 // Knuth, TAOCP, Vol 2 Algorithm X, p 342, but using BigIntegers.
+// Similar to https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
 class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
 var
   u1, u3, v1, v3, t1, t3, q: BigInteger;
