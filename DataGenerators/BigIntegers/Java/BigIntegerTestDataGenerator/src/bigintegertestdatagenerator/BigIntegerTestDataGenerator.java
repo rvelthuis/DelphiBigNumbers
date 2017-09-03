@@ -1193,6 +1193,7 @@ public class BigIntegerTestDataGenerator
                     if (b3.signum() == 0)
                     {
                         tr.val = "Error: Zero result -- Java is wrong";
+                        writeln("(%d,%d,%d): Zero result", i, j, n);
                         tr.info = TestResultInfo.ArgumentRange;
                     }
                     else
