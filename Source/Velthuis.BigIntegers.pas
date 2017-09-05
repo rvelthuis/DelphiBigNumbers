@@ -3148,11 +3148,11 @@ begin
   if Right.IsZero then
     Exit(Abs(Left));
 
-  // Let Shift = Log2(K), where K is the greatest power of 2 dividing both ALeft and ARight.
   ALeft := Abs(Left);
   ARight := Abs(Right);
 
-  // Remove as many trailing zeroes as possible, from both factors.
+  // Let Shift = Log2(K), where K is the greatest power of 2 dividing
+  // both ALeft and ARight.
   Shift := IntMin(Left.LowestSetBit, Right.LowestSetBit);
   ALeft := ALeft shr Shift;
   ARight := ARight shr Shift;
