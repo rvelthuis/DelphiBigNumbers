@@ -3370,8 +3370,12 @@ asm
 
 @RestLoop:
 
-        // TODO: This loop can be exited as soon as carry clear.
-        // Have two loops?
+        /////////////////////////////////////////////////////////////////////
+        // Tests showed that branching out of the loop as soon as the      //
+        // carry is clear (using JNC @label, where @label is in a second   //
+        // loop that only copies and does not add anymore) actually makes  //
+        // the code slightly SLOWER, most of the time.                     //
+        /////////////////////////////////////////////////////////////////////
 
         MOV     EAX,[ESI]
         ADC     EAX,EDI
@@ -8632,11 +8636,10 @@ begin
     ShallowCopy(Right, Result);
 end;
 
-// Knuth, TAOCP, Vol 2 Algorithm X, p 342, but using BigIntegers.
-// Similar to https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Modular_integers
+// https://www.di-mgt.com.au/euclidean.html#code-modinv
 class function BigInteger.ModInverse(const Value, Modulus: BigInteger): BigInteger;
 var
-  u1, u3, v1, v3, t1, t3, q: BigInteger;
+  u1, u3, v1, v3, temp1, temp3, q: BigInteger;
   iter: Integer;
 begin
   // Step X1. Initialise
@@ -8653,13 +8656,13 @@ begin
   while not v3.IsZero do
   begin
     // Step X3. Divide and Subtract
-    DivMod(u3, v3, q, t3);
-    t1 := Add(u1, BigInteger.Multiply(q, v1));
+    DivMod(u3, v3, q, temp3);
+    temp1 := Add(u1, BigInteger.Multiply(q, v1));
     // Swap
     u1 := v1;
-    v1 := t1;
+    v1 := temp1;
     u3 := v3;
-    v3 := t3;
+    v3 := temp3;
     Inc(iter);
   end;
   // Ensure u3, i.e. gcd(Value, Modulus) = 1
