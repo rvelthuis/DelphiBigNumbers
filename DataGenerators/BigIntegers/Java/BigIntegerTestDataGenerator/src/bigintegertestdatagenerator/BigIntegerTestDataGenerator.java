@@ -336,7 +336,7 @@ public class BigIntegerTestDataGenerator
         return result.toString();
     }
     
-    static void writeMonadicResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
+    static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
     {
         writeln(bw, "  %s: array[0..ArgumentCount - 1] of TTestResult =", arrayName, count);
         writeln(bw, "  (");
@@ -860,7 +860,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "NegationResults", results, count, "Negate(", ")");
+        writeUnaryResults(bw, "NegationResults", results, count, "Negate(", ")");
     }
 
     static void generateLogicalNotResults(BufferedWriter bw) throws IOException
@@ -881,7 +881,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "LogicalNotResults", results, count, "not ", "");
+        writeUnaryResults(bw, "LogicalNotResults", results, count, "not ", "");
     }
 
     static void generateLeftShiftResults(BufferedWriter tw) throws IOException
@@ -1360,7 +1360,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "ByteArrayResults", results, count, "", ".ToByteArray");
+        writeUnaryResults(bw, "ByteArrayResults", results, count, "", ".ToByteArray");
     }
 
     static void generateHexResults(BufferedWriter bw) throws IOException
@@ -1387,7 +1387,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "HexResults", results, count, "", ".ToString(16)");
+        writeUnaryResults(bw, "HexResults", results, count, "", ".ToString(16)");
     }
 
     static void generateAsIntegerResults(BufferedWriter bw) throws IOException
@@ -1415,7 +1415,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsIntegerResults", results, count, "", ".AsInteger");
+        writeUnaryResults(bw, "AsIntegerResults", results, count, "", ".AsInteger");
     }
 
     static void generateAsCardinalResults(BufferedWriter bw) throws IOException
@@ -1455,7 +1455,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsCardinalResults", results, count, "", ".AsCardinal");
+        writeUnaryResults(bw, "AsCardinalResults", results, count, "", ".AsCardinal");
     }
     
     static void generateAsInt64Results(BufferedWriter bw) throws IOException
@@ -1483,7 +1483,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsInt64Results", results, count, "", ".AsInt64");
+        writeUnaryResults(bw, "AsInt64Results", results, count, "", ".AsInt64");
     }
 
     static void generateAsUInt64Results(BufferedWriter bw) throws IOException
@@ -1520,7 +1520,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsUInt64Results", results, count, "", ".AsUInt64");
+        writeUnaryResults(bw, "AsUInt64Results", results, count, "", ".AsUInt64");
     }
     
     static void generateFromDoubleResults(BufferedWriter bw) throws IOException
