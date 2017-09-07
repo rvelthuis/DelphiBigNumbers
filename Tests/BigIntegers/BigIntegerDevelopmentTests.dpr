@@ -38,7 +38,7 @@ uses
 
 begin
   ReportMemoryLeaksOnShutdown := True;
-  Velthuis.BigIntegers.DoDebug := False;
+  DoDebug := False;
   DUnitTestRunner.RunRegisteredTests;
 end.
 

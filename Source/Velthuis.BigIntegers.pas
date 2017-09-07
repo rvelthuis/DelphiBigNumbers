@@ -3695,7 +3695,7 @@ asm
         LEA     EDI,[EDI + 4*CLimbSize]
         LEA     EBX,[EBX + 4*CLimbSize]
 
-        DEC     ECX
+        DEC     ECX                     // Does not affect carry flag, but that can cause partial flags stall.
         JNE     @MainLoop
 
 @MainTail:

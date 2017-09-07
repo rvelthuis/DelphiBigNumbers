@@ -1,7 +1,7 @@
 # NEVER FORGET: Git is case-sensitive!
 
-Source/__history/
-Source/__recovery/
+**/__history/
+**/__recovery/
 Tests/BigIntegers/Win32/**
 Tests/BigIntegers/Win64/**
 Tests/BigIntegers/OSX32/**
@@ -58,5 +58,5 @@ DataGenerators/BigIntegers/Java/Exponentiation/**
 DataGenerators/BigIntegers/Java/BigNumSpeedTests/**
 DataGenerators/BigIntegers/Java/FibonacciSpeedTest/**
 DataGenerators/BigIntegers/Java/FactorialSpeedTest/**
-/DataGenerators/BigIntegers/Java/AddTests/nbproject/private/
-/DataGenerators/BigIntegers/Java/AddTests/build/
+DataGenerators/BigIntegers/Java/AddTests/nbproject/private/
+DataGenerators/BigIntegers/Java/AddTests/build/
