@@ -657,11 +657,11 @@ type
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Integer. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Integer;
+    class operator Explicit(const Value: BigInteger): Int32;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to a Cardinal. If necessary, the
     ///   value of the BigInteger is truncated to fit in the result.</summary>
-    class operator Explicit(const Value: BigInteger): Cardinal;
+    class operator Explicit(const Value: BigInteger): UInt32;
 
     /// <summary>Explicitly (i.e. with a cast) converts the specified BigInteger to an Int64. If necessary, the
     ///   value of the BigInteger is truncated or sign-extended to fit in the result.</summary>
@@ -7202,24 +7202,26 @@ begin
   end;
 end;
 
-class operator BigInteger.Explicit(const Value: BigInteger): Cardinal;
-begin
-  if Value.FData = nil then
-    Result := 0
-  else
-    Result := Value.FData[0] and High(Cardinal);
-end;
-
-class operator BigInteger.Explicit(const Value: BigInteger): Integer;
+class operator BigInteger.Explicit(const Value: BigInteger): Int32;
 begin
   if Value.FData = nil then
     Result := 0
   else
   begin
-    Result := Value.FData[0] and High(Integer);
+    Result := Int32(Value.FData[0]);
     if Value.FSize < 0 then
       Result := -Result;
   end;
+end;
+
+class operator BigInteger.Explicit(const Value: BigInteger): UInt32;
+begin
+  if Value.FData = nil then
+    Result := 0
+  else
+    Result := Value.FData[0];
+  if Value.FSize < 0 then
+    Result := UInt32(-Int32(Result));
 end;
 
 class operator BigInteger.Explicit(const Value: BigInteger): Int64;
@@ -7230,12 +7232,28 @@ begin
   begin
     TUInt64(Result).Lo := Value.FData[0];
     if (Value.FSize and SizeMask) > 1 then
-      TUInt64(Result).Hi := Value.FData[1] and High(Integer)
+      TUInt64(Result).Hi := Value.FData[1]
     else
       TUInt64(Result).Hi := 0;
     if Value.FSize < 0 then
       Result := -Result;
   end;
+end;
+
+class operator BigInteger.Explicit(const Value: BigInteger): UInt64;
+begin
+  if Value.FData = nil then
+    Result := 0
+  else
+  begin
+    TUInt64(Result).Lo := Value.FData[0];
+    if (Value.FSize and SizeMask) > 1 then
+      TUInt64(Result).Hi := Value.FData[1]
+    else
+      TUInt64(Result).Hi := 0;
+  end;
+  if Value.FSize < 0 then
+    Result := UInt64(-Int64(Result));
 end;
 
 function BigInteger.AsCardinal: Cardinal;
@@ -7402,20 +7420,6 @@ begin
     Result := UInt64(Self)
   else
     Error(ecConversion, 'UInt64');
-end;
-
-class operator BigInteger.Explicit(const Value: BigInteger): UInt64;
-begin
-  if Value.FData = nil then
-    Result := 0
-  else
-  begin
-    TUInt64(Result).Lo := Value.FData[0];
-    if (Value.FSize and SizeMask) > 1 then
-      TUInt64(Result).Hi := Value.FData[1] and High(Cardinal)
-    else
-      TUInt64(Result).Hi := 0;
-  end;
 end;
 
 class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer;
