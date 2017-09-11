@@ -104,6 +104,7 @@ begin
   SetLength(Arguments, Length(TestData));
   for I := Low(TestData) to High(TestData) do
     Arguments[I] := BigDecimal.Create(TestData[I]);
+//  BreakOnFailures := False;
 end;
 
 procedure TestBigDecimal.TearDown;
@@ -473,12 +474,10 @@ begin
           // Note: this is the (silent) Java behaviour. In Delphi, I expect a proper EConvertError to occur,
           // but here, values are made compatible with Java output.
           L := Int64(UInt64(A.RoundTo(0).UnscaledValue));
-          if A.UnscaledValue.IsNegative then
-            L := -L;
         end;
       end;
       Java := Int64(RoundValueResults[I, J]);
-      Check(L = Java, Format('(%d) Round(%s, %s) --> $%.16X ($%.16X)', [I, string(A), GetEnumName(TI, Ord(J)), L, Java]));
+      Check(L = Java, Format('(%d,%s) Round([%s, %d], %s) --> $%.16X ($%.16X)', [I, GetEnumName(TI, Ord(J)), A.UnscaledValue.ToString(16), A.Scale, GetEnumName(TI, Ord(J)), L, Java]));
     end;
   end;
 end;
@@ -533,21 +532,24 @@ end;
 
 procedure TestBigDecimal.TestImplicitString;
 var
-  ReturnValue: BigDecimal;
+  BigDec: BigDecimal;
   S: string;
   I: Integer;
   TestScale, Scale: Integer;
   TestValue, UnscaledValue: BigInteger;
+  UnscaledEqual, ScaleEqual: Boolean;
 begin
   for I := 0 to High(TestData) do
   begin
     S := TestData[I];
-    ReturnValue := S;
+    BigDec := S;
     TestScale := ScalesAndUnscaledValues[I].Scale;
     TestValue := ScalesAndUnscaledValues[I].UnscaledValue;
-    Scale := ReturnValue.Scale;
-    UnscaledValue := ReturnValue.UnscaledValue;
-    Check((Scale = TestScale) and (UnscaledValue = TestValue), Format('(%d) ''%s'' --> [''%s'', %d] ([''%s'', %d])', [I, TestData[I], UnscaledValue.ToString(10), Scale, TestValue.ToString(10), TestScale]));
+    Scale := BigDec.Scale;
+    UnscaledValue := BigDec.UnscaledValue; // $$RV: '-0.00' --> UnscaledValue = -0.
+    UnscaledEqual := UnscaledValue = TestValue;
+    ScaleEqual := Scale = TestScale;
+    Check(ScaleEqual and UnscaledEqual, Format('(%d) ''%s'' --> [''%s'', %d] ([''%s'', %d])', [I, TestData[I], UnscaledValue.ToString(10), Scale, TestValue.ToString(10), TestScale]));
   end;
 end;
 
@@ -770,7 +772,7 @@ begin
     begin
       Right := CompArguments[J];
       ReturnValue := BigDecimal.Compare(Left, Right);
-      Check(ReturnValue = CompResults[I, J]);
+      Check(ReturnValue = CompResults[I, J], Format('(%d,%d) comparing %s and %s = %d (%d)', [I, J, string(Left), string(Right), ReturnValue, CompResults[I, J]]));
     end;
   end;
 end;
@@ -792,7 +794,6 @@ begin
       Check((ReturnValue >= Left) and (ReturnValue >= Right));
     end;
   end;
-
 end;
 
 procedure TestBigDecimal.TestMin;
