@@ -2849,11 +2849,6 @@ begin
   RSize := Right.FSize and SizeMask;
   Result := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
 
-  // If Result = 0 then magnitudes are same (so same size too), but signs can differ.
-
-  if (Result = 0) and (Left.FSize = Right.FSize) then
-    Exit;
-
   if Left.FSize < 0 then
       Result := -Result;
 end;
