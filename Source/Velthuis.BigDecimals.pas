@@ -795,7 +795,7 @@ implementation
 {$OVERFLOWCHECKS OFF}
 
 uses
-  Velthuis.ExactFloatStrings, Velthuis.FloatUtils;
+  Velthuis.ExactFloatStrings, Velthuis.FloatUtils, Velthuis.Numerics;
 
 resourcestring
   SErrorBigDecimalParsing = '''%s'' is not valid BigDecimal value.';
@@ -1103,36 +1103,112 @@ begin
   FScale := Scale;
 end;
 
-// TODO: The following float conversions simply convert the float to a string and then use that to
-// initialize the BigDecimal. This works fine, but can perhaps be cut short a little, since
-// ExactString internally already converts the single to a BigInteger and a scale.
+procedure MakeBigDecimal(Mantissa: UInt64; Exponent: Integer; Sign: TValueSign; var Result: BigDecimal);
+type
+  TUInt64 = packed record
+    Lo, Hi: UInt32;
+  end;
+var
+  BigInt: BigInteger;
+  DecimalPoint: Integer;
+  Shift: Integer;
+begin
+  if UInt32(Mantissa) = 0 then
+    Shift := 32 + NumberOfTrailingZeros(TUInt64(Mantissa).Hi)
+  else
+    Shift := NumberOfTrailingZeros(UInt32(Mantissa));
+
+  Mantissa := Mantissa shr Shift;
+  Inc(Exponent, Shift);
+
+  // This can be shortcut with NTZ. Also only shift by Min(NTZ, -Exponent).
+  while not Odd(Mantissa) do
+  begin
+    Mantissa := Mantissa shr 1;
+    Inc(Exponent);
+  end;
+
+  BigInt := Mantissa;
+
+  DecimalPoint := 0;
+  if Exponent < 0 then
+  begin
+    BigInt := BigInt * BigInteger.Pow(5, -Exponent);
+    DecimalPoint := -Exponent;
+  end
+  else if Exponent > 0 then
+    BigInt := BigInt shl Exponent;
+
+  Result := BigDecimal.Create(BigInt, DecimalPoint);
+  if Sign < 0 then
+    Result := -Result;
+end;
 
 constructor BigDecimal.Create(const S: Single);
 var
-  Str: string;
+  Mantissa: UInt64;
+  Exponent: Integer;
+  Sign: TValueSign;
 begin
-  Str := Velthuis.ExactFloatStrings.ExactString(S);
-  CheckInvalidFloatString(Str, 'Single'); // DO NOT TRANSLATE
-  Create(Str);
+  if IsInfinite(S) or IsNan(S) then
+    Error(ecInvalidArg, ['Single']);
+
+  if S = 0.0 then
+  begin
+    Self := BigDecimal.Zero;
+    Exit;
+  end;
+
+  Mantissa := GetMantissa(S);
+  Exponent := GetExponent(S) - 23;
+  Sign := System.Math.Sign(S);
+
+  MakeBigDecimal(Mantissa, Exponent, Sign, Self);
 end;
 
 constructor BigDecimal.Create(const D: Double);
 var
-  Str: string;
+  Mantissa: UInt64;
+  Exponent: Integer;
+  Sign: TValueSign;
 begin
-  Str := Velthuis.ExactFloatStrings.ExactString(D);
-  CheckInvalidFloatString(Str, 'Double'); // DO NOT TRANSLATE
-  Create(Str);
+  if IsInfinite(D) or IsNan(D) then
+    Error(ecInvalidArg, ['Double']);
+
+  if D = 0.0 then
+  begin
+    Self := BigDecimal.Zero;
+    Exit;
+  end;
+
+  Mantissa := GetMantissa(D);
+  Exponent := GetExponent(D) - 52;
+  Sign := System.Math.Sign(D);
+
+  MakeBigDecimal(Mantissa, Exponent, Sign, Self);
 end;
 
 {$IFDEF HasExtended}
 constructor BigDecimal.Create(const E: Extended);
 var
-  Str: string;
+  Mantissa: UInt64;
+  Exponent: Integer;
+  Sign: TValueSign;
 begin
-  Str := Velthuis.ExactFloatStrings.ExactString(E);
-  CheckInvalidFloatString(Str, 'Extended'); // DO NOT TRANSLATE
-  Create(Str);
+  if IsInfinite(E) or IsNan(E) then
+    Error(ecInvalidArg, ['Extended']);
+
+  if E = 0.0 then
+  begin
+    Self := BigDecimal.Zero;
+    Exit;
+  end;
+
+  Mantissa := GetMantissa(E);
+  Exponent := GetExponent(E) - 63;
+  Sign := System.Math.Sign(E);
+
+  MakeBigDecimal(Mantissa, Exponent, Sign, Self);
 end;
 {$ENDIF}
 
@@ -1195,7 +1271,7 @@ begin
   // terminate?                                                                                            //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  if Right.FValue = BigInteger.Zero then
+  if Right.FValue.IsZero then
     Error(ecDivByZero, []);
   TargetScale := Left.Scale - Right.Scale;
   if Left.FValue.IsZero then
@@ -2253,7 +2329,7 @@ begin
 
   Value.FScale := LNumDecimals;
   Value.FValue := BigInteger(LIntValue);
-  if LIsNegative then
+  if not Value.FValue.IsZero and LIsNegative then
     Value.FValue.SetSign(-1);
   Result := True;
 end;
