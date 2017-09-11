@@ -2828,22 +2828,34 @@ begin
 end;
 
 class function BigInteger.Compare(const Left, Right: BigInteger): Integer;
+const
+  Results: array[Boolean] of Integer = (-1, 1);
 var
   LSize, RSize: Integer;
 begin
+  if Left.FData = nil then
+    if Right.FData = nil then
+      Exit(0)                           // Compare(0, 0) = 0
+    else
+      Exit(Results[Right.FSize < 0])    // Compare(0, negative) = 1
+    else if Right.FData = nil then
+    Exit(Results[Left.FSize > 0]);      // Compare(positive, 0) = 1
+
+  if ((Left.FSize xor Right.FSize) and SignMask) <> 0 then
+    Exit(Results[Left.FSize > 0]);      // Compare(positive, negative) = 1; Compare(negative, positive) = -1
+
+  // Same sign:
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
-  // Avoid comparing -0 and +0, so make all zeroes simply 0.
   Result := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
-  if (Result = 0) and ((Left.FSize and SignMask) = (Right.FSize and SignMask)) then
+
+  // If Result = 0 then magnitudes are same (so same size too), but signs can differ.
+
+  if (Result = 0) and (Left.FSize = Right.FSize) then
     Exit;
+
   if Left.FSize < 0 then
-    if Right.FSize < 0 then
-      Result := -Result
-    else
-      Result := -1
-  else if Right.FSize < 0 then
-    Result := 1;
+      Result := -Result;
 end;
 
 constructor BigInteger.Create(const Value: Integer);
