@@ -2835,6 +2835,8 @@ begin
   RSize := Right.FSize and SizeMask;
   // Avoid comparing -0 and +0, so make all zeroes simply 0.
   Result := InternalCompare(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
+  if (Result = 0) and ((Left.FSize and SignMask) = (Right.FSize and SignMask)) then
+    Exit;
   if Left.FSize < 0 then
     if Right.FSize < 0 then
       Result := -Result
