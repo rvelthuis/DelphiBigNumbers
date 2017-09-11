@@ -1126,6 +1126,11 @@ begin
   DecimalPoint := 0;
   if Exponent < 0 then
   begin
+    // To get rid of the binary exponent (make it 0), BigInt must repeatedly be divided by 2.
+    // This isn't done directly: on each "iteration", BigInt is multipiled by 5 and then the
+    // decimal point is moved by one, which is equivalent with a division by 10.
+    // So, effectively, the result is divided by 2.
+    // Instead of in a loop, this is done directly using Pow()
     BigInt := BigInt * BigInteger.Pow(5, -Exponent);
     DecimalPoint := -Exponent;
   end
