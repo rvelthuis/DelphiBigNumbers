@@ -45,7 +45,7 @@ interface
   {$LEGACYIFEND ON}
 {$IFEND}
 
-{$IF SizeOf(Extended) = 10}
+{$IF SizeOf(Extended) > SizeOf(Double)}
   {$DEFINE HASEXTENDED}
 {$IFEND}
 
@@ -88,7 +88,7 @@ begin
 
   Mantissa := GetMantissa(F);
   if Mantissa = 0 then
-    Exit('0.0');
+    Exit('0');
 
   Exponent := GetExponent(F) - 63;
   Sign := System.Math.Sign(F) < 0;
@@ -120,7 +120,7 @@ begin
   // Now we insert zeroes and the decimal point into the plain big integer value to get a nice output.
 
   if DecimalPoint = 0 then
-    Result := Result + '.0'                                             // e.g. 123.0
+    Result := Result                                             // e.g. 123.0
   else if DecimalPoint >= Len then
     Result := '0.' + StringOfChar('0', DecimalPoint - Len) + Result       // e.g. 0.00123
   else
@@ -149,7 +149,7 @@ begin
 
   Mantissa := GetMantissa(F);
   if Mantissa = 0 then
-    Exit('0.0');
+    Exit('0');
 
   Exponent := GetExponent(F) - 52;
   Sign := System.Math.Sign(F) < 0;
@@ -183,7 +183,7 @@ begin
   // Now we insert zeroes and the decimal point into the plain big integer value to get a nice output.
 
   if DecimalPoint = 0 then
-    Result := Result + '.0'                                             // e.g. 123.0
+    Result := Result                                             // e.g. 123.0
   else if DecimalPoint >= Len then
     Result := '0.' + StringOfChar('0', DecimalPoint - Len) + Result     // e.g. 0.00123
   else
@@ -211,7 +211,7 @@ begin
 
   Mantissa := GetMantissa(F);
   if Mantissa = 0 then
-    Exit('0.0');
+    Exit('0');
 
   Exponent := GetExponent(F) - 23;
   Sign := System.Math.Sign(F) < 0;
@@ -245,7 +245,7 @@ begin
   // Now we insert zeroes and the decimal point into the plain big integer value to get a nice output.
 
   if DecimalPoint = 0 then
-    Result := Result + '.0'                                             // e.g. 123.0
+    Result := Result                                             // e.g. 123.0
   else if DecimalPoint >= Len then
     Result := '0.' + StringOfChar('0', DecimalPoint - Len) + Result       // e.g. 0.00123
   else

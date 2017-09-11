@@ -60,3 +60,6 @@ DataGenerators/BigIntegers/Java/FibonacciSpeedTest/**
 DataGenerators/BigIntegers/Java/FactorialSpeedTest/**
 DataGenerators/BigIntegers/Java/AddTests/nbproject/private/
 DataGenerators/BigIntegers/Java/AddTests/build/
+/DataGenerators/BigIntegers/Java/CastToIntTest/nbproject/private/
+/DataGenerators/BigIntegers/Java/CastToIntTest/build/
+/DataGenerators/BigDecimals/BigDecimalTestDataGenerator/nbproject/private/
