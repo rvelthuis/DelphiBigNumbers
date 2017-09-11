@@ -1121,13 +1121,6 @@ begin
   Mantissa := Mantissa shr Shift;
   Inc(Exponent, Shift);
 
-  // This can be shortcut with NTZ. Also only shift by Min(NTZ, -Exponent).
-  while not Odd(Mantissa) do
-  begin
-    Mantissa := Mantissa shr 1;
-    Inc(Exponent);
-  end;
-
   BigInt := Mantissa;
 
   DecimalPoint := 0;
