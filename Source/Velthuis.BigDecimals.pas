@@ -258,9 +258,6 @@ type
     // is 2, then the result is [179324, 5], which is as close to scale=2 as we can get without altering the value.
     class procedure InPlaceRemoveTrailingZeros(var Value: BigDecimal; TargetScale: Integer); static;
 
-    // Checks if the given floating point type string is 'NaN', 'NegInfinity' or 'Infinity'.
-    class procedure CheckInvalidFloatString(const S, TypeStr: string); static;
-
     // Converts the current BigDecimal to sign, significand and exponent for the given significand size in bits.
     // Can be used to convert to components for Single, Double and Extended.
     class procedure ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer;
@@ -996,14 +993,6 @@ begin
   Value.Create(LValue, LScale);
 end;
 
-// Checks if the strings contain 'NaN', 'NegInfinity' or 'Infinity', the results of ExactString.
-// Ideally, this is not necessary and conversion is completely in binary.
-class procedure BigDecimal.CheckInvalidFloatString(const S, TypeStr: string);
-begin
-  if (S = 'NaN') or (S = 'NegInfinity') or (S = 'Infinity') then // DO NOT TRANSLATE
-    Error(ecInvalidArg, [TypeStr]);
-end;
-
 class function BigDecimal.Compare(const Left, Right: BigDecimal): TValueSign;
 const
   Values: array[Boolean] of Integer = (-1, 1);
@@ -1109,8 +1098,8 @@ type
     Lo, Hi: UInt32;
   end;
 var
-  BigInt: BigInteger;
-  DecimalPoint: Integer;
+  NewUnscaledValue: BigInteger;
+  NewScale: Integer;
   Shift: Integer;
 begin
   if UInt32(Mantissa) = 0 then
@@ -1121,9 +1110,9 @@ begin
   Mantissa := Mantissa shr Shift;
   Inc(Exponent, Shift);
 
-  BigInt := Mantissa;
+  NewUnscaledValue := Mantissa;
 
-  DecimalPoint := 0;
+  NewScale := 0;
   if Exponent < 0 then
   begin
     // To get rid of the binary exponent (make it 0), BigInt must repeatedly be divided by 2.
@@ -1131,13 +1120,13 @@ begin
     // decimal point is moved by one, which is equivalent with a division by 10.
     // So, effectively, the result is divided by 2.
     // Instead of in a loop, this is done directly using Pow()
-    BigInt := BigInt * BigInteger.Pow(5, -Exponent);
-    DecimalPoint := -Exponent;
+    NewUnscaledValue := NewUnscaledValue * BigInteger.Pow(5, -Exponent);
+    NewScale := -Exponent;
   end
   else if Exponent > 0 then
-    BigInt := BigInt shl Exponent;
+    NewUnscaledValue := NewUnscaledValue shl Exponent;
 
-  Result := BigDecimal.Create(BigInt, DecimalPoint);
+  Result := BigDecimal.Create(NewUnscaledValue, NewScale);
   if Sign < 0 then
     Result := -Result;
 end;
