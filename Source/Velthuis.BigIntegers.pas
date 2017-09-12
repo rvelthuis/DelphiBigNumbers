@@ -2838,7 +2838,7 @@ begin
       Exit(0)                           // Compare(0, 0) = 0
     else
       Exit(Results[Right.FSize < 0])    // Compare(0, negative) = 1
-    else if Right.FData = nil then
+  else if Right.FData = nil then
     Exit(Results[Left.FSize > 0]);      // Compare(positive, 0) = 1
 
   if ((Left.FSize xor Right.FSize) and SignMask) <> 0 then
@@ -2855,7 +2855,7 @@ end;
 
 constructor BigInteger.Create(const Value: Integer);
 begin
-  Create(Cardinal(System.Abs(Value)));
+  Create(UInt32(System.Abs(Value)));
   if Value < 0 then
     FSize := FSize or SignMask;
   Compact;
@@ -2870,7 +2870,7 @@ end;
 constructor BigInteger.Create(const Magnitude: TMagnitude; Negative: Boolean);
 begin
   FSize := Length(Magnitude) or (Ord(Negative) * SignMask);
-  FData := Copy(Magnitude);
+  FData := Copy(Magnitude);     // Must copy; otherwise modifying magnitude would modify this BigInteger.
   Compact;
 end;
 
@@ -3078,7 +3078,7 @@ end;
 
 function BigInteger.IsOne: Boolean;
 begin
-  Result := (FData <> nil) and (FData[0] = 1) and (FSize = 1);
+  Result := (FData <> nil) and (FSize = 1) and (FData[0] = 1);
 end;
 
 function BigInteger.IsPositive: Boolean;
@@ -3109,17 +3109,13 @@ end;
 
 function BigInteger.GetSign: Integer;
 begin
-  Result := 0;
   if FData = nil then
   begin
     FSize := 0;
-    Exit;
+    Exit(0);
   end;
 
-  if FSize > 0 then
-    Result := 1
-  else if FSize < 0 then
-    Result := -1;
+  Result := 2 * Ord(FSize > 0) - 1;
 end;
 
 function BigInteger.GetSize: Integer;
@@ -5552,6 +5548,9 @@ var
 begin
   if Right.FData = nil then
     Error(ecDivByZero);
+
+  if Left.FData = nil then
+    Exit(Zero);
 
   Sign := (Left.FSize and SignMask) xor (Right.FSize and SignMask);
   LSize := Left.FSize and SizeMask;

@@ -1098,8 +1098,8 @@ type
     Lo, Hi: UInt32;
   end;
 var
-  BigInt: BigInteger;
-  DecimalPoint: Integer;
+  NewUnscaledValue: BigInteger;
+  NewScale: Integer;
   Shift: Integer;
 begin
   if UInt32(Mantissa) = 0 then
@@ -1110,9 +1110,9 @@ begin
   Mantissa := Mantissa shr Shift;
   Inc(Exponent, Shift);
 
-  BigInt := Mantissa;
+  NewUnscaledValue := Mantissa;
 
-  DecimalPoint := 0;
+  NewScale := 0;
   if Exponent < 0 then
   begin
     // To get rid of the binary exponent (make it 0), BigInt must repeatedly be divided by 2.
@@ -1120,13 +1120,13 @@ begin
     // decimal point is moved by one, which is equivalent with a division by 10.
     // So, effectively, the result is divided by 2.
     // Instead of in a loop, this is done directly using Pow()
-    BigInt := BigInt * BigInteger.Pow(5, -Exponent);
-    DecimalPoint := -Exponent;
+    NewUnscaledValue := NewUnscaledValue * BigInteger.Pow(5, -Exponent);
+    NewScale := -Exponent;
   end
   else if Exponent > 0 then
-    BigInt := BigInt shl Exponent;
+    NewUnscaledValue := NewUnscaledValue shl Exponent;
 
-  Result := BigDecimal.Create(BigInt, DecimalPoint);
+  Result := BigDecimal.Create(NewUnscaledValue, NewScale);
   if Sign < 0 then
     Result := -Result;
 end;
