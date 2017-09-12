@@ -58,6 +58,9 @@ function IsPositiveInfinity(const AValue: Extended): Boolean; overload;
 function GetMantissa(const AValue: Single): UInt32; overload;
 function GetMantissa(const AValue: Double): UInt64; overload;
 function GetMantissa(const AValue: Extended): UInt64; overload;
+function GetSignificand(const AValue: Single): UInt32; overload;
+function GetSignificand(const AValue: Double): UInt64; overload;
+function GetSignificand(const AValue: Extended): UInt64; overload;
 
 function GetExponent(const AValue: Single): Integer; overload;
 function GetExponent(const AValue: Double): Integer; overload;
@@ -186,6 +189,21 @@ end;
 function GetMantissa(const AValue: Extended): UInt64; overload;
 begin
   Result := PUInt64(@AValue)^;
+end;
+
+function GetSignificand(const AValue: Single): UInt32; overload;
+begin
+  GetMantissa(AValue);
+end;
+
+function GetSignificand(const AValue: Double): UInt64; overload;
+begin
+  GetMantissa(AValue);
+end;
+
+function GetSignificand(const AValue: Extended): UInt64; overload;
+begin
+  GetMantissa(AValue);
 end;
 
 function GetExponent(const AValue: Single): Integer; overload;

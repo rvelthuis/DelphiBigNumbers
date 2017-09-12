@@ -150,7 +150,7 @@ type
 
   PBigDecimal = ^BigDecimal;
 
-  /// <summary>BigDecimal is a multiple precision floating decimal point binary mantissa data type. It consists
+  /// <summary>BigDecimal is a multiple precision floating decimal point binary significand data type. It consists
   /// of a BigInteger and a scale, which is the negative decimal exponent.</summary>
   /// <remarks><para>BigDecimal "remembers" the precision with which it was initialized. So BigDecimal('1.79') and
   /// BigDecimal('1.790000') are distinct values, although they compare as equal.</para>
@@ -261,7 +261,12 @@ type
     // Converts the current BigDecimal to sign, significand and exponent for the given significand size in bits.
     // Can be used to convert to components for Single, Double and Extended.
     class procedure ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer;
-      var Sign: Integer; var Significand: UInt64; var Exponent: Integer); static;
+      var Sign: Integer; var Exponent: Integer; var Significand: UInt64); static;
+
+    // Converts the current sign, significand and exponent, extracted from a Single, Double or Extended,
+    // into a BigDecimal.
+    class procedure ConvertFromFloatComponents(Sign: TValueSign; Exponent: Integer; Significand: UInt64;
+      var Result: BigDecimal); static;
 
     // Raises exceptions where the type depends on the error code and the message on the arguments.
     class procedure Error(ErrorCode: TErrorCode; Args: array of const); static;
@@ -309,16 +314,16 @@ type
     constructor Create(const UnscaledValue: BigInteger); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given unsigned 64 bit integer parameter.</summary>
-    constructor Create(const U: UInt64); overload;
+    constructor Create(const U64: UInt64); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given signed 64 bit integer parameter.</summary>
-    constructor Create(const I: Int64); overload;
+    constructor Create(const I64: Int64); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given unsigned 32 bit integer parameter.</summary>
-    constructor Create(U: UInt32); overload;
+    constructor Create(U32: UInt32); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given signed 32 bit integer parameter.</summary>
-    constructor Create(I: Int32); overload;
+    constructor Create(I32: Int32); overload;
 
 
     // -- Mathematical operators --
@@ -1020,9 +1025,9 @@ begin
 end;
 
 // Converts Value to components for binary FP format, with Significand, binary Exponent and Sign. Significand
-// (or mantissa) is SignificandSize bits. This can be used for conversion to Extended, Double and Single, and,
+// (a.k.a. mantissa) is SignificandSize bits. This can be used for conversion to Extended, Double and Single, and,
 // if desired, IEEE 754-2008 binary128 (note: binary32 is equivalent to Single and binary64 to Double).
-class procedure BigDecimal.ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer; var Sign: Integer; var Significand: UInt64; var Exponent: Integer);
+class procedure BigDecimal.ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer; var Sign: Integer; var Exponent: Integer; var Significand: UInt64);
 var
   LDivisor, LQuotient, LRemainder, LLowBit, LSignificand: BigInteger;
   LBitLen, LScale: Integer;
@@ -1092,7 +1097,7 @@ begin
   FScale := Scale;
 end;
 
-procedure MakeBigDecimal(Mantissa: UInt64; Exponent: Integer; Sign: TValueSign; var Result: BigDecimal);
+class procedure BigDecimal.ConvertFromFloatComponents(Sign: TValueSign; Exponent: Integer; Significand: UInt64; var Result: BigDecimal);
 type
   TUInt64 = packed record
     Lo, Hi: UInt32;
@@ -1102,15 +1107,15 @@ var
   NewScale: Integer;
   Shift: Integer;
 begin
-  if UInt32(Mantissa) = 0 then
-    Shift := 32 + NumberOfTrailingZeros(TUInt64(Mantissa).Hi)
+  if UInt32(Significand) = 0 then
+    Shift := 32 + NumberOfTrailingZeros(TUInt64(Significand).Hi)
   else
-    Shift := NumberOfTrailingZeros(UInt32(Mantissa));
+    Shift := NumberOfTrailingZeros(UInt32(Significand));
 
-  Mantissa := Mantissa shr Shift;
+  Significand := Significand shr Shift;
   Inc(Exponent, Shift);
 
-  NewUnscaledValue := Mantissa;
+  NewUnscaledValue := Significand;
 
   NewScale := 0;
   if Exponent < 0 then
@@ -1133,7 +1138,7 @@ end;
 
 constructor BigDecimal.Create(const S: Single);
 var
-  Mantissa: UInt64;
+  Significand: UInt64;
   Exponent: Integer;
   Sign: TValueSign;
 begin
@@ -1146,16 +1151,16 @@ begin
     Exit;
   end;
 
-  Mantissa := GetMantissa(S);
+  Significand := GetMantissa(S);
   Exponent := GetExponent(S) - 23;
   Sign := System.Math.Sign(S);
 
-  MakeBigDecimal(Mantissa, Exponent, Sign, Self);
+  ConvertFromFloatComponents(Sign, Exponent, Significand, Self);
 end;
 
 constructor BigDecimal.Create(const D: Double);
 var
-  Mantissa: UInt64;
+  Significand: UInt64;
   Exponent: Integer;
   Sign: TValueSign;
 begin
@@ -1168,17 +1173,17 @@ begin
     Exit;
   end;
 
-  Mantissa := GetMantissa(D);
+  Significand := GetMantissa(D);
   Exponent := GetExponent(D) - 52;
   Sign := System.Math.Sign(D);
 
-  MakeBigDecimal(Mantissa, Exponent, Sign, Self);
+  ConvertFromFloatComponents(Sign, Exponent, Significand, Self);
 end;
 
 {$IFDEF HasExtended}
 constructor BigDecimal.Create(const E: Extended);
 var
-  Mantissa: UInt64;
+  Significand: UInt64;
   Exponent: Integer;
   Sign: TValueSign;
 begin
@@ -1191,11 +1196,11 @@ begin
     Exit;
   end;
 
-  Mantissa := GetMantissa(E);
+  Significand := GetMantissa(E);
   Exponent := GetExponent(E) - 63;
   Sign := System.Math.Sign(E);
 
-  MakeBigDecimal(Mantissa, Exponent, Sign, Self);
+  ConvertFromFloatComponents(Sign,Exponent, Significand, Self);
 end;
 {$ENDIF}
 
@@ -1206,28 +1211,28 @@ begin
     Error(ecParse, [S]);
 end;
 
-constructor BigDecimal.Create(const I: Int64);
+constructor BigDecimal.Create(const I64: Int64);
 begin
   Init;
-  FValue := BigInteger(I);
+  FValue := BigInteger.Create(I64);
 end;
 
-constructor BigDecimal.Create(const U: UInt64);
+constructor BigDecimal.Create(const U64: UInt64);
 begin
   Init;
-  FValue := BigInteger(U);
+  FValue := BigInteger.Create(U64);
 end;
 
-constructor BigDecimal.Create(U: UInt32);
+constructor BigDecimal.Create(U32: UInt32);
 begin
   Init;
-  FValue := BigInteger(U);
+  FValue := BigInteger.Create(U32);
 end;
 
-constructor BigDecimal.Create(I: Int32);
+constructor BigDecimal.Create(I32: Int32);
 begin
   Init;
-  FValue := BigInteger(I);
+  FValue := BigInteger.Create(I32);
 end;
 
 constructor BigDecimal.Create(const UnscaledValue: BigInteger);
@@ -1256,6 +1261,9 @@ begin
   // determine this? OTOH, for 0.01/0.003 we need the full precision. Is there a way to determine if a     //
   // division will result in a non-terminating decimal expansion or if it is terminating, where it will    //
   // terminate?                                                                                            //
+  // The decimal expansion will be terminating if the divisor can be reduced to 2^n * 5^m, with n,m >= 0,  //
+  // in other words, if it can be reduced to only powers of 2 and 5.                                       //
+  // Not sure if there is a fast way to determine this. I guess not.                                       //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   if Right.FValue.IsZero then
@@ -1378,7 +1386,7 @@ begin
 
   // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a mantissa, sign and binary exponent using
   // the given size of the mantissa (24 bits for Single).
-  ConvertToFloatComponents(Value, 24, LSign, LMantissa, LExponent);
+  ConvertToFloatComponents(Value, 24, LSign, LExponent, LMantissa);
 
   // Compose calculated sign, mantissa and exponent into a proper Single.
 
@@ -1423,7 +1431,7 @@ begin
 
   // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a mantissa, sign and binary exponent using
   // the given size of the mantissa (53 bits for Double).
-  ConvertToFloatComponents(Value, 53, LSign, LMantissa, LExponent);
+  ConvertToFloatComponents(Value, 53, LSign, LExponent, LMantissa);
 
   // Compose calculated sign, mantissa and exponent into a proper Double.
 
@@ -1468,7 +1476,7 @@ var
   end;
   LRem: UInt64;
 begin
-  ConvertToFloatComponents(Value, 64, LSign, LMantissa, LExponent);
+  ConvertToFloatComponents(Value, 64, LSign, LExponent, LMantissa);
 
   // Handle special values
   // * Infinities
