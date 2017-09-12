@@ -1107,10 +1107,7 @@ var
   NewScale: Integer;
   Shift: Integer;
 begin
-  if UInt32(Significand) = 0 then
-    Shift := 32 + NumberOfTrailingZeros(TUInt64(Significand).Hi)
-  else
-    Shift := NumberOfTrailingZeros(UInt32(Significand));
+  Shift := NumberOfTrailingZeros(Significand);
 
   Significand := Significand shr Shift;
   Inc(Exponent, Shift);
