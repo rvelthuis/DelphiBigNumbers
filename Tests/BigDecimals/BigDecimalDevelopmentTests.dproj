@@ -608,6 +608,7 @@
                 <SourceProjectName>C:\Users\Administrator\Dropbox\Code\Delphi\BigIntegers\BigDecimalDevelopment.dproj</SourceProjectName>
                 <TestProjectName/>
             </UnitTesting>
+            <ModelSupport>False</ModelSupport>
         </BorlandProject>
         <ProjectFileVersion>12</ProjectFileVersion>
     </ProjectExtensions>
