@@ -797,7 +797,7 @@ implementation
 {$OVERFLOWCHECKS OFF}
 
 uses
-  Velthuis.ExactFloatStrings, Velthuis.FloatUtils, Velthuis.Numerics;
+  Velthuis.FloatUtils, Velthuis.Numerics;
 
 resourcestring
   SErrorBigDecimalParsing = '''%s'' is not valid BigDecimal value.';
@@ -1151,7 +1151,7 @@ begin
     Exit;
   end;
 
-  Significand := GetMantissa(S);
+  Significand := GetSignificand(S);
   Exponent := GetExponent(S) - 23;
   Sign := System.Math.Sign(S);
 
@@ -1173,7 +1173,7 @@ begin
     Exit;
   end;
 
-  Significand := GetMantissa(D);
+  Significand := GetSignificand(D);
   Exponent := GetExponent(D) - 52;
   Sign := System.Math.Sign(D);
 
@@ -1196,7 +1196,7 @@ begin
     Exit;
   end;
 
-  Significand := GetMantissa(E);
+  Significand := GetSignificand(E);
   Exponent := GetExponent(E) - 63;
   Sign := System.Math.Sign(E);
 
@@ -1376,7 +1376,7 @@ end;
 class operator BigDecimal.Explicit(const Value: BigDecimal): Single;
 var
   LSign, LExponent: Integer;
-  LMantissa: UInt64;
+  LSignificand: UInt64;
   LDiff: Integer;
   LLowBits: UInt32;
   LRem: UInt32;
@@ -1384,11 +1384,11 @@ begin
   if Value.FValue.IsZero then
     Exit(0.0);
 
-  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a mantissa, sign and binary exponent using
-  // the given size of the mantissa (24 bits for Single).
-  ConvertToFloatComponents(Value, 24, LSign, LExponent, LMantissa);
+  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a signficand, sign and binary exponent using
+  // the given size of the significand (24 bits for Single).
+  ConvertToFloatComponents(Value, 24, LSign, LExponent, LSignificand);
 
-  // Compose calculated sign, mantissa and exponent into a proper Single.
+  // Compose calculated sign, significand and exponent into a proper Single.
 
   // Handle special values:
 
@@ -1405,23 +1405,23 @@ begin
     if LDiff >= 24 then
       Exit(0.0);
     LLowBits := UInt32(1) shl LDiff;
-    LRem := LMantissa and (LLowBits - 1);
-    LMantissa := LMantissa shr LDiff;
+    LRem := LSignificand and (LLowBits - 1);
+    LSignificand := LSignificand shr LDiff;
     if LRem + LRem >= LLowBits then
-      Inc(LMantissa);
+      Inc(LSignificand);
     if LSign < 0 then
-      LMantissa := LMantissa or $80000000;
-    Result := PSingle(@LMantissa)^;
+      LSignificand := LSignificand or $80000000;
+    Result := PSingle(@LSignificand)^;
   end
   else
-    Result := Velthuis.FloatUtils.MakeSingle(LSign, LMantissa, LExponent);
+    Result := Velthuis.FloatUtils.MakeSingle(LSign, LSignificand, LExponent);
 end;
 
 class operator BigDecimal.Explicit(const Value: BigDecimal): Double;
 var
   LSign: Integer;
   LExponent: Integer;
-  LMantissa: UInt64;
+  LSignificand: UInt64;
   LDiff: Integer;
   LLowBits: UInt64;
   LRem: UInt64;
@@ -1429,11 +1429,11 @@ begin
   if Value.FValue.IsZero then
     Exit(0.0);
 
-  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a mantissa, sign and binary exponent using
-  // the given size of the mantissa (53 bits for Double).
-  ConvertToFloatComponents(Value, 53, LSign, LExponent, LMantissa);
+  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a significand, sign and binary exponent using
+  // the given size of the significand (53 bits for Double).
+  ConvertToFloatComponents(Value, 53, LSign, LExponent, LSignificand);
 
-  // Compose calculated sign, mantissa and exponent into a proper Double.
+  // Compose calculated sign, significand and exponent into a proper Double.
 
   // Handle special values:
 
@@ -1451,23 +1451,23 @@ begin
       Exit(0.0);
 
     LLowBits := UInt64(1) shl LDiff;            // mask for the low bits after shift
-    LRem := LMantissa and (LLowBits - 1);       // low bits, IOW LMantissa mod 2^LDiff
-    LMantissa := LMantissa shr LDiff;           // LMantissa div 2^LDiff
+    LRem := LSignificand and (LLowBits - 1);    // low bits, IOW LSignificand mod 2^LDiff
+    LSignificand := LSignificand shr LDiff;     // LSignificand div 2^LDiff
     if LRem + LRem >= LLowBits then
-      Inc(LMantissa);                           // round up
+      Inc(LSignificand);                        // round up
     if LSign < 0 then
-      LMantissa := LMantissa or $8000000000000000;
-    Result := PDouble(@LMantissa)^;
+      LSignificand := LSignificand or $8000000000000000;
+    Result := PDouble(@LSignificand)^;
   end
   else
-    Result := Velthuis.FloatUtils.MakeDouble(LSign, LMantissa, LExponent);
+    Result := Velthuis.FloatUtils.MakeDouble(LSign, LSignificand, LExponent);
 end;
 
 {$IFDEF HasExtended}
 class operator BigDecimal.Explicit(const Value: BigDecimal): Extended;
 var
   LSign, LExponent: Integer;
-  LMantissa: UInt64;
+  LSignificand: UInt64;
   LDiff: Integer;
   LLowBits: UInt64;
   LExtendedRec: packed record
@@ -1476,7 +1476,7 @@ var
   end;
   LRem: UInt64;
 begin
-  ConvertToFloatComponents(Value, 64, LSign, LExponent, LMantissa);
+  ConvertToFloatComponents(Value, 64, LSign, LExponent, LSignificand);
 
   // Handle special values
   // * Infinities
@@ -1493,18 +1493,18 @@ begin
     if LDiff >= 64 then
       Exit(0.0);
     LLowBits := UInt64(1) shl LDiff;
-    LRem := LMantissa and (LLowBits - 1);
-    LMantissa := LMantissa shr LDiff;
+    LRem := LSignificand and (LLowBits - 1);
+    LSignificand := LSignificand shr LDiff;
     if LRem + LRem >= LLowBits then
-      Inc(LMantissa);
-    LExtendedRec.Man := LMantissa;
+      Inc(LSignificand);
+    LExtendedRec.Man := LSignificand;
     LExtendedRec.Exp := 0;
     if LSign < 0 then
       LExtendedRec.Exp := LExtendedRec.Exp or Int16($8000);
     Result := PExtended(@LExtendedRec)^;
   end
   else
-    Result := Velthuis.FloatUtils.MakeExtended(LSign, LMantissa, LExponent);
+    Result := Velthuis.FloatUtils.MakeExtended(LSign, LSignificand, LExponent);
 end;
 {$ENDIF}
 
@@ -1545,7 +1545,7 @@ end;
 
 // Note: 5^N = 10^N div 2^N = 10^N shr N;
 // Powers of five are required when converting a decimal scale/unscaled value combination to a binary
-// exponent/mantissa combination with the same value.
+// exponent/significand combination with the same value.
 class function BigDecimal.GetPowerOfFive(N: Integer): BigInteger;
 begin
   Result := GetPowerOfTen(N) shr N;
@@ -2293,7 +2293,7 @@ begin
     LChr := LPtr^;
   end;
 
-  // Parsed mantissa to end or up to first 'e' or 'E'.
+  // Parsed significand to end or up to first 'e' or 'E'.
   if Assigned(LDecimalPointPos) then
     LNumDecimals := LPtr - LDecimalPointPos - 1;
 

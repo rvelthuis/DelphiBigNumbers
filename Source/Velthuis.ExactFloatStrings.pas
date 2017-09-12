@@ -86,7 +86,7 @@ begin
   else if IsPositiveInfinity(F) then
     Exit('Infinity');
 
-  Mantissa := GetMantissa(F);
+  Mantissa := GetSignificand(F);
   if Mantissa = 0 then
     Exit('0');
 
@@ -147,7 +147,7 @@ begin
   else if IsPositiveInfinity(F) then
     Exit('Infinity');
 
-  Mantissa := GetMantissa(F);
+  Mantissa := GetSignificand(F);
   if Mantissa = 0 then
     Exit('0');
 
@@ -209,7 +209,7 @@ begin
   else if IsPositiveInfinity(F) then
     Exit('Infinity');
 
-  Mantissa := GetMantissa(F);
+  Mantissa := GetSignificand(F);
   if Mantissa = 0 then
     Exit('0');
 
