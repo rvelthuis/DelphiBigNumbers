@@ -1251,7 +1251,7 @@ begin
   // So the dividend must be scaled up by at least Precision powers of ten. The end result must be rounded //
   // toward the target scale, which is Left.Scale - Right.Scale.                                           //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Is there a way to find out beforehand if we need the full precision? Take the above: 0.01/0.025 = 4   //
+  // Is there a way to find out beforehand if we need the full precision? Take the above: 0.01/0.0025 = 4. //
   // So we would only need to scale up BigInteger(1) to BigInteger(100) and then divide. Is there a way to //
   // determine this? OTOH, for 0.01/0.003 we need the full precision. Is there a way to determine if a     //
   // division will result in a non-terminating decimal expansion or if it is terminating, where it will    //
@@ -1291,7 +1291,8 @@ begin
   Result.Create(LQuotient, LScale);
 
   // Reduce the precision, if necessary.
-  // Wow! This is slow. Time reduction of >50% if it can be omitted, e.g. because division is accurate enough already.
+  // Wow! This is slow. Time reduction of >50% if it could be omitted, e.g. if division were
+   accurate enough already.
   Result := Result.RoundToScale(RangeCheckedScale(LScale + Precision - Result.Precision), ARoundingMode);
   // Can this be combined with InPlaceRemoveTrailingZeros?
 
