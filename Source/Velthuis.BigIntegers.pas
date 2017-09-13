@@ -842,6 +842,9 @@ type
     ///   1 if it is lesser.</summary>
     class function Compare(const Left, Right: BigInteger): Integer; static;
 
+    /// <summary>Returns N!, i.e. N * (N - 1) * (N - 2) * ... * 2 as BigInteger.
+    class function Factorial(N: Integer): BigInteger; static;
+
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
 
@@ -892,13 +895,15 @@ type
     class procedure NthRootRemainder(const Radicand: BigInteger; Nth: Integer;
       var Root, Remainder: BigInteger); static;
 
-    /// <summary> Returns the square root R of Radicand, such that R^2 < Radicand < (R+1)^2</summary>
+    /// <summary>Returns the square root R of Radicand, such that R^2 < Radicand < (R+1)^2</summary>
     class function Sqrt(const Radicand: BigInteger): BigInteger; static;
 
     /// <summary>If R is the square root of Radicand, returns Radicand - R^2.</summary>
     class procedure SqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger); static;
 
+    /// <summary>Returns the square of Value, i.e. Value*Value</summary>
     class function Sqr(const Value: BigInteger): BigInteger; static;
+
 
 
     // -- Utility functions --
@@ -3139,6 +3144,37 @@ end;
 class operator BigInteger.GreaterThanOrEqual(const Left, Right: BigInteger): Boolean;
 begin
   Result := Compare(left, Right) >= 0;
+end;
+
+// Divide and Conquer. For N = 100,000, this is 20 x as fast as a plain iterative multiplication.
+class function BigInteger.Factorial(N: Integer): BigInteger;
+
+// Possible optimization: shift every even number right by one, count them and shift all back left at the end.
+
+  function MultiplyRange(First, Last: Integer): BigInteger;
+  var
+    Split: Integer;
+  begin
+    case Last - First of
+      0: Result := BigInteger(First);
+      1: Result := BigInteger(First) * BigInteger(Last);
+      2: Result := BigInteger(First) * BigInteger(First + 1) * BigInteger(Last);
+      3: Result := BigInteger(First) * BigInteger(First + 1) * BigInteger(First + 2) * BigInteger(Last);
+    else
+      begin
+        Split := (First + Last) shr 1;
+        Result := MultiplyRange(First, Split) * MultiplyRange(Split + 1, Last);
+      end;
+    end;
+  end;
+
+begin
+  if N <= 0 then
+    Result := 0
+  else if N = 1 then
+    Result := 1
+  else
+    Result := MultiplyRange(2, N);
 end;
 
 // http://en.wikipedia.org/wiki/Binary_GCD_algorithm
