@@ -2914,7 +2914,7 @@ begin
     Error(ecOverflow);
 
   // Get the required values from TDoubleHelper.
-  Mantissa := GetMantissa(Value);
+  Mantissa := GetSignificand(Value);
   Exponent := GetExponent(Value);
   Sign := PInt64(@Value)^ < 0;
 

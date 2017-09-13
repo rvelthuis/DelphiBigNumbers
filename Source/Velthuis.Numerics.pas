@@ -49,6 +49,7 @@ function NumberOfLeadingZeros(U: UInt16): Integer; overload;
 function NumberOfLeadingZeros(S: Int32): Integer; overload;
 function NumberOfLeadingZeros(U: UInt32): Integer; overload;
 function NumberOfTrailingZeros(U: UInt32): Integer; overload;
+function NumberOfTrailingZeros(U: UInt64): Integer; overload;
 
 function Reverse(U: UInt8): UInt8; overload;
 function Reverse(U: UInt16): UInt16; overload;
@@ -455,6 +456,41 @@ begin
     Result := 32
   else
     Result := NTZDeBruijn32[((U and (-Integer(U))) * NTZDeBruijn32Mult) shr 27];
+end;
+{$IFEND PUREPASCAL}
+
+function NumberOfTrailingZeros(U: UInt64): Integer;
+{$IF DEFINED(WIN32)}
+asm
+        BSF    EAX,DWORD PTR [U]
+        JNZ    @Exit
+        BSF    EAX,DWORD PTR [U+TYPE DWORD]
+        JZ     @Ret64
+        ADD    EAX,32
+        JMP    @Exit
+@Ret64:
+        MOV    EAX,64
+@Exit:
+end;
+{$ELSEIF DEFINED(WIN64)}
+asm
+        .NOFRAME
+
+        BSF    RAX,RCX
+        JNZ    @Exit
+        MOV    EAX,64
+@Exit:
+end;
+{$ELSE PUREPASCAL}
+type
+  TUInt64 = packed record
+    Lo, Hi: UInt32;
+  end;
+begin
+  if UInt32(U) = 0 then
+    Result := 32 + NumberOfTrailingZeros(TUInt64(U).Hi)
+  else
+    Result := NumberOfTrailingZeros(UInt32(U));
 end;
 {$IFEND PUREPASCAL}
 

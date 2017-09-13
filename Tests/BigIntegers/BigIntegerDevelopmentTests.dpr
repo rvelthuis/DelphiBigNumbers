@@ -18,9 +18,9 @@ program BigIntegerDevelopmentTests;
 {$ENDIF}
 
 uses
-  {$IFDEF USEFASTMM4}
+{$IFDEF USEFASTMM4}
   FastMM4,
-  {$ENDIF }
+{$ENDIF }
   DUnitTestRunner,
   Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas',
   Velthuis.RandomNumbers in '..\..\Source\Velthuis.RandomNumbers.pas',
