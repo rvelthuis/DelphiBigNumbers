@@ -1292,14 +1292,15 @@ begin
 
   // Reduce the precision, if necessary.
   // Wow! This is slow. Time reduction of >50% if it could be omitted, e.g. if division were
-   accurate enough already.
+  // accurate enough already.
   Result := Result.RoundToScale(RangeCheckedScale(LScale + Precision - Result.Precision), ARoundingMode);
   // Can this be combined with InPlaceRemoveTrailingZeros?
 
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
   // This should be optional, as it is slower.
-//  InPlaceRemoveTrailingZeros(Result, TargetScale);
+
+  //  InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
