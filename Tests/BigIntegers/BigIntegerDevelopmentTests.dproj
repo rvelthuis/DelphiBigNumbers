@@ -310,12 +310,15 @@
                 </DeployFile>
                 <DeployFile LocalName="BigIntegerConvertResults.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
+<<<<<<< HEAD
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="BigIntegerTestResults.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win64">
+=======
+>>>>>>> 302e51a5cc5a990e35ebb27df8e97261dfdb5306
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
@@ -346,6 +349,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+<<<<<<< HEAD
+>>>>>>> 302e51a5cc5a990e35ebb27df8e97261dfdb5306
+=======
 >>>>>>> 302e51a5cc5a990e35ebb27df8e97261dfdb5306
                 <DeployFile LocalName="BigIntegerMathResults.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win64">
