@@ -3149,22 +3149,37 @@ end;
 // Divide and Conquer. For N = 100,000, this is 20 x as fast as a plain iterative multiplication.
 class function BigInteger.Factorial(N: Integer): BigInteger;
 
-// Possible optimization: shift every even number right by one, count them and shift all back left at the end.
+//////////////////////////////////////////////////////////////////////////////
+// Optimization: every even integer is shifted right by 1. The end result   //
+// shifted back by an equal amount of bits (n div 2).                       //
+//////////////////////////////////////////////////////////////////////////////
 
   function MultiplyRange(First, Last: Integer): BigInteger;
   var
     Split: Integer;
+    shifted: Integer;
   begin
-    case Last - First of
-      0: Result := BigInteger(First);
-      1: Result := BigInteger(First) * BigInteger(Last);
-      2: Result := BigInteger(First) * BigInteger(First + 1) * BigInteger(Last);
-      3: Result := BigInteger(First) * BigInteger(First + 1) * BigInteger(First + 2) * BigInteger(Last);
+    if Last - First <= 3 then
+    begin
+      if Odd(First) then
+        case Last - First of
+          0: Result := BigInteger(First);
+          1: Result := BigInteger(First) * BigInteger(Last shr 1);
+          2: Result := BigInteger(First) * BigInteger((First + 1) shr 1) * BigInteger(Last);
+          3: Result := BigInteger(First) * BigInteger((First + 1) shr 1) * BigInteger(First + 2) * BigInteger(Last shr 1);
+        end
+      else
+        case Last - First of
+          0: Result := BigInteger(First shr 1);
+          1: Result := BigInteger(First shr 1) * BigInteger(Last);
+          2: Result := BigInteger(First shr 1) * BigInteger(First + 1) * BigInteger(Last shr 1);
+          3: Result := BigInteger(First shr 1) * BigInteger(First + 1) * BigInteger(First shr 1 + 1) * BigInteger(Last);
+        end;
+    end
     else
-      begin
-        Split := (First + Last) shr 1;
-        Result := MultiplyRange(First, Split) * MultiplyRange(Split + 1, Last);
-      end;
+    begin
+      Split := (First + Last) shr 1;
+      Result := MultiplyRange(First, Split) * MultiplyRange(Split + 1, Last);
     end;
   end;
 
@@ -3174,7 +3189,7 @@ begin
   else if N = 1 then
     Result := 1
   else
-    Result := MultiplyRange(2, N);
+    Result := MultiplyRange(2, N) shl (N shr 1);
 end;
 
 // http://en.wikipedia.org/wiki/Binary_GCD_algorithm
