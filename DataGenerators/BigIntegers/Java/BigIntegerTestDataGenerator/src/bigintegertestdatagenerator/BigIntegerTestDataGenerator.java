@@ -169,8 +169,9 @@ public class BigIntegerTestDataGenerator
                 generateComparisonResults(bw);
                 generateGCDResults(bw);
                 generateInvModResults(bw);
-                generateMinResults(bw);
+                generateMinResults(bw);               
                 generateMaxResults(bw);
+                generateFactorialResults(bw);
             }
             finally
             {
@@ -1264,6 +1265,40 @@ public class BigIntegerTestDataGenerator
         }
 
         writeBinaryResults(bw, "MaxResults", results, count, "max");
+    }
+    
+    static BigInteger factorial(int n)
+    {
+        BigInteger result = BigInteger.ONE;
+        
+        if (n < 2)
+            return BigInteger.ONE;
+        
+        for (int i = 2; i <= n; i++)
+        {
+            result = result.multiply(BigInteger.valueOf(i));
+        }
+        
+        return result;
+    }
+    
+    static void generateFactorialResults(BufferedWriter bw) throws IOException
+    {
+        int count = BITSHIFTS.length;
+        TestResult[] results = new TestResult[count];
+        
+        for (int i = 0; i < count; i++)
+        {
+            BigInteger b = factorial(BITSHIFTS[i]);
+            
+            TestResult tr = new TestResult();
+            
+            tr.info = TestResultInfo.Ok;
+            tr.val = b.toString();
+            results[i] = tr; 
+        }
+        
+        writeUnaryResults(bw, "FactorialResults", results, count, "Factorial(", ")");
     }
     
     static String generateRandomStringForBase(int maxLength, int base, Random rand)
