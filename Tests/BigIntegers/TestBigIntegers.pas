@@ -100,6 +100,7 @@ type
     procedure TestSqrt;
     procedure TestToByteArray;
     procedure TestModInverse;
+    procedure TestFactorial;
   end;
 
 implementation
@@ -366,6 +367,20 @@ begin
       B := A.ClearBit(Bit);
       Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.ClearBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
     end;
+  end;
+end;
+
+procedure TTestBigInteger.TestFactorial;
+var
+  I, N: Integer;
+  A, B: BigInteger;
+begin
+  for I := 0 to High(BitShifts) do
+  begin
+    N := BitShifts[I];
+    A := BigInteger.Factorial(N);
+    B := FactorialResults[I].Val;
+    Check(A = B);
   end;
 end;
 

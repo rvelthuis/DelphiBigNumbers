@@ -339,7 +339,7 @@ public class BigIntegerTestDataGenerator
     
     static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
     {
-        writeln(bw, "  %s: array[0..ArgumentCount - 1] of TTestResult =", arrayName, count);
+        writeln(bw, "  %s: array[0..%d - 1] of TTestResult =", arrayName, count);
         writeln(bw, "  (");
 
         for (int i = 0; i < count; ++i)

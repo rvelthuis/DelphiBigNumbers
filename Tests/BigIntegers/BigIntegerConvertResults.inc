@@ -1,7 +1,7 @@
 //                                                                                                  //
 // File: BigIntegerConvertResults.inc                                                               //
 //                                                                                                  //
-// Test data for Velthuis.BigIntegers.pas, generated 14 Sep, 2017, 17:28:58                         //
+// Test data for Velthuis.BigIntegers.pas, generated 14 Sep, 2017, 19:33:07                         //
 //                                                                                                  //
 // Do not modify the generated data in this file.  Modify the data in the generator source file.    //
 // The source file for the generator is BigIntegerTestDataGenerator.java, in the Test subdirectory. //
@@ -112,7 +112,7 @@ const
     (Str: '31A74';                Str10: '46545';                            Base: 11; Result: True),
     (Str: '964461016676296357';   Str10: 'error';                            Base:  9; Result: False)
   );
-  ByteArrayResults: array[0..ArgumentCount - 1] of TTestResult =
+  ByteArrayResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '00000000000000000000000000000000CCED'),      // Arguments[0].ToByteArray
     (Info: triOk;            Val: '01000000000000000000000000000000CB'),        // Arguments[1].ToByteArray
@@ -184,7 +184,7 @@ const
                                   'B57CC828')                                   // Arguments[63].ToByteArray
   );
 
-  HexResults: array[0..ArgumentCount - 1] of TTestResult =
+  HexResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '-123400000000000000000000000000000000'),     // Arguments[0].ToString(16)
     (Info: triOk;            Val: '-34FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),       // Arguments[1].ToString(16)
@@ -256,7 +256,7 @@ const
                                   '00000000')                                   // Arguments[63].ToString(16)
   );
 
-  AsIntegerResults: array[0..ArgumentCount - 1] of TTestResult =
+  AsIntegerResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsInteger
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsInteger
@@ -324,7 +324,7 @@ const
     (Info: triOverflow;      Val: 'Overflow')                                   // Arguments[63].AsInteger
   );
 
-  AsCardinalResults: array[0..ArgumentCount - 1] of TTestResult =
+  AsCardinalResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsCardinal
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsCardinal
@@ -392,7 +392,7 @@ const
     (Info: triOverflow;      Val: 'Overflow')                                   // Arguments[63].AsCardinal
   );
 
-  AsInt64Results: array[0..ArgumentCount - 1] of TTestResult =
+  AsInt64Results: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsInt64
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsInt64
@@ -460,7 +460,7 @@ const
     (Info: triOverflow;      Val: 'Overflow')                                   // Arguments[63].AsInt64
   );
 
-  AsUInt64Results: array[0..ArgumentCount - 1] of TTestResult =
+  AsUInt64Results: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsUInt64
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsUInt64

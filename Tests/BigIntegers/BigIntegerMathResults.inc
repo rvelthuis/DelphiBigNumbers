@@ -1,7 +1,7 @@
 //                                                                                                  //
 // File: BigIntegerMathResults.inc                                                                  //
 //                                                                                                  //
-// Test data for Velthuis.BigIntegers.pas, generated 14 Sep, 2017, 17:28:56                         //
+// Test data for Velthuis.BigIntegers.pas, generated 14 Sep, 2017, 19:33:04                         //
 //                                                                                                  //
 // Do not modify the generated data in this file.  Modify the data in the generator source file.    //
 // The source file for the generator is BigIntegerTestDataGenerator.java, in the Test subdirectory. //
@@ -28563,7 +28563,7 @@
                                   '000000000000000000')                         // 4095: Arguments[63] max Arguments[63]
   );
 
-  FactorialResults: array[0..ArgumentCount - 1] of TTestResult =
+  FactorialResults: array[0..40 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '1'),                                         // Factorial(Arguments[0])
     (Info: triOk;            Val: '2'),                                         // Factorial(Arguments[1])
