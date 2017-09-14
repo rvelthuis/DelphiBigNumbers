@@ -3149,15 +3149,24 @@ end;
 // Divide and Conquer. For N = 100,000, this is 20 x as fast as a plain iterative multiplication.
 class function BigInteger.Factorial(N: Integer): BigInteger;
 
-//////////////////////////////////////////////////////////////////////////////
-// Optimization: every even integer is shifted right by 1. The end result   //
-// shifted back by an equal amount of bits (n div 2).                       //
-//////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  // Alternative algorithm:                                                 //
+  // [1 2 3 4 5 6 7 8 9] --> [1*9 2*8 3*7 4*6 5] = [9 16 21 24 5]           //
+  // [9 16 21 24 5] --> [9*5 16*24 21] = [45 384 21]                        //
+  // [45 384 21] --> [45*21 384] = [945 384]                                //
+  // Result = 945 * 384 = 362880 = 9!                                       //
+  // But that is a little slower than the following and needs an array      //
+  // of (N div 2) BigIntegers.                                              //
+  ////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////
+  // Optimization: every even integer is shifted right by 1. The end result //
+  // is shifted back by an equal amount of bits (n div 2).                  //
+  ////////////////////////////////////////////////////////////////////////////
 
   function MultiplyRange(First, Last: Integer): BigInteger;
   var
     Split: Integer;
-    shifted: Integer;
   begin
     if Last - First <= 3 then
     begin
