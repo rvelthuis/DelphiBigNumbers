@@ -336,14 +336,19 @@ public class BigIntegerTestDataGenerator
         }
         return result.toString();
     }
-    
-    static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
+        
+     static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
+     {
+         writeUnaryResults(bw, arrayName, results, count, prefix, suffix, "Arguments");
+     }
+        
+    static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix, String sourceArrayName) throws IOException
     {
         writeln(bw, "  %s: array[0..%d - 1] of TTestResult =", arrayName, count);
         writeln(bw, "  (");
 
         for (int i = 0; i < count; ++i)
-            formatResult(bw, results[i], (i == count - 1), String.format("%sArguments[%d]%s", prefix, i, suffix));
+            formatResult(bw, results[i], (i == count - 1), String.format("%s%s[%d]%s", prefix, sourceArrayName, i, suffix));
         writeln(bw, "  );");
         writeln(bw);
     }
@@ -1298,7 +1303,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr; 
         }
         
-        writeUnaryResults(bw, "FactorialResults", results, count, "Factorial(", ")");
+        writeUnaryResults(bw, "FactorialResults", results, count, "Factorial(", ")", "BitShifts");
     }
     
     static String generateRandomStringForBase(int maxLength, int base, Random rand)

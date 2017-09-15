@@ -1,7 +1,7 @@
 //                                                                                                  //
 // File: BigIntegerMathResults.inc                                                                  //
 //                                                                                                  //
-// Test data for Velthuis.BigIntegers.pas, generated 14 Sep, 2017, 19:33:04                         //
+// Test data for Velthuis.BigIntegers.pas, generated 15 Sep, 2017, 13:32:51                         //
 //                                                                                                  //
 // Do not modify the generated data in this file.  Modify the data in the generator source file.    //
 // The source file for the generator is BigIntegerTestDataGenerator.java, in the Test subdirectory. //
@@ -28565,67 +28565,67 @@
 
   FactorialResults: array[0..40 - 1] of TTestResult =
   (
-    (Info: triOk;            Val: '1'),                                         // Factorial(Arguments[0])
-    (Info: triOk;            Val: '2'),                                         // Factorial(Arguments[1])
-    (Info: triOk;            Val: '6'),                                         // Factorial(Arguments[2])
-    (Info: triOk;            Val: '24'),                                        // Factorial(Arguments[3])
-    (Info: triOk;            Val: '120'),                                       // Factorial(Arguments[4])
-    (Info: triOk;            Val: '720'),                                       // Factorial(Arguments[5])
-    (Info: triOk;            Val: '5040'),                                      // Factorial(Arguments[6])
-    (Info: triOk;            Val: '40320'),                                     // Factorial(Arguments[7])
-    (Info: triOk;            Val: '362880'),                                    // Factorial(Arguments[8])
-    (Info: triOk;            Val: '3628800'),                                   // Factorial(Arguments[9])
-    (Info: triOk;            Val: '39916800'),                                  // Factorial(Arguments[10])
-    (Info: triOk;            Val: '479001600'),                                 // Factorial(Arguments[11])
-    (Info: triOk;            Val: '6227020800'),                                // Factorial(Arguments[12])
-    (Info: triOk;            Val: '87178291200'),                               // Factorial(Arguments[13])
-    (Info: triOk;            Val: '1307674368000'),                             // Factorial(Arguments[14])
-    (Info: triOk;            Val: '2432902008176640000'),                       // Factorial(Arguments[15])
-    (Info: triOk;            Val: '15511210043330985984000000'),                // Factorial(Arguments[16])
-    (Info: triOk;            Val: '265252859812191058636308480000000'),         // Factorial(Arguments[17])
-    (Info: triOk;            Val: '8222838654177922817725562880000000'),        // Factorial(Arguments[18])
-    (Info: triOk;            Val: '263130836933693530167218012160000000'),      // Factorial(Arguments[19])
-    (Info: triOk;            Val: '8683317618811886495518194401280000000'),     // Factorial(Arguments[20])
+    (Info: triOk;            Val: '1'),                                         // Factorial(BitShifts[0])
+    (Info: triOk;            Val: '2'),                                         // Factorial(BitShifts[1])
+    (Info: triOk;            Val: '6'),                                         // Factorial(BitShifts[2])
+    (Info: triOk;            Val: '24'),                                        // Factorial(BitShifts[3])
+    (Info: triOk;            Val: '120'),                                       // Factorial(BitShifts[4])
+    (Info: triOk;            Val: '720'),                                       // Factorial(BitShifts[5])
+    (Info: triOk;            Val: '5040'),                                      // Factorial(BitShifts[6])
+    (Info: triOk;            Val: '40320'),                                     // Factorial(BitShifts[7])
+    (Info: triOk;            Val: '362880'),                                    // Factorial(BitShifts[8])
+    (Info: triOk;            Val: '3628800'),                                   // Factorial(BitShifts[9])
+    (Info: triOk;            Val: '39916800'),                                  // Factorial(BitShifts[10])
+    (Info: triOk;            Val: '479001600'),                                 // Factorial(BitShifts[11])
+    (Info: triOk;            Val: '6227020800'),                                // Factorial(BitShifts[12])
+    (Info: triOk;            Val: '87178291200'),                               // Factorial(BitShifts[13])
+    (Info: triOk;            Val: '1307674368000'),                             // Factorial(BitShifts[14])
+    (Info: triOk;            Val: '2432902008176640000'),                       // Factorial(BitShifts[15])
+    (Info: triOk;            Val: '15511210043330985984000000'),                // Factorial(BitShifts[16])
+    (Info: triOk;            Val: '265252859812191058636308480000000'),         // Factorial(BitShifts[17])
+    (Info: triOk;            Val: '8222838654177922817725562880000000'),        // Factorial(BitShifts[18])
+    (Info: triOk;            Val: '263130836933693530167218012160000000'),      // Factorial(BitShifts[19])
+    (Info: triOk;            Val: '8683317618811886495518194401280000000'),     // Factorial(BitShifts[20])
     (Info: triOk;            Val: '1033314796638614492966665133752320000000' + 
-                                  '0'),                                         // Factorial(Arguments[21])
+                                  '0'),                                         // Factorial(BitShifts[21])
     (Info: triOk;            Val: '8159152832478977343456112695961158942720' + 
-                                  '00000000'),                                  // Factorial(Arguments[22])
+                                  '00000000'),                                  // Factorial(BitShifts[22])
     (Info: triOk;            Val: '3041409320171337804361260816606476884437' + 
-                                  '7641568960512000000000000'),                 // Factorial(Arguments[23])
+                                  '7641568960512000000000000'),                 // Factorial(BitShifts[23])
     (Info: triOk;            Val: '8320987112741390144276341183223364380754' + 
                                   '1726063612459524492776964096000000000000' + 
-                                  '00'),                                        // Factorial(Arguments[24])
+                                  '00'),                                        // Factorial(BitShifts[24])
     (Info: triOk;            Val: '1197857166996989179607278372168909873645' + 
                                   '8938142546425857555362864628009582789845' + 
-                                  '319680000000000000000'),                     // Factorial(Arguments[25])
+                                  '319680000000000000000'),                     // Factorial(BitShifts[25])
     (Info: triOk;            Val: '8504785885678623175211676442399260102885' + 
                                   '8460812079623588643076338858868037807901' + 
-                                  '7697280000000000000000'),                    // Factorial(Arguments[26])
+                                  '7697280000000000000000'),                    // Factorial(BitShifts[26])
     (Info: triOk;            Val: '6123445837688608686152407038527467274077' + 
                                   '8091784697328983823014963978384987221689' + 
-                                  '274204160000000000000000'),                  // Factorial(Arguments[27])
+                                  '274204160000000000000000'),                  // Factorial(BitShifts[27])
     (Info: triOk;            Val: '4470115461512684340891257138125051110076' + 
                                   '8007002829050158190800923704221040671833' + 
-                                  '17016903680000000000000000'),                // Factorial(Arguments[28])
+                                  '17016903680000000000000000'),                // Factorial(BitShifts[28])
     (Info: triOk;            Val: '3307885441519386412259530282212537821456' + 
                                   '8325182093497117061192683541123570097156' + 
-                                  '5459250872320000000000000000'),              // Factorial(Arguments[29])
+                                  '5459250872320000000000000000'),              // Factorial(BitShifts[29])
     (Info: triOk;            Val: '2480914081139539809194647711659403366092' + 
                                   '6243886570122837795894512655842677572867' + 
-                                  '409443815424000000000000000000'),            // Factorial(Arguments[30])
+                                  '409443815424000000000000000000'),            // Factorial(BitShifts[30])
     (Info: triOk;            Val: '1485715964481761497309522733620825737885' + 
                                   '5699612846887669422168637049853930940658' + 
                                   '7654599213137088405964561723446997811200' + 
-                                  '0000000000000000000'),                       // Factorial(Arguments[31])
+                                  '0000000000000000000'),                       // Factorial(BitShifts[31])
     (Info: triOk;            Val: '9332621544394415268169923885626670049071' + 
                                   '5968264381621468592963895217599993229915' + 
                                   '6089414639761565182862536979208272237582' + 
-                                  '51185210916864000000000000000000000000'),    // Factorial(Arguments[32])
+                                  '51185210916864000000000000000000000000'),    // Factorial(BitShifts[32])
     (Info: triOk;            Val: '1588245541522742940425370312709077287172' + 
                                   '4410234473563207581748318444567162948183' + 
                                   '0309599601315176785204792436726381799902' + 
                                   '0852114862342226687675762391121920000000' + 
-                                  '0000000000000000000'),                       // Factorial(Arguments[33])
+                                  '0000000000000000000'),                       // Factorial(BitShifts[33])
     (Info: triOk;            Val: '2946702272495038326504339507351214862194' + 
                                   '9538940341262811056536144846410841713848' + 
                                   '7716861268898821872312226705065512247663' + 
@@ -28633,7 +28633,7 @@
                                   '0048832099063309970621353762725702179489' + 
                                   '6245353619886061381163620820832527959258' + 
                                   '5625600000000000000000000000000000000000' + 
-                                  '000'),                                       // Factorial(Arguments[34])
+                                  '000'),                                       // Factorial(BitShifts[34])
     (Info: triOk;            Val: '4714723635992061322406943211761943779511' + 
                                   '9262304546020497690457831754257346742158' + 
                                   '0346978030238114995699562728104819596262' + 
@@ -28641,7 +28641,7 @@
                                   '8078131358501295952994166020361123487183' + 
                                   '3992565791817698209861793313332044734813' + 
                                   '7000960000000000000000000000000000000000' + 
-                                  '00000'),                                     // Factorial(Arguments[35])
+                                  '00000'),                                     // Factorial(BitShifts[35])
     (Info: triOk;            Val: '7590705053947218729075178570936729485014' + 
                                   '2012310319093001281637109124354328254874' + 
                                   '4358634628683365143076295992248759549981' + 
@@ -28649,7 +28649,7 @@
                                   '5805791487187086484320607292781408814365' + 
                                   '2728030924826494117877487234464592023050' + 
                                   '0571545600000000000000000000000000000000' + 
-                                  '0000000'),                                   // Factorial(Arguments[36])
+                                  '0000000'),                                   // Factorial(BitShifts[36])
     (Info: triOk;            Val: '1229694218739449434110178928491750176572' + 
                                   '3005994271693066207625211678145401177289' + 
                                   '6586098809846705153178359950744299047097' + 
@@ -28657,7 +28657,7 @@
                                   '6320538220924308010459938381430588227927' + 
                                   '1741941009821892047096152931983263907734' + 
                                   '1092590387200000000000000000000000000000' + 
-                                  '0000000000'),                                // Factorial(Arguments[37])
+                                  '0000000000'),                                // Factorial(BitShifts[37])
     (Info: triOk;            Val: '2004401576545302577599591653441552787812' + 
                                   '8499770662859697918429095035377003918982' + 
                                   '1435341060050129399680726719713207446768' + 
@@ -28665,7 +28665,7 @@
                                   '1502477300106622057049699561731858811521' + 
                                   '2939363846009684036766729279132720169606' + 
                                   '5980922331136000000000000000000000000000' + 
-                                  '000000000000'),                              // Factorial(Arguments[38])
+                                  '000000000000'),                              // Factorial(BitShifts[38])
     (Info: triOk;            Val: '3287218585534296227263330311644146572013' + 
                                   '0739623887089904586223715858018286427130' + 
                                   '7153959338482212215476391820329660212699' + 
@@ -28673,6 +28673,6 @@
                                   '2864062772174860173561507281240248450894' + 
                                   '9220556707455881820297436017777661078154' + 
                                   '8208712623063040000000000000000000000000' + 
-                                  '00000000000000')                             // Factorial(Arguments[39])
+                                  '00000000000000')                             // Factorial(BitShifts[39])
   );
 
