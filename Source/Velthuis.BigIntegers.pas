@@ -151,6 +151,23 @@
 
 unit Velthuis.BigIntegers;
 
+{****************************************************************************}
+{****************************************************************************}
+{ TODO: In Win32, BigInteger.Pow(1000*1000*1000, 232209)
+        produces bad result (only 1/5th of correct result).
+        If ToomCook3 is disabled (by unconditionally calling Karatsuba),
+        The result is correct, but slow.
+        Note: Pow(1000*1000*1000, 232210) is correct
+              Pow(1000*1000*1000, 232208) is correct
+              Pow(10, 232209 * 3) is correct.
+
+        Problem is: such huge numbers are very hard to debug. And
+        these numbers are approx. 4 million digits (and
+        recursively down to 2 million, 1 million, etc.).
+}
+{****************************************************************************}
+{****************************************************************************}
+
 { TODO:
   - Remove local BigIntegers where possible. Removing Res from class function BigInteger.Add sped
     it up by 15%. Instead of a local BigInteger, Add now uses ResData and ResSize local variables.
@@ -171,7 +188,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  {$DEFINE PUREPASCAL}
+  { $DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -4939,6 +4956,7 @@ const
     '90', '91', '92', '93', '94', '95', '96', '97', '98', '99'
   );
 
+
 {$IF DEFINED(WIN32)}
   // Checked
   Div100Const = UInt32(UInt64($1FFFFFFFFF) div 100 + 1);
@@ -4958,14 +4976,14 @@ const
 {$IFNDEF PUREPASCAL}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///  The following calculates X div 100 using multiplication by a constant, taking the high part of the 64 bit  ///
-///  result and shifting right. The return value is the remainder, calculated as X - quotient * 100.            ///
-///                                                                                                             ///
-///  This was tested to work safely and quickly for all values of UInt32.                                       ///
-///                                                                                                             ///
-///  The 64 bit part is taken from: https://raw.github.com/ridiculousfish/libdivide/master/libdivide.h          ///
+//  The following calculates X div 100 using multiplication by a constant, taking the high part of the 64 bit    //
+//  result and shifting right. The return value is the remainder, calculated as X - quotient * 100.              //
+//                                                                                                               //
+//  This was tested to work safely and quickly for all values of UInt32.                                         //
+//                                                                                                               //
+//  The 64 bit part is taken from: https://raw.github.com/ridiculousfish/libdivide/master/libdivide.h            //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
+
 class function BigInteger.InternalDivMod100(var X: NativeUInt): NativeUInt;
 {$IFDEF WIN32}
 asm
@@ -5271,7 +5289,7 @@ begin
   LBaseInfo := CBaseInfos[Base];
 
   LSectionCount := GetSectionCount(LAbsValue.Size, Base);
-  LBufLen := (LBaseInfo.MaxDigits + 1) * (LSectionCount) + 1;
+  LBufLen := (LBaseInfo.MaxDigits + 1) * LSectionCount + 1;
   GetMem(LBuffer, LBufLen * SizeOf(Char));
   try
     WritePtr := LBuffer + LBufLen - 1;
@@ -5286,7 +5304,7 @@ begin
       InternalPlainToString(LAbsValue, Base, LBaseInfo, WritePtr, LSectionCount)
     else
       // Large BigIntegers take the recursive divide-and-conquer approach.
-      InternalRecursiveToString(LAbsValue, Base, LBaseInfo, WritePtr, LSectionCount);
+      InternalRecursiveToString(LAbsValue, Base, LBaseInfo, WritePtr, LSectionCount); //$$RV: wrong, for certain strings.
 
     while WritePtr^ = '0' do
       Inc(WritePtr);
@@ -6440,11 +6458,11 @@ asm
 
         MOV     EAX,RSize               // GetMem(NormDivisor, (RSize + LSize + 1) * CLimbSize;
         ADD     EAX,LSize
-        LEA     EAX,[EAX*CLimbSize + CLimbSize]
+        LEA     EAX,[EAX*CLimbSize + 3*CLimbSize]
         CALL    System.AllocMem
         MOV     NormDivisor,EAX
         MOV     EDX,RSize
-        LEA     EAX,[EAX + EDX*CLimbSize]
+        LEA     EAX,[EAX + EDX*CLimbSize + CLimbSize]
         MOV     NormDividend,EAX
 
 // First: normalize Divisor by shifting left to eliminate leading zeroes
@@ -6601,7 +6619,7 @@ asm
         // Add normalized divisor back, if necessary:
 
         MOV     EAX,LQuotient
-        DEC     [EAX + CLimbSize*ECX]
+        DEC     DWORD PTR [EAX + CLimbSize*ECX]
         XOR     EBX,EBX
         MOV     Overflow,EBX
 
@@ -9135,19 +9153,21 @@ begin
   Result.FSize := (Result.FSize and SizeMask) or LSign;
 end;
 
-// Used by Karatsuba, Toom-Cook and Burnikel-Ziegler algorithms.
+// Used by Karatsuba, Toom-Cook 3 way and Burnikel-Ziegler algorithms.
 // Splits Self into BlockCount pieces of (at most) BlockSize limbs, starting with the least significant part.
 function BigInteger.Split(BlockSize, BlockCount: Integer): TArray<BigInteger>;
 var
   I: Integer;
+  CopySize: Integer;
 begin
   SetLength(Result, BlockCount);
   for I := 0 to BlockCount - 1 do
   begin
-    if (Self.FSize and BigInteger.SizeMask) > I * BlockSize then
+    CopySize := IntMin(BlockSize, (Self.FSize and SizeMask) - I * BlockSize);
+    if CopySize > 0 then
     begin
-      Result[I].MakeSize(IntMin(BlockSize, (Self.FSize and SizeMask) - I * BlockSize));
-      CopyLimbs(PLimb(Self.FData) + I * BlockSize, PLimb(Result[I].FData), IntMin(BlockSize, (Self.FSize and SizeMask) - I * BlockSize));
+      Result[I].MakeSize(CopySize);
+      CopyLimbs(PLimb(Self.FData) + I * BlockSize, PLimb(Result[I].FData), CopySize);
       Result[I].Compact;
     end
     else

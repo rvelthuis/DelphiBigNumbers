@@ -63,3 +63,7 @@ DataGenerators/BigIntegers/Java/AddTests/build/
 /DataGenerators/BigIntegers/Java/CastToIntTest/nbproject/private/
 /DataGenerators/BigIntegers/Java/CastToIntTest/build/
 /DataGenerators/BigDecimals/BigDecimalTestDataGenerator/nbproject/private/
+/DataGenerators/BigIntegers/Java/FastFactorial/nbproject/private/
+/DataGenerators/BigIntegers/Java/FastFactorial/build/
+/DataGenerators/BigIntegers/Java/FastFibonacci/nbproject/private/
+/DataGenerators/BigIntegers/Java/FastFibonacci/build/
