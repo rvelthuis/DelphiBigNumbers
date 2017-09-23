@@ -171,7 +171,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  {$DEFINE PUREPASCAL}
+  { $DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -845,7 +845,7 @@ type
     /// <summary>Returns N!, i.e. N * (N - 1) * (N - 2) * ... * 2 as BigInteger.
     class function Factorial(N: Integer): BigInteger; static;
 
-    /// <summary>Returns Fibonacci number; 0 --> 0; 1 --> 1; N --> F(N-1) + F(N-2)</summary>
+    /// <summary>Returns a single Fibonacci number; 0 --> 0; 1 --> 1; N --> F(N-1) + F(N-2)</summary>
     class function Fibonacci(N: Integer): BigInteger; static;
 
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
@@ -912,9 +912,11 @@ type
     // -- Utility functions --
 
     /// <summary>Sets whether partial-flags stall must be avoided with modified routines.</summary>
-    /// <remarks>USING THE WRONG SETTING MAY AFFECT THE TIMING OF CERTAIN ROUTINES CONSIDERABLY, SO USE
-    ///   THIS WITH EXTREME CARE!
-    ///   The unit is usually able to determine the right settings automatically.</remarks>
+    /// <remarks>
+    ///   <para><b>USING THE WRONG SETTING MAY AFFECT THE TIMING OF CERTAIN ROUTINES CONSIDERABLY, SO USE
+    ///   THIS WITH EXTREME CARE!</b></para>
+    ///   <para>The unit is usually able to determine the right settings automatically.</para>
+    /// </remarks>
     class procedure AvoidPartialFlagsStall(Value: Boolean); static;
 
     // -- Array function(s) --
