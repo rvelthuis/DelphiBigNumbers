@@ -171,7 +171,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -844,6 +844,9 @@ type
 
     /// <summary>Returns N!, i.e. N * (N - 1) * (N - 2) * ... * 2 as BigInteger.
     class function Factorial(N: Integer): BigInteger; static;
+
+    /// <summary>Returns Fibonacci number; 0 --> 0; 1 --> 1; N --> F(N-1) + F(N-2)</summary>
+    class function Fibonacci(N: Integer): BigInteger; static;
 
     /// <summary>Returns the (positive) greatest common divisor of the specified BigInteger values.</summary>
     class function GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger; static;
@@ -3199,6 +3202,56 @@ begin
     Result := 1
   else
     Result := MultiplyRange(2, N) shl (N shr 1);
+end;
+
+// https://www.nayuki.io/page/fast-fibonacci-algorithms
+// https://codegolf.stackexchange.com/questions/3191/write-the-fastest-fibonacci
+// https://math.stackexchange.com/questions/1124590/need-help-understanding-fibonacci-fast-doubling-proof
+class function BigInteger.Fibonacci(N: Integer): BigInteger;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// So called "fast doubling". Relies on the following formulas:                                   //
+//                                                                                                //
+//   fib(2n)     = fib(n)*(2*fib(n+1) – fib(n))                                                       //
+//   fib(2n + 1) = fib(n)^2 + fib(n+1)^2                                                          //
+//                                                                                                //
+// Another method relies on the fact that if we exponentiate the simple matrix below, we get:     //
+//                                                                                                //
+//   [  1   1  ]^n  = [ fib(n+1)  fib(n)   ]                                                      //
+//   [  1   0  ]      [ fib(n)    fib(n-1) ]                                                      //
+//                                                                                                //
+// Most methods use exponentiation by squaring to exponentiate the matrix. But we must write      //
+// a (rather slow?) matrix multiplication algorithm, which generally makes it slower than         //
+// fast doubling.                                                                                 //
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var
+  FibOfN, FibOfNPlus1, Temp: BigInteger;
+  FibOf2N, FibOf2NPlus1: BigInteger;
+  Bit: Integer;
+begin
+  FibOfN := BigInteger.Zero;
+  FibOfNPlus1 := BigInteger.One;
+  Bit := HighestOneBit(N);
+  Temp := N;
+  while Bit <> 0 do
+  begin
+    FibOf2N := FibOfN * ((FibOfNPlus1 shl 1) - FibOfN);          // fib(2n)     = fib(n) * (2 * fib(n + 1) - fib(n))
+    FibOf2NPlus1 := FibOfN * FibOfN + FibOfNPlus1 * FibOfNPlus1; // fib(2n + 1) = fib(n)^2 + fib(n + 1)^2
+    FibOfN := FibOf2N;
+    FibOfNPlus1 := FibOf2NPlus1;
+
+    // Advance by one conditionally
+    if (N and Bit) <> 0 then
+    begin
+      Temp := FibOfN + FibOfNPlus1;
+      FibOfN := FibOfNPlus1;
+      FibOfNPlus1 := Temp;
+    end;
+
+    Bit := Bit shr 1;
+  end;
+  Result := FibOfN;
 end;
 
 // http://en.wikipedia.org/wiki/Binary_GCD_algorithm
@@ -9288,15 +9341,14 @@ end;
 
 class function BigInteger.MultiplyToomCook3(const Left, Right: BigInteger): BigInteger;
 var
-  k, ss: Integer;
+  k, Shift: Integer;
   a, b: TArray<BigInteger>;
   a02, b02: BigInteger;
   v0, v1, vm1, v2, vinf: BigInteger;
   t1, t2: BigInteger;
   Sign: Integer;
-  temp, temp2, temp3: BigInteger;
 begin
-  // Step 1: if n < threshold then return KaratsubaMultiply(A, B)
+  // Step 1: if n < threshold then return MultiplyKaratsuba(A, B)
   if ((Left.FSize and SizeMask) < ToomCook3Threshold) and ((Right.FSize and SizeMask) < ToomCook3Threshold) then
   begin
     MultiplyKaratsuba(Left, Right, Result);
@@ -9351,13 +9403,12 @@ begin
   t2 := (v1 + vm1) shr 1;
 
   // Step 9: c0 <- v0, c1 <- v1 - t1, c2 <- t2 - v0 - vinf, c3 <- t1 - t2, c4 <- vinf
-  ss := k * 32;
+  Shift := k * CLimbBits;
   // Note: The next line is slightly faster than AddWithOffset, but, more importantly,
   //       it produces the correct result, while AddWithOffset doesn't always do that (at least in Win32).
-  Result := (((((((vinf shl ss) + t1 - t2) shl ss) + t2 - v0 - vinf) shl ss) + v1 - t1) shl ss) + v0;
+  Result := (((((((vinf shl Shift) + t1 - t2) shl Shift) + t2 - v0 - vinf) shl Shift) + v1 - t1) shl Shift) + v0;
 
   Result.FSize := (Result.FSize and SizeMask) or Sign;
-
 end;
 
 class function BigInteger.SqrKaratsuba(const Value: BigInteger): BigInteger;
