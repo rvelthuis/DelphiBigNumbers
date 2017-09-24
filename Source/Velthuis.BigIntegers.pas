@@ -9221,9 +9221,9 @@ asm
         PUSH    EDI
         PUSH    EBX
 
-        MOV     ESI,EAX
-        MOV     EDI,EDX
-        XOR     EBX,EBX
+        MOV     ESI,EAX                 // Value
+        MOV     EDI,EDX                 // Result
+        XOR     EBX,EBX                 // borrow
 
 @Loop:
 
@@ -9257,8 +9257,9 @@ asm
 end;
 {$ELSE WIN64}
 asm
-        XOR     R9D,R9D
-        MOV     R10,RDX
+        XOR     R9D,R9D                 // borrow
+        MOV     R10,RDX                 // Result
+        MOV     R11D,MultConst
 
 @Loop:
 
@@ -9266,14 +9267,13 @@ asm
         SUB     EAX,R9D
         SETC    R9B
 
-        MOV     EDX,MultConst
-        MUL     EAX,EDX
+        MUL     EAX,R11D                // MultConst
         MOV     [R10],EAX
 
         CMP     EAX,MultConst2
         JB      @SkipInc
         INC     R9D
-        CMP     EAX,MultConst
+        CMP     EAX,R11D                // MultConst
         JB      @SkipInc
         INC     R9D
 
@@ -9291,17 +9291,14 @@ end;
 class function BigInteger.DivideBy3Exactly(const A: BigInteger): BigInteger;
 const
   ModInverse3 = $AAAAAAAB; // Modular inverse of 3 modulo $100000000.
-  ModInverse3t2 = $55555556; // 2 * ModInverse3
+  ModInverse3t2 = $55555556; // ModInverse3 / 2
 {$IFDEF PUREPASCAL}
 var
   i: Integer;
   ai, w, qi, borrow: Int64;
 begin
   if A.FData = nil then
-  begin
-    ShallowCopy(Zero, Result);
-    Exit;
-  end;
+    Exit(Zero);
 
   Result.MakeSize(A.FSize and SizeMask);
   borrow := 0;
@@ -9362,14 +9359,10 @@ begin
   // Richard P. Brent and Paul Zimmermann,
   // "Modern Computer Arithmetic", version 0.5.1 of April 28, 2010
   // http://arxiv.org/pdf/1004.4710v1.pdf
-
-  //////////////////////////////////////////////////////////////////////////////////
-  ///  Hint to myself: If necessary, take a look at Bodrato's improved version.  ///
-  ///  But be aware that most of his *code* is GPL-ed and now part of GMP.       ///
-  //////////////////////////////////////////////////////////////////////////////////
+  // Algorithm 1.4
 
   // Step 2: write A = a0 + a1*x + a2*x^2, B = b0 + b1*x + b2*x^2, with x = ß^k.
-  k := (IntMax(Left.FSize and SizeMask, Right.FSize and SizeMask) + 2) div 3;
+  k := (IntMax(Left.FSize and SizeMask, Right.FSize and SizeMask) + 2) div 3; // = Ceil(IntMax(...) div 3)
 
   a := Left.Split(k, 3);
   b := Right.Split(k, 3);
