@@ -47,6 +47,8 @@ info.plist.TemplateOSX.xml
 *.txaPackage
 *.txvpck
 **/Project119.*
+**/*.printerrors
+**/FastFibonacci/**
 ls-tree.txt
 DataGenerators/BigIntegers/Java/BigIntegerTestDataGenerator/nbproject/private/**
 DataGenerators/BigIntegers/Java/BigIntegerTestDataGenerator/build/**
