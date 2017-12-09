@@ -161,7 +161,7 @@ var
 begin
   if (N = BigInteger.Zero) or (N = BigInteger.One) or (N.IsEven) then
     Exit(False)
-  else if N = 2 then
+  else if (N = 2) or (N = 3) then
     Exit(True);
 
   NLessOne := N;
