@@ -159,10 +159,10 @@ var
   I: Integer;
   A, NLessOne: BigInteger;
 begin
-  if (N = BigInteger.Zero) or (N = BigInteger.One) or (N.IsEven) then
-    Exit(False)
-  else if (N = 2) or (N = 3) then
-    Exit(True);
+  if (N = 2) or (N = 3) then
+    Exit(True)
+  else if (N = BigInteger.Zero) or (N = BigInteger.One) or (N.IsEven) then
+    Exit(False);
 
   NLessOne := N;
   Dec(NLessOne);
