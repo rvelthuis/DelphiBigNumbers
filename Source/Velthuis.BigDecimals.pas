@@ -686,6 +686,14 @@ type
     /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('0.5678').</remarks>
     function Frac: BigDecimal;
 
+    /// <summary>Returns a BigDecimal rounded down, towards negative infinity, to the next integral value.</summary>
+    /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('1234');</remarks>
+    function Floor: BigDecimal;
+
+    /// <summary>Returns a BigDecimal rounded up, towards positive infinity, to the next integral value.</summary>
+    /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('1235');</remarks>
+    function Ceil: BigDecimal;
+
     /// <summary>Returns the number of significant digits of the current BigDecimal.</summary>
     function Precision: Integer;
 
@@ -1529,6 +1537,22 @@ end;
 function BigDecimal.Frac: BigDecimal;
 begin
   Result := BigDecimal.Abs(Self - Self.Int());
+end;
+
+function BigDecimal.Floor: BigDecimal;
+begin
+  if Scale > 0 then
+    Result := Self.RoundToScale(0, rmFloor)
+  else
+    Result := Self;
+end;
+
+function BigDecimal.Ceil: BigDecimal;
+begin
+  if Scale > 0 then
+    Result := Self.RoundToScale(0, rmCeiling)
+  else
+    Result := Self;
 end;
 
 class operator BigDecimal.Explicit(const Value: BigDecimal): BigInteger;
