@@ -929,7 +929,7 @@ begin
         if Remainder + Remainder > Divisor then         // 1.78 --> 1.8, 1.72 --> 1.7, 1.75 --> see next
           Inc(Quotient)
         else if Remainder + Remainder = Divisor then    // the "Half" condition.
-          if (Mode = rmNearestUp) or ((Mode = rmNearestEven) and Quotient.IsEven) then
+          if (Mode = rmNearestUp) or ((Mode = rmNearestEven) and not Quotient.IsEven) then
             Inc(Quotient);
       rmUnnecessary:                                    // No remainder allowed.
         Error(ecRounding, []);
