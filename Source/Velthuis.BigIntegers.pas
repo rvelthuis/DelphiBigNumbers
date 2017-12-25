@@ -960,7 +960,7 @@ type
   private
   {$REGION 'private constants, types and variables'}
     type
-      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecNoInverse,
+      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecInvalidArgFloat, ecNoInverse,
                     ecNegativeExponent);
       TBinaryOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
@@ -1094,7 +1094,7 @@ type
     // Sets global numeric base.
     class procedure SetBase(const Value: TNumberBase); static;
     // Raises exceptions depending on given error code.
-    class procedure Error(ErrorCode: TErrorCode; const ErrorInfo: string = ''); static;
+    class procedure Error(ErrorCode: TErrorCode; const ErrorInfo: array of const); static;
 
     class procedure Compact(var Data: TMagnitude; var Size: Integer); overload; static;
     // Resets size thus that there are no leading zero limbs.
@@ -1162,7 +1162,7 @@ uses
   Winapi.Windows,
   {$ENDIF}
 {$ENDIF}
-  Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils;
+  Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils, Velthuis.StrConsts;
 
 {$POINTERMATH ON}
 
@@ -1325,18 +1325,6 @@ begin
   until False;
 end;
 {$ENDIF !PUREPASCAL}
-
-resourcestring
-  SErrorBigIntegerParsingFmt = '''%s'' is not a valid big integer value';
-  SDivisionByZero            = 'Division by zero';
-  SInvalidOperation          = 'Invalid operation';
-  SConversionFailedFmt       = 'BigInteger value too large for conversion to %s';
-  SOverflow                  = 'Double parameter may not be NaN or +/- Infinity';
-  SInvalidArgumentBase       = 'Base parameter must be in the range 2..36';
-  SInvalidArgumentFmt        = 'Invalid Argument: %s';
-  SSqrtBigInteger            = 'Negative values not allowed for Sqrt';
-  SNoInverse                 = 'No modular inverse possible';
-  SNegativeExponent          = 'Negative exponent %s not allowed';
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
@@ -2921,7 +2909,7 @@ begin
 
   // Error for special values.
   if IsNan(Value) or IsInfinite(Value) then
-    Error(ecOverflow);
+    Error(ecInvalidArgFloat, ['Double']);
 
   // Get the required values from TDoubleHelper.
   Mantissa := GetSignificand(Value);
@@ -3277,6 +3265,7 @@ begin
   ALeft := ALeft shr Shift;
   ARight := ARight shr Shift;
 
+  // $$RV: Does this make sense? All trailing zeroes were removed already.
   while ALeft.IsEven do
     ALeft := ALeft shr 1;
 
@@ -5313,7 +5302,7 @@ var
   LBaseInfo: TNumberBaseInfo;
 begin
   if not Base in [2..36] then
-    Error(ecInvalidBase);
+    Error(ecInvalidBase, []);
 
   if FData = nil then
     Exit('0');
@@ -5367,7 +5356,7 @@ var
   LSize: Integer;
 begin
   if not Base in [2..36] then
-    Error(ecInvalidBase);
+    Error(ecInvalidBase, []);
   if FData = nil then
   begin
     Result := '0';
@@ -5623,7 +5612,7 @@ var
   LSign: Integer;
 begin
   if Right = 0 then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
   if Left.FData = nil then
   begin
     ShallowCopy(Zero, Result);
@@ -5642,7 +5631,7 @@ var
   LSign: Integer;
 begin
   if Right = 0 then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
   if Left.FData = nil then
   begin
     ShallowCopy(Zero, Result);
@@ -5662,7 +5651,7 @@ var
   Remainder: BigInteger;
 begin
   if Right.FData = nil then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
 
   if Left.FData = nil then
     Exit(Zero);
@@ -5709,7 +5698,7 @@ var
   LSize, RSize: Integer;
 begin
   if Divisor.FData = nil then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
 
   LSize := Dividend.FSize and SizeMask;
   RSize := Divisor.FSize and SizeMask;
@@ -5760,7 +5749,7 @@ var
 
 begin
   if Right.FData = nil then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
 
   LSign := Left.FSize and SignMask;
   RSign := Right.FSize and SignMask;
@@ -5778,7 +5767,7 @@ begin
   R.MakeSize(RSize + 1); // RSize should be enough, but apparently in 64 mode asm, it overwrites one extra limb.
   if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData),
            PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
-    Error(ecInvalidBase);
+    Error(ecInvalidBase, []);
   Q.Compact;
   R.Compact;
 
@@ -5810,7 +5799,7 @@ var
 
 begin
   if Right.FData = nil then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
 
   LSign := Left.FSize and SignMask;
   RSign := Right.FSize and SignMask;
@@ -5846,7 +5835,7 @@ begin
         R.MakeSize(RSize + 1); // RSize should be enough, but apparently in 64 mode asm, it overwrites one extra limb.
         if not InternalDivMod(PLimb(Left.FData) + Offset, PLimb(Right.FData) + Offset, PLimb(Q.FData),
                  PLimb(R.FData) + Offset, LSize - Offset, RSize - Offset) then
-          Error(ecInvalidBase);
+          Error(ecInvalidBase, []);
         Q.Compact;
         R.Compact;
         if Q.FSize <> 0 then
@@ -7301,25 +7290,27 @@ begin
   Result := Compare(Left, Right) = 0;
 end;
 
-class procedure BigInteger.Error(ErrorCode: TErrorCode; const ErrorInfo: string);
+class procedure BigInteger.Error(ErrorCode: TErrorCode; const ErrorInfo: array of const);
 begin
   case ErrorCode of
     ecParse:
-      raise EConvertError.CreateFmt(SErrorBigIntegerParsingFmt, [ErrorInfo]);
+      raise EConvertError.CreateFmt(SErrorParsingFmt, ErrorInfo);
     ecDivbyZero:
       raise EZeroDivide.Create(SDivisionByZero);
     ecConversion:
-      raise EConvertError.CreateFmt(SConversionFailedFmt, [ErrorInfo]);
+      raise EConvertError.CreateFmt(SConversionFailedFmt, ErrorInfo);
     ecOverflow:
       raise EOverflow.Create(SOverflow);
+    ecInvalidArgFloat:
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFloatFmt, ErrorInfo);
     ecInvalidBase:
       raise EInvalidArgument.Create(SInvalidArgumentBase);
     ecInvalidArg:
-      raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, [ErrorInfo]);
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, ErrorInfo);
     ecNoInverse:
       raise EInvalidArgument.Create(SNoInverse);
     ecNegativeExponent:
-      raise EInvalidArgument.CreateFmt(SNegativeExponent, [ErrorInfo]);
+      raise EInvalidArgument.CreateFmt(SNegativeExponent, ErrorInfo);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
@@ -7385,7 +7376,7 @@ begin
   if not IsNegative and (BitLength <= CCardinalBits) then
     Result := Cardinal(Self)
   else
-    Error(ecConversion, 'Cardinal');
+    Error(ecConversion, ['BigInteger', 'Cardinal']);
 end;
 
 function GetBitAt(FData: PLimb; BitNum: Integer): Boolean;
@@ -7524,7 +7515,7 @@ begin
   if BitLength <= CInt64Bits then
     Result := Int64(Self)
   else
-    Error(ecConversion, 'Int64');
+    Error(ecConversion, ['BigInteger', 'Int64']);
 end;
 
 function BigInteger.AsInteger: Integer;
@@ -7533,7 +7524,7 @@ begin
   if BitLength <= CIntegerBits then
     Result := Integer(Self)
   else
-    Error(ecConversion, 'Integer');
+    Error(ecConversion, ['BigInteger', 'Integer']);
 end;
 
 function BigInteger.AsUInt64: UInt64;
@@ -7542,7 +7533,7 @@ begin
   if not IsNegative and (BitLength <= CUInt64Bits) then
     Result := UInt64(Self)
   else
-    Error(ecConversion, 'UInt64');
+    Error(ecConversion, ['BigInteger', 'UInt64']);
 end;
 
 class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer;
@@ -8776,7 +8767,7 @@ begin
   v3 := Abs(Modulus);
   // X mod 1 is nonsense (always 0), but it might still be passed.
   if (Compare(v3, One) = 0) or Modulus.IsZero then
-    Error(ecNoInverse);
+    Error(ecNoInverse, []);
   // Remember odd/even iterations
   iter := 0;
   // Step X2. Loop while v3 <> 0
@@ -8794,7 +8785,7 @@ begin
   end;
   // Ensure u3, i.e. gcd(Value, Modulus) = 1
   if u3 <> One then
-    Error(ecNoInverse);
+    Error(ecNoInverse, []);
   if Odd(iter) then
     Result := Subtract(Abs(Modulus), u1)
   else
@@ -8810,7 +8801,7 @@ var
   Exp: BigInteger;
 begin
   if not AModulus.IsPositive  then
-    Error(ecDivByZero, '');
+    Error(ecDivByZero, []);
   if AModulus.IsOne then
     Exit(BigInteger.Zero);
   Result := BigInteger.One;
@@ -9965,7 +9956,7 @@ begin
   if TryParse(S, TryResult) then
     Result := TryResult
   else
-    Error(ecParse, S);
+    Error(ecParse, [S, 'BigInteger']);
 end;
 
 class function BigInteger.Pow(const ABase: BigInteger; AExponent: Integer): BigInteger;
@@ -9983,7 +9974,7 @@ var
   LResultIsNegative: Boolean;
 begin
   if AExponent < 0 then
-    Error(ecNegativeExponent, IntToStr(AExponent));
+    Error(ecNegativeExponent, [IntToStr(AExponent)]);
 
   if ABase.IsZero then
     if AExponent = 0 then
@@ -10004,7 +9995,7 @@ begin
   LTrailingZeros := LBase.LowestSetBit;
   LShift := Int64(LTrailingZeros) * AExponent;
   if LShift > High(Integer) then
-    Error(ecOverflow, '');
+    Error(ecOverflow, []);
 
   if LTrailingZeros <> 0 then
   begin
@@ -10116,7 +10107,7 @@ var
   LQuotient: TMagnitude;
 begin
   if Right = 0 then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
   Result.MakeSize(1);
   SetLength(LQuotient, (Left.FSize and SizeMask));
   InternalDivMod32(PLimb(Left.FData), Right, PLimb(LQuotient), PLimb(Result.FData), (Left.FSize and SizeMask));
@@ -10130,7 +10121,7 @@ var
   LQuotient: TMagnitude;
 begin
   if Right = 0 then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
   Result.MakeSize(1);
   SetLength(LQuotient, (Left.FSize and SizeMask));
   InternalDivMod32(PLimb(Left.FData), Right, PLimb(LQuotient), PLimb(Result.FData), (Left.FSize and SizeMask));
@@ -10145,7 +10136,7 @@ var
   LSize, RSize: Integer;
 begin
   if Right.FData = nil then
-    Error(ecDivByZero);
+    Error(ecDivByZero, []);
 
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
@@ -10278,7 +10269,7 @@ end;
 class operator BigInteger.Implicit(const Value: string): BigInteger;
 begin
   if not TryParse(Value, Result) then
-    Error(ecParse, Value);
+    Error(ecParse, [Value, 'BigInteger']);
 end;
 
 {$IFDEF HasExtended}

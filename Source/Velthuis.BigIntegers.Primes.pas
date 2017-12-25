@@ -1,4 +1,5 @@
-﻿{                                                                           }
+﻿{---------------------------------------------------------------------------}
+{                                                                           }
 { File:       Velthuis.BigIntegers.Primes.pas                               }
 { Function:   Prime functions for BigIntegers                               }
 { Language:   Delphi version XE2 or later                                   }
@@ -33,6 +34,7 @@
 {             ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF   }
 {             ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    }
 {                                                                           }
+{---------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers.Primes;
 

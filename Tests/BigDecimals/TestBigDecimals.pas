@@ -51,6 +51,8 @@ type
     procedure TestNegative;
     procedure TestPositive;
     procedure TestRound;
+    procedure TestFloor;
+    procedure TestCeil;
     procedure TestImplicitDouble;
     procedure TestImplicitSingle;
     procedure TestImplicitString;
@@ -722,8 +724,6 @@ var
   N, I, J: Integer;
   ExceptionOccurred: Boolean;
 begin
-  Exit;
-
   ExceptionOccurred := False;
   N := 0;
   for I := 0 to High(Arguments) do
@@ -745,17 +745,51 @@ begin
         on E: Exception do
         begin
           ExceptionOccurred := True;
-          Error('TestDivide: Unexpected ' + E.ClassName + ' exception: ''' + E.Message + '''');
+          Check(TR.Info <> triOk, Format('(%d,%d,%d) TestDivide: Unexpected %s exception: ''%s''', [I, J, N - 1, E.ClassName, E.Message]));
         end;
       end;
       if TR.Info <> triOk then
-        Check(ExceptionOccurred);
-      SD := TR.val;
-      D := SD;
-      Check(C = D, Format('(%d,%d,%d) %s mod %s = %s (%s)', [I, J, N - 1, string(A), string(B), string(C), SD]));
+        Check(ExceptionOccurred)
+      else
+      begin
+        SD := TR.val;
+        D := SD;
+        Check(C = D, Format('(%d,%d,%d) %s mod %s = %s (%s)', [I, J, N - 1, string(A), string(B), string(C), SD]));
+      end;
     end;
   end;
+end;
 
+procedure TestBigDecimal.TestFloor;
+var
+  I: Integer;
+  A: BigDecimal;
+  F: BigDecimal;
+begin
+  F := -1;
+  for I := 0 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    F := A.Floor;
+    Check((F <= A) and (F >= A - BigDecimal.One) and (F.Frac = BigDecimal.Zero),
+          Format('(%d) %s.Floor = %s', [I, string(A), string(F)]));
+  end;
+end;
+
+procedure TestBigDecimal.TestCeil;
+var
+  I: Integer;
+  A: BigDecimal;
+  C: BigDecimal;
+begin
+  C := -1;
+  for I := 0 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    C := A.Ceil;
+    Check((C >= A) and (C <= A + BigDecimal.One) and (C.Frac = BigDecimal.Zero),
+          Format('(%d) %s.Ceil = %s', [I, string(A), string(C)]));
+  end;
 end;
 
 procedure TestBigDecimal.TestCompare;

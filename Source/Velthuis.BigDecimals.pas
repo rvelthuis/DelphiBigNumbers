@@ -269,7 +269,7 @@ type
       var Result: BigDecimal); static;
 
     // Raises exceptions where the type depends on the error code and the message on the arguments.
-    class procedure Error(ErrorCode: TErrorCode; Args: array of const); static;
+    class procedure Error(ErrorCode: TErrorCode; ErrorInfo: array of const); static;
 
     // Gets a BigInteger of the given power of five, either from a prefilled array or using BigInteger.Pow.
     class function GetPowerOfFive(N: Integer): BigInteger; static;
@@ -805,19 +805,7 @@ implementation
 {$OVERFLOWCHECKS OFF}
 
 uses
-  Velthuis.FloatUtils, Velthuis.Numerics;
-
-resourcestring
-  SErrorBigDecimalParsing = '''%s'' is not valid BigDecimal value.';
-  SDivisionByZero         = 'Division by zero';
-  SConversionFailed       = 'BigDecimal value too large for conversion to %s';
-  SInvalidArg             = '%s parameter may not be NaN or +/- Infinity';
-  SOverflow               = 'Resulting value too big to represent';
-  SUnderflow              = 'Resulting value too small to represent';
-  SInvalidArgument        = 'Invalid argument %s';
-  SRounding               = 'Rounding necessary';
-  SInvalidOperation       = 'Invalid BigDecimal operation';
-  SExponent               = 'Exponent to IntPower outside the allowed range';
+  Velthuis.FloatUtils, Velthuis.Numerics, Velthuis.StrConsts;
 
 var
   PowersOfTen: TArray<BigInteger>;
@@ -1210,7 +1198,7 @@ constructor BigDecimal.Create(const S: string);
 begin
   Init;
   if not TryParse(S, InvariantSettings, Self) then
-    Error(ecParse, [S]);
+    Error(ecParse, [S, 'BigDecimal']);
 end;
 
 constructor BigDecimal.Create(const I64: Int64);
@@ -1341,7 +1329,7 @@ begin
   Result := Compare(Left, Right) = 0;
 end;
 
-class procedure BigDecimal.Error(ErrorCode: TErrorCode; Args: array of const);
+class procedure BigDecimal.Error(ErrorCode: TErrorCode; ErrorInfo: array of const);
 begin
   // Raise an exception that matches the given error code. The message is determined by the
   // format strings and the Args parameter.
@@ -1349,13 +1337,13 @@ begin
   case ErrorCode of
     ecParse:
        // Not a valid BigDecimal string representation.
-      raise EConvertError.CreateFmt(SErrorBigDecimalParsing, Args);
+      raise EConvertError.CreateFmt(SErrorParsingFmt, ErrorInfo);
     ecDivByZero:
       // Division by zero.
       raise EZeroDivide.Create(SDivisionByZero);
     ecConversion:
       // Bigdecimal too large for conversion to...
-      raise EConvertError.CreateFmt(SConversionFailed, Args);
+      raise EConvertError.CreateFmt(SConversionFailedFmt, ErrorInfo);
     ecOverflow:
       // Scale would become too low.
       raise EOverflow.Create(SOverflow);
@@ -1364,7 +1352,7 @@ begin
       raise EUnderflow.Create(SUnderflow);
     ecInvalidArg:
       // Parameter is NaN or +/-Infinity.
-      raise EInvalidArgument.CreateFmt(SInvalidArg, Args);
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFloatFmt, ErrorInfo);
     ecRounding:
       // Rounding was necessary but rmUnnecessary was specified.
       raise ERoundingNecessary.Create(SRounding);
@@ -1895,14 +1883,14 @@ class function BigDecimal.Parse(const S: string; const Settings: TFormatSettings
 begin
   Result.Init;
   if not TryParse(S, Settings, Result) then
-    Error(ecParse, [S]);
+    Error(ecParse, [S, 'BigDecimal']);
 end;
 
 class function BigDecimal.Parse(const S: string): BigDecimal;
 begin
   Result.Init;
   if not TryParse(S, Result) then
-    Error(ecParse, [S]);
+    Error(ecParse, [S, 'BigDecimal']);
 end;
 
 class operator BigDecimal.Positive(const Value: BigDecimal): BigDecimal;
@@ -1985,7 +1973,7 @@ begin
   try
     Result := Rounded.FValue.AsInt64;
   except
-    Error(ecConversion, ['Int64']);
+    Error(ecConversion, ['BigDecimal', 'Int64']);
   end;
 end;
 
@@ -2231,7 +2219,7 @@ begin
   try
     Result := Rounded.FValue.AsInt64;
   except
-    Error(ecConversion, ['Int64']);
+    Error(ecConversion, ['BigDecimal', 'Int64']);
   end;
 end;
 

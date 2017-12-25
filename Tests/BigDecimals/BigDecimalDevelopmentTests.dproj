@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{DCFEB574-48AF-4E4B-B811-FB7EC60879F8}</ProjectGuid>
-        <ProjectVersion>18.2</ProjectVersion>
+        <ProjectVersion>18.3</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
@@ -105,6 +105,7 @@
         <DCCReference Include="..\..\Source\Velthuis.Sizes.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.Loggers.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.BigIntegers.pas"/>
+        <DCCReference Include="..\..\Source\Velthuis.StrConsts.pas"/>
         <None Include="BigDecimalTestData.inc"/>
         <None Include="..\..\Source\bases.inc"/>
         <BuildConfiguration Include="Release">

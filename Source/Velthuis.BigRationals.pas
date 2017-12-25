@@ -7,7 +7,6 @@
 { Language:   Delphi version XE2 or later                                   }
 { Author:     Rudy Velthuis                                                 }
 { Copyright:  (c) 2016,2017 Rudy Velthuis                                   }
-{ ------------------------------------------------------------------------- }
 {                                                                           }
 { License:    Redistribution and use in source and binary forms, with or    }
 {             without modification, are permitted provided that the         }
@@ -37,9 +36,10 @@
 {                                                                           }
 {---------------------------------------------------------------------------}
 
-unit Velthuis.BigRationals;
+unit Velthuis.BigRationals experimental;
 
 //$$RV comments are internal comments by RV, denoting a problem. Should be all removed as soon as problem solved.
+// TODO: handle extended properly, e.g. in Create(Extended)
 
 interface
 
@@ -167,6 +167,15 @@ type
     /// <remarks>Note that this is an exact conversion, taking into account the exact bit representation of the
     ///   double. This means that the numerator and denominator values can be rather big.</remarks>
     constructor Create(const Value: Double); overload;
+
+{$IFDEF HasExtended}
+    /// <summary>Creates a new BigRational with the exact same value as the given Extended value.</summary>
+    /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the Extended represents a positive or
+    ///   negative infinity or a NaN.</exception>
+    /// <remarks>Note that this is an exact conversion, taking into account the exact bit representation of the
+    ///   Extended. This means that the numerator and denominator values can be rather big.</remarks>
+    constructor Create(const Value: Extended); overload;
+{$ENDIF}
 
     /// <summary>Creates a new BigRational from the given value, with a denominator of 1.</summary>
     constructor Create(const Value: Int64); overload;
@@ -327,16 +336,7 @@ type
 implementation
 
 uses
-  Velthuis.FloatUtils;
-
-resourcestring
-  SDivByZero       = 'Division by zero';
-  SBadArgument     = 'Invalid argument: %s';
-  SNoInfinity      = 'Infinity cannot be converted to BigRational';
-  SNoNan           = 'NaN cannot be converted to BigRational';
-  SZeroDenominator = 'BigRational denominator cannot be zero';
-  SConversion      = '''%s'' is not a valid BigRational value';
-
+  Velthuis.FloatUtils, Velthuis.StrConsts;
 
 { BigRational }
 
@@ -418,6 +418,42 @@ begin
    Nominator   := Integer(Real'Rounding(Real(Denominator) * R));
 
 end Real_To_Rational;
+
+procedure RealToRational(R: Extended; Bound: Cardinal; out Nominator: Integer; Denominator: Cardinal);
+var
+  Error: Extended;
+  Best: Cardinal;
+  BestError: Extended;
+  I: Integer;
+begin
+  Best := 1;
+  BestError := Math.MaxExtended;
+
+  if R = 0.0 then
+  begin
+    Nominator := 0;
+    Denominator := 1;
+  end
+  else if R < 0.0 then
+  begin
+    RealToRational(-R, Bound, Nominator, Denominator);
+    Nominator := -Nominator;
+  end
+  else
+  begin
+    for I := 1 to Bound do
+    begin
+      Error := Abs(I * R - Round(I * R));
+      if Error < BestError then
+      begin
+        Best := I;
+        BestError := Error;
+      end; // if
+    end; // for
+  end; // if
+  Denominator := Best;
+  Nominator := Round(Denominator * R);
+end;
 
 // --------------------------------------
 
@@ -535,7 +571,7 @@ begin
     try
       FNumerator := S;
     except
-      Error(ecConversion, [S]);
+      Error(ecConversion, [S, 'BigRational']);
     end;
     FDenominator := BigInteger.One;
   end
@@ -545,7 +581,7 @@ begin
       FNumerator := TrimRight(Copy(S, 1, Slash - 1));
       FDenominator := TrimLeft(Copy(S, Slash + 1, MaxInt));
     except
-      Error(ecConversion, [S]);
+      Error(ecConversion, [S, 'BigRational']);
     end;
     Normalize;
   end;
@@ -566,6 +602,11 @@ begin
     Denom := BigInteger.Pow(BigInteger.Ten, Scale);
 
   Create(Num, Denom);
+end;
+
+constructor BigRational.Create(const Value: Extended);
+begin
+  Create(Double(Value));
 end;
 
 class function BigRational.Divide(const Left, Right: BigRational): BigRational;
@@ -619,9 +660,9 @@ procedure BigRational.Error(Code: ErrorCode; Additional: array of const);
 begin
   case Code of
     ecDivByZero:
-      raise EDivByZero.Create(SDivByZero);
+      raise EDivByZero.Create(SDivisionByZero);
     ecBadArgument:
-      raise EInvalidArgument.CreateFmt(SBadArgument, Additional);
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, Additional);
     ecNoInfinity:
       raise EInvalidArgument.Create(SNoInfinity);
     ecZeroDenominator:
@@ -629,7 +670,7 @@ begin
     ecNoNaN:
       raise EInvalidArgument.Create(SNoNan);
     ecConversion:
-      raise EConvertError.CreateFmt(SConversion, Additional);
+      raise EConvertError.CreateFmt(SErrorParsingFmt, Additional);
   end;
 end;
 
@@ -729,7 +770,6 @@ begin
   Result := BigDecimal(Value.FNumerator) / Value.FDenominator;
 end;
 
-// $$RV: have normal initialize function for non-class-constructor versions.
 {$IFDEF HasClassConstructors}
 class constructor BigRational.Initialize;
 {$ELSE}

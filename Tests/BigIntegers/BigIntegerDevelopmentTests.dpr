@@ -19,9 +19,9 @@ program BigIntegerDevelopmentTests;
 {$ENDIF}
 
 uses
-{$IFDEF USEFASTMM4}
+  {$IFDEF USEFASTMM4}
   FastMM4,
-{$ENDIF }
+  {$ENDIF }
   DUnitTestRunner,
   Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas',
   Velthuis.RandomNumbers in '..\..\Source\Velthuis.RandomNumbers.pas',
@@ -33,7 +33,8 @@ uses
   TestBigIntegers in 'TestBigIntegers.pas',
   Velthuis.BigRationals in '..\..\Source\Velthuis.BigRationals.pas',
   Velthuis.BigIntegers.Primes in '..\..\Source\Velthuis.BigIntegers.Primes.pas',
-  Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas';
+  Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas',
+  Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas';
 
 {$R *.RES}
 
