@@ -637,10 +637,10 @@ type
     // -- Implicit conversion operators --
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Integer to a BigInteger.</summary>
-    class operator Implicit(const Value: Integer): BigInteger;
+    class operator Implicit(const Value: Int32): BigInteger;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Cardinal to a BigInteger.</summary>
-    class operator Implicit(const Value: Cardinal): BigInteger;
+    class operator Implicit(const Value: UInt32): BigInteger;
 
     /// <summary>Implicitly (i.e. without a cast) converts the specified Int64 to a BigInteger.</summary>
     class operator Implicit(const Value: Int64): BigInteger;
@@ -1169,6 +1169,7 @@ uses
 const
   KZero: NativeUInt = 0;
 
+{$REGION 'Debug related tools -- can eventually be removed'}
 {$IFDEF DEBUG}
 function Join(const Delimiter: string; const Values: array of string): string;
 var
@@ -1222,7 +1223,9 @@ procedure Debug(const Msg: string; const Params: array of const);
 begin
 end;
 {$ENDIF}
+{$ENDREGION}
 
+{$REGION 'Partial flag stall avoidance code'}
 const
   CTimingLoops = $40000;
 
@@ -1299,6 +1302,7 @@ asm
         MOV     [R8+4],EDX
 end;
 {$ENDIF}
+{$ENDREGION}
 
 class procedure BigInteger.DetectPartialFlagsStall;
 var
@@ -1380,6 +1384,8 @@ const
 
 var
   CBasePowers: array[TNumberBase] of TArray<BigInteger>;
+
+  ValueCache: array[-15..15] of BigInteger;
 
 type
   PDynArrayRec = ^TDynArrayRec;
@@ -2851,14 +2857,6 @@ begin
       Result := -Result;
 end;
 
-constructor BigInteger.Create(const Value: Integer);
-begin
-  Create(UInt32(System.Abs(Value)));
-  if Value < 0 then
-    FSize := FSize or SignMask;
-  Compact;
-end;
-
 constructor BigInteger.Create(const Value: BigInteger);
 begin
   Self.FSize := Value.FSize;
@@ -2872,24 +2870,76 @@ begin
   Compact;
 end;
 
+constructor BigInteger.Create(const Value: Int32);
+begin
+  if (Value >= Low(ValueCache)) and (Value <= High(ValueCache)) then
+    Self := ValueCache[Value]
+  else
+  begin
+    Create(UInt32(System.Abs(Value)));
+    if Value < 0 then
+      FSize := FSize or SignMask;
+    Compact;
+  end;
+end;
+
+constructor BigInteger.Create(const Value: Int64);
+begin
+  if (Value >= Low(ValueCache)) and (Value <= High(ValueCache)) then
+    Self := ValueCache[Value]
+  else
+  begin
+    Create(UInt64(System.Abs(Value)));
+    if Value < 0 then
+      FSize := FSize or SignMask;
+    Compact;
+  end;
+end;
+
+constructor BigInteger.Create(const Value: Cardinal);
+begin
+  if Value <= UInt32(High(ValueCache)) then
+    Self := ValueCache[Value]
+  else
+  begin
+    if Value <> 0 then
+    begin
+      FSize := 1;
+      SetLength(FData, 4);
+      FData[0] := Value;
+    end
+    else
+    begin
+      FData := nil;
+      FSize := 0;
+    end;
+    Compact;
+  end;
+end;
+
 constructor BigInteger.Create(const Value: UInt64);
 begin
-  FData := nil;
-  if Value <> 0 then
-  begin
-    if Value > High(UInt32) then
-      FSize := CUInt64Limbs
-    else
-      FSize := 1;
-    SetLength(FData, 4);
-    Move(Value, FData[0], SizeOf(Value));
-  end
+  if Value <= High(ValueCache) then
+    Self := ValueCache[Value]
   else
   begin
     FData := nil;
-    FSize := 0;
+    if Value <> 0 then
+    begin
+      if Value > High(UInt32) then
+        FSize := CUInt64Limbs
+      else
+        FSize := 1;
+      SetLength(FData, 4);
+      Move(Value, FData[0], SizeOf(Value));
+    end
+    else
+    begin
+      FData := nil;
+      FSize := 0;
+    end;
+    Compact;
   end;
-  Compact;
 end;
 
 const
@@ -3006,30 +3056,6 @@ begin
   end
   else
     FSize := 0;
-end;
-
-constructor BigInteger.Create(const Value: Int64);
-begin
-  Create(UInt64(System.Abs(Value)));
-  if Value < 0 then
-    FSize := FSize or SignMask;
-  Compact;
-end;
-
-constructor BigInteger.Create(const Value: Cardinal);
-begin
-  if Value <> 0 then
-  begin
-    FSize := 1;
-    SetLength(FData, 4);
-    FData[0] := Value;
-  end
-  else
-  begin
-    FData := nil;
-    FSize := 0;
-  end;
-  Compact;
 end;
 
 constructor BigInteger.Create(NumBits: Integer; const Random: IRandom);
@@ -3302,24 +3328,36 @@ begin
   FBase := 16;
 end;
 
-class operator BigInteger.Implicit(const Value: Cardinal): BigInteger;
+class operator BigInteger.Implicit(const Value: Int32): BigInteger;
 begin
-  Result := BigInteger.Create(Value);
+  if (Value >= Low(ValueCache)) and (Value <= High(ValueCache)) then
+    Result := ValueCache[Value]
+  else
+    Result := BigInteger.Create(Value);
 end;
 
-class operator BigInteger.Implicit(const Value: Integer): BigInteger;
+class operator BigInteger.Implicit(const Value: UInt32): BigInteger;
 begin
-  Result := BigInteger.Create(Value);
-end;
-
-class operator BigInteger.Implicit(const Value: UInt64): BigInteger;
-begin
-  Result := BigInteger.Create(Value);
+  if Value <= UInt32(High(ValueCache)) then
+    Result := ValueCache[Value]
+  else
+    Result := BigInteger.Create(Value);
 end;
 
 class operator BigInteger.Implicit(const Value: Int64): BigInteger;
 begin
-  Result := BigInteger.Create(Value);
+  if (Value >= Low(ValueCache)) and (Value <= High(ValueCache)) then
+    Result := ValueCache[Value]
+  else
+    Result := BigInteger.Create(Value);
+end;
+
+class operator BigInteger.Implicit(const Value: UInt64): BigInteger;
+begin
+  if Value <= High(ValueCache) then
+    Result := ValueCache[Value]
+  else
+    Result := BigInteger.Create(Value);
 end;
 
 class constructor BigInteger.Initialize;
@@ -3328,11 +3366,32 @@ var
   J: Integer;
   LPower: BigInteger;
 begin
-  MinusOne := -1;
-  Zero.FSize := 0;
-  Zero.FData := nil;
-  One := 1;
-  Ten := 10;
+  for I := Low(ValueCache) to High(ValueCache) do
+  begin
+    if I <> 0 then
+    begin
+      SetLength(ValueCache[I].FData, 4);
+      if I < 0 then
+      begin
+        ValueCache[I].FData[0] := -I;
+        ValueCache[I].FSize := 1 or SignMask;
+      end
+      else
+      begin
+        ValueCache[I].FData[0] := I;
+        ValueCache[I].FSize := 1;
+      end;
+    end
+    else
+    begin
+      ValueCache[0].FData := nil;
+      Valuecache[0].FSize := 0;
+    end;
+  end;
+  MinusOne := ValueCache[-1];
+  Zero := ValueCache[0];
+  One := ValueCache[1];
+  Ten := ValueCache[10];
   FBase := 10;
   FRoundingMode := rmTruncate;
 {$IFNDEF PUREPASCAL}
