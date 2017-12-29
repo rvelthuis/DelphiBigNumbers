@@ -146,20 +146,17 @@
 {               bit additions, removing need for costly carry emulation.     }
 {                                                                            }
 {----------------------------------------------------------------------------}
-{   See GitHub commit comments too.                                          }
+{   Newer changes can be read from the GitHub repository:                    }
+{   https://github.com/rvelthuis/DelphiBigNumbers                            }
 {----------------------------------------------------------------------------}
 
 unit Velthuis.BigIntegers;
 
-{ TODO:
-  - Remove local BigIntegers where possible. Removing Res from class function BigInteger.Add sped
-    it up by 15%. Instead of a local BigInteger, Add now uses ResData and ResSize local variables.
-}
 { TODO: modular arithmetic. Modular division and multiplication. Barrett, Montgomery, etc. }
 { TODO: Better parsing. Recursive parsing (more or less the reverse of recursive routine for ToString) for normal
         bases, shifting for bases 2, 4 and 16. This means that normal bases are parsed BaseInfo.MaxDigits at a time. }
 { TODO: InternalMultiply (basecase) Win32: use MMX instead of plain registers? Also remove trailing loop, make 4
-        completely separate loop+trail parts. }
+        completely separate loop+trail parts? }
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
 
 interface
@@ -1391,11 +1388,24 @@ type
   PDynArrayRec = ^TDynArrayRec;
   TDynArrayRec = packed record
   {$IFDEF CPU64BITS}
-    _Padding: Integer; // Make 16 byte align for payload..
+    _Padding: Integer; // Make 16 byte align for payload.
   {$ENDIF}
     RefCnt: Integer;
     Length: NativeInt;
   end;
+
+  Swapper = class
+    class procedure Swap<T>(var A, B: T); inline;
+  end;
+
+class procedure Swapper.Swap<T>(var A, B: T);
+var
+  Temp: T;
+begin
+  Temp := A;
+  A := B;
+  B := Temp;
+end;
 
 function FindSize(Limb: PLimb; Size: Integer): Integer;
 {$IFDEF PUREPASCAL}
@@ -1670,7 +1680,7 @@ class procedure BigInteger.InternalAnd(Left, Right, Result: PLimb; LSize, RSize:
 var
   I: Integer;
 begin
-  if LSize < RSize then
+  if RSize > LSize then
     RSize := LSize;
   for I := 0 to RSize - 1 do
     Result[I] := Left[I] and Right[I];
@@ -1842,12 +1852,8 @@ begin
   if LSize < RSize then
   begin
     // Swap left and right pointers and sizes.
-    I := LSize;
-    LSize := RSize;
-    RSize := I;
-    P := Left;
-    Left := Right;
-    Right := P;
+    Swapper.Swap(LSize, RSize);
+    Swapper.Swap(Left, Right);
   end;
   for I := 0 to RSize - 1 do
     Result[I] := Left[I] xor Right[I];
@@ -2131,17 +2137,12 @@ class procedure BigInteger.InternalOr(Left, Right, Result: PLimb; LSize, RSize: 
 {$IFDEF PUREPASCAL}
 var
   I: Integer;
-  P: PLimb;
 begin
   if LSize < RSize then
   begin
     // Swap left and right pointers and sizes.
-    I := LSize;
-    LSize := RSize;
-    RSize := I;
-    P := Left;
-    Left := Right;
-    Right := P;
+    Swapper.Swap(LSize, RSize);
+    Swapper.Swap(Left, Right);
   end;
   for I := 0 to RSize - 1 do
     Result[I] := Left[I] or Right[I];
@@ -3097,17 +3098,17 @@ end;
 
 function BigInteger.IsNegative: Boolean;
 begin
-  Result := (FData <> nil) and (FSize < 0);
+  Result := Assigned(FData) and (FSize < 0);
 end;
 
 function BigInteger.IsOne: Boolean;
 begin
-  Result := (FData <> nil) and (FSize = 1) and (FData[0] = 1);
+  Result := Assigned(FData) and (FSize = 1) and (FData[0] = 1);
 end;
 
 function BigInteger.IsPositive: Boolean;
 begin
-  Result := (FData <> nil) and (FSize > 0);
+  Result := Assigned(FData) and (FSize > 0);
 end;
 
 function BigInteger.IsPowerOfTwo: Boolean;
@@ -3274,7 +3275,7 @@ end;
 class function BigInteger.GreatestCommonDivisor(const Left, Right: BigInteger): BigInteger;
 var
   Shift: Integer;
-  ALeft, ARight, Temp: BigInteger;
+  ALeft, ARight: BigInteger;
 begin
   // GCD(left, 0) = left; GCD(0, right) = right; GCD(0, 0) = 0
   if Left.IsZero then
@@ -3305,12 +3306,8 @@ begin
     // ALeft and ARight are both odd. Swap if necessary, so that ALeft <= ARight,
     // then set ARight to ARight - ALeft (which is even).
     if ALeft > ARight then
-    begin
       // Swap ALeft and ARight.
-      Temp := ALeft;
-      ALeft := ARight;
-      ARight := Temp;
-    end;
+      Swapper.Swap(ALeft, ARight);
     ARight := ARight - ALeft;
   until ARight = 0;
 
@@ -3330,6 +3327,7 @@ end;
 
 class operator BigInteger.Implicit(const Value: Int32): BigInteger;
 begin
+  // Note: Create will also get BigIntegers from the ValueCache, but this is a little faster.
   if (Value >= Low(ValueCache)) and (Value <= High(ValueCache)) then
     Result := ValueCache[Value]
   else
@@ -4176,18 +4174,13 @@ end;
 class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer);
 var
   I: Integer;
-  PTemp: PLimb;
   LCount, LTail: Integer;
   Sum: NativeUInt;
 begin
   if LSize < RSize then
   begin
-    PTemp := Left;
-    Left := Right;
-    Right := PTemp;
-    I := LSize;
-    LSize := RSize;
-    RSize := I;
+    Swapper.Swap(Left, Right);
+    Swapper.Swap(LSize, RSize);
   end;
 
   Sum := 0;
@@ -4364,12 +4357,8 @@ begin
   // Ensure that Left is the longer of both magnitudes.
   if RSize > LSize then
   begin
-    PDest := Left;
-    Left := Right;
-    Right := PDest;
-    LTail := LSize;
-    LSize := RSize;
-    RSize := LTail;
+    Swapper.Swap(Left, Rigth);
+    Swapper.Swap(LSize, RSize);
   end;
 
   // Each new row is one limb further to the left.
@@ -5253,11 +5242,11 @@ begin
   LQuotient := Value;
   LSectionStart := WritePtr - SectionCount * BaseInfo.MaxDigits;
 
-  while LQuotient.FData <> nil do
+  while Assigned(LQuotient.FData) do
   begin
     BigInteger.DivMod(LQuotient, BaseInfo.MaxPower, LQuotient, LRemainder);
 {$IFDEF CPU32BITS}
-    if LRemainder.FData <> nil then
+    if Assigned(LRemainder.FData) then
       InternalIntToStrBase(LRemainder.FData[0], Base, WritePtr, BaseInfo.MaxDigits)
     else
       InternalIntToStrBase(0, Base, WritePtr, BaseInfo.MaxDigits);
@@ -5681,7 +5670,7 @@ begin
   Result.MakeSize(Left.FSize and SizeMask);
   InternalDivMod16(PLimb(Left.FData), Right, PLImb(Result.FData), nil, Left.FSize and SizeMask);
   Result.Compact;
-  if Result.FData <> nil then
+  if Assigned(Result.FData) then
     Result.FSize := (Result.FSize and SizeMask) or LSign;
 end;
 
@@ -5700,7 +5689,7 @@ begin
   Result.MakeSize(Left.FSize and SizeMask);
   InternalDivMod32(PLimb(Left.FData), Right, PLimb(Result.FData), nil, Left.FSize and SizeMask);
   Result.Compact;
-  if Result.FData <> nil then
+  if Assigned(Result.FData) then
     Result.FSize := (Result.FSize and SizeMask) or LSign;
 end;
 
@@ -5815,7 +5804,7 @@ begin
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
 
-  if (LSize <> 0) and (RSize <> 0) then
+  if (LSize and RSize) <> 0 then
   begin
     Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
   end
@@ -5865,7 +5854,7 @@ begin
   LSize := Left.FSize and SizeMask;
   RSize := Right.FSize and SizeMask;
 
-  if (LSize <> 0) and (RSize <> 0) then
+  if (LSize and RSize) <> 0 then
   begin
     Offset := CommonTrailingZeros(PLimb(Left.FData), PLimb(Right.FData), LSize, RSize);
   end
@@ -6106,7 +6095,7 @@ begin
   for J := LSize - 1 downto 0 do
     System.Math.DivMod(Cardinal(LRemainder shl 16 + PUInt16(Dividend)[J]), Divisor, PUInt16(Quotient)[J], LRemainder);
 
-  if Remainder <> nil then
+  if Assigned(Remainder) then
     Remainder[0] := LRemainder;
   Exit(True);
 end;
@@ -6145,7 +6134,7 @@ begin
 {$ENDIF}
     Quotient[J] := TLimb(LQuotient);
   end;
-  if Remainder <> nil then
+  if Assigned(Remainder) then
     Remainder[0] := TLimb(LRemainder);
   Exit(True);
 end;
@@ -6467,7 +6456,7 @@ begin
   end;
 
   // If the caller wants the remainder, unnormalize it and pass it back.
-  if PRemainder <> nil then
+  if Assigned(PRemainder) then
     if Shift <> 0 then
       for I := 0 to RSize - 1 do
         PRemainder[I] := TDivLimb((TDblLimb(NormDividend[I]) shr Shift) or (TDblLimb(NormDividend[I + 1]) shl RevShift))
@@ -6743,7 +6732,7 @@ asm
         JGE      @MainLoop
 
         // NormDividend now contains remainder, scaled by Shift.
-        // If Remainder <> nil, then shift NormDividend down into Remainder.
+        // If Assigned(Remainder), then shift NormDividend down into Remainder.
 
         MOV     EAX,Remainder
         TEST    EAX,EAX
@@ -7065,7 +7054,7 @@ asm
         JGE     @MainLoop
 
         // NormDividend now contains remainder, scaled by Shift.
-        // If Remainder <> nil, then shift NormDividend down into Remainder
+        // If Assigned(Remainder), then shift NormDividend down into Remainder
 
         MOV     RAX,LRemainder
         TEST    RAX,RAX
