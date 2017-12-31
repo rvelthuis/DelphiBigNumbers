@@ -12,9 +12,6 @@
         <Projects Include="BigRationals\BigRationalDevelopmentTests.dproj">
             <Dependencies/>
         </Projects>
-        <Projects Include="..\..\..\Embarcadero\Studio\Projects\Project85.dproj">
-            <Dependencies/>
-        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -50,23 +47,14 @@
     <Target Name="BigRationalDevelopmentTests:Make">
         <MSBuild Projects="BigRationals\BigRationalDevelopmentTests.dproj" Targets="Make"/>
     </Target>
-    <Target Name="Project85">
-        <MSBuild Projects="..\..\..\Embarcadero\Studio\Projects\Project85.dproj"/>
-    </Target>
-    <Target Name="Project85:Clean">
-        <MSBuild Projects="..\..\..\Embarcadero\Studio\Projects\Project85.dproj" Targets="Clean"/>
-    </Target>
-    <Target Name="Project85:Make">
-        <MSBuild Projects="..\..\..\Embarcadero\Studio\Projects\Project85.dproj" Targets="Make"/>
-    </Target>
     <Target Name="Build">
-        <CallTarget Targets="BigIntegerDevelopmentTests;BigDecimalDevelopmentTests;BigRationalDevelopmentTests;Project85"/>
+        <CallTarget Targets="BigIntegerDevelopmentTests;BigDecimalDevelopmentTests;BigRationalDevelopmentTests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="BigIntegerDevelopmentTests:Clean;BigDecimalDevelopmentTests:Clean;BigRationalDevelopmentTests:Clean;Project85:Clean"/>
+        <CallTarget Targets="BigIntegerDevelopmentTests:Clean;BigDecimalDevelopmentTests:Clean;BigRationalDevelopmentTests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make;Project85:Make"/>
+        <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
