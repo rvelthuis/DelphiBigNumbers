@@ -69,3 +69,4 @@ DataGenerators/BigIntegers/Java/AddTests/build/
 /DataGenerators/BigIntegers/Java/FastFactorial/build/
 /DataGenerators/BigIntegers/Java/FastFibonacci/nbproject/private/
 /DataGenerators/BigIntegers/Java/FastFibonacci/build/
+!Tests/BigNumberTests.groupproj
