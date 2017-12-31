@@ -91,7 +91,7 @@ type
   private
     type
       // Error code for the Error procedure.
-      ErrorCode = (ecDivByZero, ecBadArgument, ecNoInfinity, ecZeroDenominator, ecNoNaN, ecConversion);
+      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidArg, ecZeroDenominator);
 
     var
       // The numerator (the "top" part of the fraction).
@@ -111,7 +111,7 @@ type
     procedure Normalize(Forced: Boolean = False);
 
     // Raises exception using error code and additional data to decide which and how.
-    procedure Error(Code: ErrorCode; Additional: array of const);
+    procedure Error(Code: TErrorCode; ErrorInfo: array of const);
   public
     class var
 
@@ -315,6 +315,9 @@ type
     ///  conversion.</summary>
     function ToString: string;
 
+    function Parse(const S: string): BigRational;
+    function TryParse(const S: string; out Value: BigRational): Boolean;
+
 
     // -- Properties --
 
@@ -504,10 +507,8 @@ var
   Exponent: Integer;
   Mantissa: Int64;
 begin
-  if IsNegativeInfinity(Value) or IsPositiveInfinity(Value) then
-    Error(ecNoInfinity, []);
-  if IsNaN(Value) then
-    Error(ecNoNaN, []);
+  if IsInfinite(Value) or IsNaN(Value) then
+    Error(ecInvalidArg, ['Double']);
 
   if Value = 0.0 then
   begin
@@ -560,31 +561,8 @@ begin
 end;
 
 constructor BigRational.Create(const Value: string);
-var
-  Slash: Integer;
-  S: string;
 begin
-  S := Trim(Value);
-  Slash := Pos('/', S);
-  if Slash = 0 then
-  begin
-    try
-      FNumerator := S;
-    except
-      Error(ecConversion, [S, 'BigRational']);
-    end;
-    FDenominator := BigInteger.One;
-  end
-  else
-  begin
-    try
-      FNumerator := TrimRight(Copy(S, 1, Slash - 1));
-      FDenominator := TrimLeft(Copy(S, Slash + 1, MaxInt));
-    except
-      Error(ecConversion, [S, 'BigRational']);
-    end;
-    Normalize;
-  end;
+  Self := Parse(Value);
 end;
 
 constructor BigRational.Create(const Value: BigDecimal);
@@ -604,10 +582,12 @@ begin
   Create(Num, Denom);
 end;
 
+{$IFDEF HasExtended}
 constructor BigRational.Create(const Value: Extended);
 begin
   Create(Double(Value));
 end;
+{$ENDIF HasExtended}
 
 class function BigRational.Divide(const Left, Right: BigRational): BigRational;
 begin
@@ -656,21 +636,19 @@ begin
   Result := Compare(Left, Right) = 0;
 end;
 
-procedure BigRational.Error(Code: ErrorCode; Additional: array of const);
+procedure BigRational.Error(Code: TErrorCode; ErrorInfo: array of const);
 begin
   case Code of
+    ecParse:
+      raise EConvertError.CreateFmt(SErrorParsingFmt, ErrorInfo);
     ecDivByZero:
       raise EDivByZero.Create(SDivisionByZero);
-    ecBadArgument:
-      raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, Additional);
-    ecNoInfinity:
-      raise EInvalidArgument.Create(SNoInfinity);
+    ecConversion:
+      raise EConvertError.CreateFmt(SConversionFailedFmt, ErrorInfo);
+    ecInvalidArg:
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFmt, ErrorInfo);
     ecZeroDenominator:
       raise EDivByZero.Create(SZeroDenominator);
-    ecNoNaN:
-      raise EInvalidArgument.Create(SNoNan);
-    ecConversion:
-      raise EConvertError.CreateFmt(SErrorParsingFmt, Additional);
   end;
 end;
 
@@ -902,6 +880,12 @@ begin
   Result := Compare(Left, Right) <> 0;
 end;
 
+function BigRational.Parse(const S: string): BigRational;
+begin
+  if not TryParse(S, Result) then
+    Error(ecParse, [S, 'BigRational']);
+end;
+
 class function BigRational.Multiply(const Left, Right: BigRational): BigRational;
 begin
   Result := Left * Right;
@@ -935,6 +919,29 @@ begin
     Result := FNumerator.ToString + '/' + FDenominator.ToString;
 end;
 
+
+function BigRational.TryParse(const S: string; out Value: BigRational): Boolean;
+var
+  LSlash: Integer;
+  Num, Denom: BigInteger;
+begin
+  if S = '' then
+    Exit(False);
+
+  LSlash := Pos('/', S);
+  if LSlash < 1 then
+  begin
+    Result := BigInteger.TryParse(S, Num);
+    Denom := BigInteger.One;
+  end
+  else
+  begin
+    Result := BigInteger.TryParse(Copy(S, 1, LSlash - 1), Num);
+    Result := BigInteger.TryParse(Copy(S, LSlash + 1, MaxInt), Denom) or Result;
+  end;
+  if Result then
+    Value := BigRational.Create(Num, Denom);
+end;
 
 {$IFNDEF HasClassConstructors}
 initialization

@@ -1342,7 +1342,7 @@ begin
       // Division by zero.
       raise EZeroDivide.Create(SDivisionByZero);
     ecConversion:
-      // Bigdecimal too large for conversion to...
+      // BigDecimal too large for conversion to...
       raise EConvertError.CreateFmt(SConversionFailedFmt, ErrorInfo);
     ecOverflow:
       // Scale would become too low.

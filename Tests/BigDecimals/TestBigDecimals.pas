@@ -9,9 +9,6 @@ unit TestBigDecimals;
 
 }
 
-// TODO: Write a program similar to the C# data generator, but this time for Java.
-// Use similar data as the Decimal test program.
-
 interface
 
 uses

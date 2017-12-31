@@ -36,6 +36,9 @@
 
 unit Velthuis.RandomNumbers;
 
+// TODO: streamline this.
+// TODO: better random number algorithms
+
 interface
 
 type

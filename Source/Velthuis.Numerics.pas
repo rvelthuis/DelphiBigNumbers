@@ -2,13 +2,6 @@
 
 interface
 
-(*
-  TODO:
-  Compare
-  CompareTo
-  HashCode
-*)
-
 // For Delphi XE3 and up:
 {$IF CompilerVersion >= 24.0 }
   {$LEGACYIFEND ON}
@@ -29,6 +22,8 @@ function BitCount(U: UInt8): Integer; overload;
 function BitCount(U: UInt16): Integer; overload;
 function BitCount(S: Int32): Integer; overload;
 function BitCount(U: UInt32): Integer; overload;
+function BitCount(S: Int64): Integer; overload;
+function BitCount(S: UInt64): Integer; overload;
 
 function BitLength(S: Int32): Integer; overload;
 function BitLength(U: UInt32): Integer; overload;
@@ -78,6 +73,17 @@ function ToOctalString(U: UInt32): string; overload;
 
 function ToString(S: Int32; Base: Byte): string; overload;
 function ToString(U: UInt32; Base: Byte): string; overload;
+
+function Compare(Left, Right: Int32): Integer; overload;
+function Compare(Left, Right: UInt32): Integer; overload;
+function Compare(Left, Right: Int64): Integer; overload;
+function Compare(Left, Right: UInt64): Integer; overload;
+
+function HashCode(Value: Int32): UInt32; overload;
+function HashCode(Value: UInt32): UInt32; overload;
+function HashCode(Value: Int64): UInt32; overload;
+function HashCode(Value: UInt64): UInt32; overload;
+
 
 implementation
 
@@ -228,6 +234,16 @@ begin
 end;
 {$IFEND PUREPASCAL}
 
+function BitCount(S: Int64): Integer; overload;
+begin
+  Result := BitCount(UInt32(S)) + BitCount(Int32(S shr 32));
+end;
+
+function BitCount(S: UInt64): Integer; overload;
+begin
+  Result := BitCount(UInt32(S)) + BitCount(UInt32(S shr 32));
+end;
+
 function BitLength(S: Int32): Integer;
 begin
   Result := BitLength(UInt32(S));
@@ -240,7 +256,7 @@ end;
 
 function DigitCount(S: Int32): Int32; overload;
 begin
-  if S <> (-MaxInt - 1) then
+  if S <> Low(Int32) then
     Result := DigitCount(UInt32(Abs(S)))
   else
     Result := 9;
@@ -270,7 +286,10 @@ end;
 
 function IsPowerOfTwo(S: Int32): Boolean;
 begin
-  Result := IsPowerofTwo(UInt32(Abs(S)));
+  if S <> Low(Int32) then
+    Result := IsPowerofTwo(UInt32(Abs(S)))
+  else
+    Result := True;
 end;
 
 function IsPowerOfTwo(U: UInt32): Boolean;
@@ -626,5 +645,68 @@ begin
     end;
   end;
 end;
+
+function Compare(Left, Right: Int32): Integer;
+begin
+  if Left > Right then
+    Exit(1)
+  else if Left < Right then
+    Exit(-1)
+  else
+    Exit(0);
+end;
+
+function Compare(Left, Right: UInt32): Integer;
+begin
+  if Left > Right then
+    Exit(1)
+  else if Left < Right then
+    Exit(-1)
+  else
+    Exit(0);
+end;
+
+function Compare(Left, Right: Int64): Integer;
+begin
+  if Left > Right then
+    Exit(1)
+  else if Left < Right then
+    Exit(-1)
+  else
+    Exit(0);
+end;
+
+function Compare(Left, Right: UInt64): Integer;
+begin
+  if Left > Right then
+    Exit(1)
+  else if Left < Right then
+    Exit(-1)
+  else
+    Exit(0);
+end;
+
+function HashCode(Value: Int32): UInt32;
+begin
+  Result := UInt32(Value);
+end;
+
+function HashCode(Value: UInt32): UInt32;
+begin
+  Result := Value;
+end;
+
+function HashCode(Value: Int64): UInt32;
+begin
+  Result := UInt32(Value) xor UInt32(Value shr 32);
+end;
+
+function HashCode(Value: UInt64): UInt32;
+begin
+  Result := UInt32(Value) xor UInt32(Value shr 32);
+end;
+
+
+
 
 end.

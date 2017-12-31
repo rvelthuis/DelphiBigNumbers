@@ -168,7 +168,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -1847,7 +1847,6 @@ class procedure BigInteger.InternalXor(Left, Right, Result: PLimb; LSize, RSize:
 {$IFDEF PUREPASCAL}
 var
   I: Integer;
-  P: PLimb;
 begin
   if LSize < RSize then
   begin
@@ -3276,6 +3275,7 @@ class function BigInteger.GreatestCommonDivisor(const Left, Right: BigInteger): 
 var
   Shift: Integer;
   ALeft, ARight: BigInteger;
+  Temp: BigInteger;
 begin
   // GCD(left, 0) = left; GCD(0, right) = right; GCD(0, 0) = 0
   if Left.IsZero then
@@ -3306,8 +3306,14 @@ begin
     // ALeft and ARight are both odd. Swap if necessary, so that ALeft <= ARight,
     // then set ARight to ARight - ALeft (which is even).
     if ALeft > ARight then
+    begin
+      // Swapper.Swap(ALeft, ARight) has too much overhead.
       // Swap ALeft and ARight.
-      Swapper.Swap(ALeft, ARight);
+      Temp := ALeft;
+      Aleft := ARight;
+      ARight := Temp;
+//      Swapper.Swap(ALeft, ARight);
+    end;
     ARight := ARight - ALeft;
   until ARight = 0;
 
@@ -4173,7 +4179,6 @@ end;
 {$IFDEF PUREPASCAL}
 class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSize, RSize: Integer);
 var
-  I: Integer;
   LCount, LTail: Integer;
   Sum: NativeUInt;
 begin
@@ -4357,7 +4362,7 @@ begin
   // Ensure that Left is the longer of both magnitudes.
   if RSize > LSize then
   begin
-    Swapper.Swap(Left, Rigth);
+    Swapper.Swap(Left, Right);
     Swapper.Swap(LSize, RSize);
   end;
 

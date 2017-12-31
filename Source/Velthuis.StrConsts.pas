@@ -18,8 +18,6 @@ resourcestring
   SUnderflow               = 'Resulting value too small to represent';
   SRounding                = 'Rounding necessary';
   SExponent                = 'Exponent to IntPower outside the allowed range';
-  SNoInfinity              = 'Infinity cannot be converted to BigRational';
-  SNoNan                   = 'NaN cannot be converted to BigRational';
   SZeroDenominator         = 'BigRational denominator cannot be zero';
 
 implementation
