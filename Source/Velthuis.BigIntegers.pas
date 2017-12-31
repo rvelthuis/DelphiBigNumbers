@@ -1398,6 +1398,10 @@ type
     class procedure Swap<T>(var A, B: T); inline;
   end;
 
+// This fine for simple types, BUT DO NOT USE THIS FOR MANAGED RECORDS like BigInteger!
+// It will add an extra implicit try-finally around the code, even if there is already
+// a try-finally around the enclosing ("calling") code.
+// Directly swapping the values in code does not create the try-finally.
 class procedure Swapper.Swap<T>(var A, B: T);
 var
   Temp: T;
@@ -3307,12 +3311,10 @@ begin
     // then set ARight to ARight - ALeft (which is even).
     if ALeft > ARight then
     begin
-      // Swapper.Swap(ALeft, ARight) has too much overhead.
-      // Swap ALeft and ARight.
+      // Swap ALeft and ARight. Swapper.Swap(ALeft, ARight) has too much overhead.
       Temp := ALeft;
       Aleft := ARight;
       ARight := Temp;
-//      Swapper.Swap(ALeft, ARight);
     end;
     ARight := ARight - ALeft;
   until ARight = 0;
