@@ -1460,6 +1460,16 @@ end;
 {$ENDIF !WIN32}
 {$ENDIF}
 
+procedure SwapBigIntegers(var Left, Right: BigInteger); inline;
+var
+  T: Integer;
+begin
+  Pointer(Left.FData) := AtomicExchange(Pointer(Right.FData), Pointer(Left.FData));
+  T := Left.FSize;
+  Left.FSize := Right.FSize;
+  Right.FSize := T;
+end;
+
 function IntMax(Left, Right: UInt32): UInt32;
 {$IFNDEF PUREPASCAL}
 {$IFDEF WIN32}
