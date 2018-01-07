@@ -105,6 +105,8 @@ type
     procedure TestToByteArray;
     procedure TestModInverse;
     procedure TestFactorial;
+    procedure TestPred;
+    procedure TestSucc;
   end;
 
 implementation
@@ -477,6 +479,20 @@ begin
       Check(Difference = CheckDifference, Format('(%d,%d) %s - %s = %s (%s)', [I, J, Minuend.ToString, Subtrahend.ToString, Difference.ToString, CheckDifference.ToString]));
       Inc(N);
     end;
+  end;
+end;
+
+procedure TTestBigInteger.TestSucc;
+var
+  Value, Successor, ValuePlusOne: BigInteger;
+  I: Integer;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    Value := Arguments[I];
+    Successor := Value.Succ;
+    ValuePlusOne := Value + BigInteger.One;
+    Check(Successor = ValuePlusOne, Format('(%d) Pred(%s) = %s (%s)', [I, string(Value), string(Successor), string(ValuePlusOne)]));
   end;
 end;
 
@@ -1616,6 +1632,20 @@ begin
       Check(Power = CheckPower, Format('(%d,%d) Pow(%s, %d) = %s (%s)', [I, J, Base.ToString, Exponent, Power.ToString, CheckPower.ToString]));
       Inc(N);
     end;
+  end;
+end;
+
+procedure TTestBigInteger.TestPred;
+var
+  Value, Predecessor, ValueMinusOne: BigInteger;
+  I: Integer;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    Value := Arguments[I];
+    Predecessor := Value.Pred;
+    ValueMinusOne := Value - BigInteger.One;
+    Check(Predecessor = ValueMinusOne, Format('(%d) Pred(%s) = %s (%s)', [I, string(Value), string(Predecessor), string(ValueMinusOne)]));
   end;
 end;
 

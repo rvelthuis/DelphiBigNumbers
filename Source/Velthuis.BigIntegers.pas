@@ -820,6 +820,12 @@ type
     /// <summary>Returns the absolute value of the current BigInteger.<summary>
     function Abs: BigInteger; overload;
 
+    /// <summary>Returns the predecessor of the current BigInteger, i.e. its value minus one.</summary>
+    function Pred: BigInteger; overload;
+
+    // <summary>Returns the successor of the current BigInteger, i.e. its value plus one.</summary>
+    function Succ: BigInteger; overload;
+
     /// <summary>Returns the bit length, the minimum number of bits needed to represent the value, excluding
     ///   the sign bit.</summary>
     function BitLength: Integer;
@@ -1588,6 +1594,18 @@ class function BigInteger.Abs(const Value: BigInteger): BigInteger;
 begin
   ShallowCopy(Value, Result);
   Result.SetSign(0);
+end;
+
+function BigInteger.Pred: BigInteger;
+begin
+  ShallowCopy(Self, Result);
+  Dec(Result);
+end;
+
+function BigInteger.Succ: BigInteger;
+begin
+  ShallowCopy(Self, Result);
+  Inc(Result);
 end;
 
 class function BigInteger.Add(const Left, Right: BigInteger): BigInteger;
