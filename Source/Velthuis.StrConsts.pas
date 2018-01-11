@@ -12,7 +12,7 @@ resourcestring
   SInvalidArgumentFloatFmt = '%s parameter may not be NaN or +/- Infinity';
   SInvalidArgumentBase     = 'Base parameter must be in the range 2..36';
   SInvalidArgumentFmt      = 'Invalid argument: %s';
-  SSqrtBigInteger          = 'Negative values not allowed for Sqrt';
+  SNegativeRadicand        = '%s: Negative radicand not allowed';
   SNoInverse               = 'No modular inverse possible';
   SNegativeExponent        = 'Negative exponent %s not allowed';
   SUnderflow               = 'Resulting value too small to represent';

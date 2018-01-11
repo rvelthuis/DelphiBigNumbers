@@ -168,7 +168,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  {$DEFINE PUREPASCAL}
+  { $DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -964,7 +964,7 @@ type
   {$REGION 'private constants, types and variables'}
     type
       TErrorCode = (ecParse, ecDivByZero, ecConversion, ecInvalidBase, ecOverflow, ecInvalidArg, ecInvalidArgFloat, ecNoInverse,
-                    ecNegativeExponent);
+                    ecNegativeExponent, ecNegativeRadicand);
       TBinaryOperator = procedure(Left, Right, Result: PLimb; LSize, RSize: Integer);
     var
       // The limbs of the magnitude, least significant limb at lowest address.
@@ -7384,6 +7384,8 @@ begin
       raise EInvalidArgument.Create(SNoInverse);
     ecNegativeExponent:
       raise EInvalidArgument.CreateFmt(SNegativeExponent, ErrorInfo);
+    ecNegativeRadicand:
+      raise EInvalidArgument.Create(SNegativeRadicand);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
@@ -10151,7 +10153,7 @@ begin
         LBigResult := LBigResult * LBase;
       LExponent := LExponent shr 1;
       if LExponent <> 0 then
-        LBase := LBase * LBase;
+        LBase := Sqr(LBase);
     end;
 
     // Append the trailing zeroes (times exponent) back in, to get the real result.
@@ -10697,62 +10699,36 @@ begin
 end;
 
 class function BigInteger.NthRoot(const Radicand: BigInteger; Nth: Integer): BigInteger;
-
-// http://stackoverflow.com/a/32541958/95954
-
 var
-  Estimate, EstimateToNthPower, NewEstimateToNthPower, TwoToNthPower: BigInteger;
-  AdditionalBit: Integer;
+  NthPred: Integer;
+  BigNth, BigNthPred: Integer;
+  Newestimate, PrevEstimate: BigInteger;
 begin
-  if Radicand.IsOne then
-    Exit(BigInteger.One);
-  if Nth = 0 then
-    Exit(BigInteger.Zero);                      // Error: there is no zeroth root.
-  if Nth = 1 then
+  if Radicand.IsZero or Radicand.IsOne then
     Exit(Radicand);
+  if Radicand.IsNegative then
+    Error(ecNegativeRadicand, ['NthRoot']);
+  if Nth = 0 then
+    Exit(BigInteger.Zero);
+  if Nth < 0 then
+    Error(ecNegativeExponent, ['NthRoot']);
+  NthPred := System.Pred(Nth);
+  Result := BigInteger.Zero.SetBit(Radicand.BitLength div Nth);
+  PrevEstimate := Result;
 
-  TwoToNthPower := BigInteger.Pow(2, Nth);
+  // Loop invariants
+  BigNth := Nth;
+  BigNthPred := NthPred;
 
-  // First estimate. Very likely closer to final value than the original BigInteger.One.
-  Estimate := BigInteger.One shl (Radicand.BitLength div Nth);
-  // EstimateToNthPower is Estimate ^ Nth
-  EstimateToNthPower := BigInteger.Pow(Estimate, Nth);
-
-  // Shift Estimate right until Estimate ^ Nth >= Value.
-  while EstimateToNthPower < Radicand do
-  begin
-    Estimate := Estimate shl 1;
-    EstimateToNthPower := TwoToNthPower * EstimateToNthPower;
-  end;
-
-  // EstimateToNthPower is the lowest power of two such that EstimateToNthPower >= Value
-  if EstimateToNthPower = Radicand then            // Answer is a power of two.
-    Exit(Estimate);
-
-   // Estimate is highest power of two such that Estimate ^ Nth < Value
-  Estimate := Estimate shr 1;
-  AdditionalBit := Estimate.BitLength - 2;
-  if AdditionalBit < 0 then
-    Exit(Estimate);
-  EstimateToNthPower := BigInteger.Pow(Estimate, Nth);
-
-  // We already have the top bit. Now repeatedly add decreasingly significant bits and check if
-  // that addition is not too much. If so, remove the bit again.
-  while Radicand > EstimateToNthPower do
-  begin
-    Estimate := Estimate.SetBit(AdditionalBit);
-    NewEstimateToNthPower := BigInteger.Pow(Estimate, Nth);
-    if NewEstimateToNthPower > Radicand then            // Did we add too much? If so, remove bit.
-      Estimate := Estimate.ClearBit(AdditionalBit)
-    else
-      EstimateToNthPower := NewEstimateToNthPower;      // Otherwise update EstimateToNthPower (= Estimate^Nth).
-    Dec(AdditionalBit);
-    if AdditionalBit < 0 then
-      Break;
-  end;
-
-  // All bits covered, so we have our result.
-  Result := Estimate;
+  // Newton-Raphson approximation loop, similar to code in Sqrt().
+  repeat
+    NewEstimate := (Result * BigNthPred + Radicand div BigInteger.Pow(Result, NthPred)) div BigNth;
+    // Loop until no difference with previous value or when these two start alternating.
+    if (NewEstimate = Result) or (NewEstimate = PrevEstimate) then
+      Exit(BigInteger.Min(Result, NewEstimate)); // Root is the lowest of these.
+    PrevEstimate := Result;
+    Result := NewEstimate;
+  until False;
 end;
 
 class procedure BigInteger.NthRootRemainder(const Radicand: BigInteger; Nth: Integer; var Root, Remainder: BigInteger);
@@ -10769,67 +10745,42 @@ begin
     Result := SqrKaratsuba(Value);
 end;
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+/// A Newton-Raphson algorithm is *much* faster than the previous binary-search like           ///
+/// algorithm.                                                                                 ///
+///                                                                                            ///
+/// This new N-R algorithm is even faster than the previous and correct. The previous one      ///
+/// could go into an endless loop when the estimate flipped continuously between the root and  ///
+/// root+1, which is something that doesn't happen often, but can occur, e.g. for a radicand   ///
+/// with the value 8.                                                                          ///
+///                                                                                            ///
+/// https://stackoverflow.com/questions/4407839#16804098                                       ///
+//////////////////////////////////////////////////////////////////////////////////////////////////
 class function BigInteger.Sqrt(const Radicand: BigInteger): BigInteger;
 var
-  Estimate: BigInteger;
-  AdditionalBit: Integer;
-  EstimateSquared: BigInteger;
-  Temp: BigInteger;
+  PrevEstimate, NewEstimate: BigInteger;
 begin
-  if Radicand.IsOne then
-    Exit(BigInteger.One);
-
+  if Radicand.IsOne or Radicand.IsZero then
+    Exit(Radicand);
   if Radicand.IsNegative then
-    raise EInvalidOp.Create(SSqrtBigInteger);
-
-  Estimate := BigInteger.One shl ((Radicand.BitLength) shr 1);
-
-  EstimateSquared := Sqr(Estimate);
-  while EstimateSquared < Radicand do
-  begin
-    Estimate := Estimate shl 1;
-    EstimateSquared := EstimateSquared shl 2;
-  end;
-
-  if EstimateSquared = Radicand then
-    Exit(Estimate);
-
-  Estimate := Estimate shr 1;
-  EstimateSquared := EstimateSquared shr 2;
-  AdditionalBit := Estimate.BitLength - 2;
-  if AdditionalBit < 0 then
-    Exit(Estimate);
-
-  while Radicand > EstimateSquared do
-  begin
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// Instead of multiplying two large BigIntegers, i.e. (Estimate + 2 ^ AdditionalBit) ^ 2, we try to be clever: ///
-    /// If A = Estimate; B = 2 ^ AdditionalBit then:                                                                ///
-    /// sqr(A + B) = A*A + 2*A*B + B*B = sqrA + (A * 2 + B)*B, so                                                   ///
-    /// Temp := EstimateSquared + (Estimate * 2 + 2 ^ AdditionalBit) * 2 ^ AdditionalBit                            ///
-    /// Since 2 ^ AdditionalBit and the multiplication can be done with shifts, we finally get the following.       ///
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    Temp := Estimate shl 1;
-    Temp := Temp.SetBit(AdditionalBit);
-    Temp := Temp shl AdditionalBit + EstimateSquared;
-    if Temp <= Radicand then
-    begin
-      ShallowCopy(Temp, EstimateSquared);
-      Estimate := Estimate.SetBit(AdditionalBit);
-    end;
-    Dec(AdditionalBit);
-    if AdditionalBit < 0 then
-      Break;
-  end;
-  Result := Estimate;
+    Error(ecNegativeRadicand, ['Sqrt']); // Do not translate!
+  Result := BigInteger.Zero.SetBit(Radicand.BitLength shr 1);
+  PrevEstimate := Result;
+  // Loop until we hit the same value twice in a row, or wind up alternating.
+  repeat
+    NewEstimate := (Result + Radicand div Result) shr 1;
+    if (NewEstimate = Result) or              // normal case
+       (NewEstimate = PrevEstimate) then        // alternating case
+      Exit(BigInteger.Min(Result, NewEstimate));
+    PrevEstimate := Result;
+    Result := NewEstimate;
+  until False;
 end;
 
 class procedure BigInteger.SqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger);
 begin
   Root := Sqrt(Radicand);
-  Remainder := Radicand - Root * Root;
+  Remainder := Radicand - Sqr(Root);
 end;
 
 class procedure BigInteger.DivThreeHalvesByTwo(
