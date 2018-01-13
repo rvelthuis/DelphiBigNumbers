@@ -158,6 +158,8 @@ unit Velthuis.BigIntegers;
 { TODO: InternalMultiply (basecase) Win32: use MMX instead of plain registers? Also remove trailing loop, make 4
         completely separate loop+trail parts? }
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
+{ TODO: Check if old NthRoot (binary search) is perhaps better for the relatively small values tested here. It seems
+        to have become slower. }
 
 interface
 
@@ -894,11 +896,11 @@ type
     /// <summary>Returns the specified value raised to the specified power.</summary>
     class function Pow(const ABase: BigInteger; AExponent: Integer): BigInteger; static;
 
-    /// <summary>Returns the nth root R of a BigInteger such that R^Nth <= Radicand <= (R+1)^Nth.</summary>
-    class function NthRoot(const Radicand: BigInteger; Nth: Integer): BigInteger; static;
+    /// <summary>Returns the nth root R of a BigInteger such that R^index <= Radicand < (R+1)^index.</summary>
+    class function NthRoot(const Radicand: BigInteger; Index: Integer): BigInteger; static;
 
-    /// <summary>If R is the nth root of Radicand, returns Radicand - R^Nth.</summary>
-    class procedure NthRootRemainder(const Radicand: BigInteger; Nth: Integer;
+    /// <summary>If R is the nth root of Radicand, returns Radicand - R^index.</summary>
+    class procedure NthRootRemainder(const Radicand: BigInteger; Index: Integer;
       var Root, Remainder: BigInteger); static;
 
     /// <summary>Returns the square root R of Radicand, such that R^2 < Radicand < (R+1)^2</summary>
@@ -909,7 +911,6 @@ type
 
     /// <summary>Returns the square of Value, i.e. Value*Value</summary>
     class function Sqr(const Value: BigInteger): BigInteger; static;
-
 
 
     // -- Utility functions --
@@ -10698,43 +10699,54 @@ begin
   Result.Compact;
 end;
 
-class function BigInteger.NthRoot(const Radicand: BigInteger; Nth: Integer): BigInteger;
+// TODO: The Newton-Raphson part of this algorithm can go into an endless loop, because values do not simply alternate (easily
+// detectable by simple memoization), they cycle. This is harder to detect than a mere alternation. Must find a better
+// end condition.
+class function BigInteger.NthRoot(const Radicand: BigInteger; Index: Integer): BigInteger;
 var
-  NthPred: Integer;
-  BigNth, BigNthPred: Integer;
+  PredIndex: Integer;
+  BigIndex, BigPredIndex: Integer;
   Newestimate, PrevEstimate: BigInteger;
 begin
   if Radicand.IsZero or Radicand.IsOne then
     Exit(Radicand);
   if Radicand.IsNegative then
     Error(ecNegativeRadicand, ['NthRoot']);
-  if Nth = 0 then
-    Exit(BigInteger.Zero);
-  if Nth < 0 then
+  case Index of
+    0: Exit(BigInteger.Zero);
+    1: Exit(Radicand);
+    2: Exit(Sqrt(Radicand));
+  end;
+  if Index < 0 then
     Error(ecNegativeExponent, ['NthRoot']);
-  NthPred := System.Pred(Nth);
-  Result := BigInteger.Zero.SetBit(Radicand.BitLength div Nth);
+  PredIndex := System.Pred(Index);
+  Result := BigInteger.Zero.SetBit(Radicand.BitLength div Index);
   PrevEstimate := Result;
 
   // Loop invariants
-  BigNth := Nth;
-  BigNthPred := NthPred;
+  BigIndex := Index;
+  BigPredIndex := PredIndex;
 
   // Newton-Raphson approximation loop, similar to code in Sqrt().
   repeat
-    NewEstimate := (Result * BigNthPred + Radicand div BigInteger.Pow(Result, NthPred)) div BigNth;
-    // Loop until no difference with previous value or when these two start alternating.
-    if (NewEstimate = Result) or (NewEstimate = PrevEstimate) then
-      Exit(BigInteger.Min(Result, NewEstimate)); // Root is the lowest of these.
+    NewEstimate := (Result * BigPredIndex + Radicand div BigInteger.Pow(Result, PredIndex)) div BigIndex;
+    // Loop until no difference with previous value or detect end of a cycle.
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// Unfortunately, the true root is only detected when the cycle starts repeating, i.e. at the end of the cycle. ///
+    /// That means that this routine can be pretty slow, if there is a cycle. Otherwise, it is fast.                 ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if (Result = NewEstimate) or ((Result < NewEstimate) and (Result < PrevEstimate)) then
+      Exit(Result);
     PrevEstimate := Result;
     Result := NewEstimate;
   until False;
 end;
 
-class procedure BigInteger.NthRootRemainder(const Radicand: BigInteger; Nth: Integer; var Root, Remainder: BigInteger);
+class procedure BigInteger.NthRootRemainder(const Radicand: BigInteger; Index: Integer; var Root, Remainder: BigInteger);
 begin
-  Root := NthRoot(Radicand, Nth);
-  Remainder := Radicand - Pow(Root, Nth);
+  Root := NthRoot(Radicand, Index);
+  Remainder := Radicand - Pow(Root, Index);
 end;
 
 class function BigInteger.Sqr(const Value: BigInteger): BigInteger;

@@ -70,5 +70,6 @@ DataGenerators/BigRationals/BigRationalTestDataGenerator/nbproject/private/
 DataGenerators/BigRationals/BigRationalTestDataGenerator/build/
 DataGenerators/BigRationals/BigRationalTestDataGenerator/dist/
 Docs/**
+**/TestNthRoot64.*/**
 **/Profiling/**
 !Tests/BigNumberTests.groupproj

@@ -27,6 +27,8 @@ function BitCount(S: UInt64): Integer; overload;
 
 function BitLength(S: Int32): Integer; overload;
 function BitLength(U: UInt32): Integer; overload;
+function BitLength(S: Int64): Integer; overload;
+function BitLength(U: UInt64): Integer; overload;
 
 function DigitCount(S: Int32): Int32; overload;
 function DigitCount(U: UInt32): UInt32; overload;
@@ -43,6 +45,9 @@ function LowestOneBit(U: UInt32): UInt32; overload;
 function NumberOfLeadingZeros(U: UInt16): Integer; overload;
 function NumberOfLeadingZeros(S: Int32): Integer; overload;
 function NumberOfLeadingZeros(U: UInt32): Integer; overload;
+function NumberOfLeadingZeros(S: Int64): Integer; overload;
+function NumberOfLeadingZeros(U: UInt64): Integer; overload;
+
 function NumberOfTrailingZeros(U: UInt32): Integer; overload;
 function NumberOfTrailingZeros(U: UInt64): Integer; overload;
 
@@ -83,7 +88,6 @@ function HashCode(Value: Int32): UInt32; overload;
 function HashCode(Value: UInt32): UInt32; overload;
 function HashCode(Value: Int64): UInt32; overload;
 function HashCode(Value: UInt64): UInt32; overload;
-
 
 implementation
 
@@ -254,6 +258,16 @@ begin
   Result := 32 - NumberOfLeadingZeros(U);
 end;
 
+function BitLength(S: Int64): Integer;
+begin
+  Result := 64 - NumberOfLeadingZeros(S);
+end;
+
+function BitLength(U: UInt64): Integer;
+begin
+  Result := 64 - NumberOfLeadingZeros(U);
+end;
+
 function DigitCount(S: Int32): Int32; overload;
 begin
   if S <> Low(Int32) then
@@ -379,7 +393,7 @@ end;
 
 function NumberOfLeadingZeros(S: Int32): Integer;
 begin
-  Result := NumberOfLeadingZeros(UInt32(S));
+  Result := NumberOfLeadingZeros(UInt32(Abs(S)));
 end;
 
 function NumberOfLeadingZeros(U: UInt32): Integer;
@@ -448,6 +462,21 @@ begin
   end;
 end;
 {$IFEND PUREPASCAL}
+
+function NumberOfLeadingZeros(S: Int64): Integer;
+begin
+  Result := NumberOfLeadingZeros(UInt64(Abs(S)));
+end;
+
+function NumberOfLeadingZeros(U: UInt64): Integer;
+begin
+  if U = 0 then
+    Exit(1);
+  if U <= High(UInt32) then
+    Result := NumberOfLeadingZeros(UInt32(U)) + 32
+  else
+    Result := NumberOfLeadingZeros(UInt32(U shr 32));
+end;
 
 // Faster than NumberOfTrailingZeros2().
 function NumberOfTrailingZeros(U: UInt32): Integer;
@@ -705,8 +734,5 @@ function HashCode(Value: UInt64): UInt32;
 begin
   Result := UInt32(Value) xor UInt32(Value shr 32);
 end;
-
-
-
 
 end.

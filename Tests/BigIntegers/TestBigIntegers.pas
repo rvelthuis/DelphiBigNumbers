@@ -1004,6 +1004,7 @@ begin
   end;
 end;
 
+// Seems to have become slower since the code change. Is the old method (binary search) better for the relatively small values tested here?
 procedure TTestBigInteger.TestNthRoot;
 var
   I, Exponent: Integer;
@@ -1017,7 +1018,7 @@ begin
       TestValue := BigInteger.Pow(Value, Exponent) + BigInteger.Pow(Value, Exponent - 1);
       Root := BigInteger.NthRoot(TestValue, Exponent);
       PowerOfRoot := BigInteger.Pow(Root, Exponent);
-      PowerOfRootPlusOne := BigInteger.Pow(Root + BigInteger.One, Exponent);
+      PowerOfRootPlusOne := BigInteger.Pow(Root.Succ, Exponent);
       Check((PowerOfRoot <= TestValue) and (TestValue < PowerOfRootPlusOne), Format('(%d,%d) NthRoot(%s, %d) = %s (%s)', [I, Exponent, TestValue.ToString(16), Exponent, Root.ToString(16), Value.ToString(16)]));
     end;
   end;
