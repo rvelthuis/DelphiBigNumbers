@@ -10600,7 +10600,7 @@ begin
   else
   begin
     // If the bit is beyond the bit length, the size must be expanded.
-    if Index > Self.BitLength then
+    if (Index > Self.BitLength) or Self.IsZero then
       Result.EnsureSize(LimbIndex + 1);
 
     // Set the bit.
@@ -10692,16 +10692,13 @@ begin
   end
   else
   begin
-    if Index > BitLength then
+    if (Index > BitLength) or Self.IsZero then
       Result.EnsureSize(LimbIndex + 1);
     Result.FData[LimbIndex] := Result.FData[LimbIndex] xor BitMask;
   end;
   Result.Compact;
 end;
 
-// TODO: The Newton-Raphson part of this algorithm can go into an endless loop, because values do not simply alternate (easily
-// detectable by simple memoization), they cycle. This is harder to detect than a mere alternation. Must find a better
-// end condition.
 class function BigInteger.NthRoot(const Radicand: BigInteger; Index: Integer): BigInteger;
 var
   PredIndex: Integer;
@@ -10734,7 +10731,7 @@ begin
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /// Unfortunately, the true root is only detected when the cycle starts repeating, i.e. at the end of the cycle. ///
-    /// That means that this routine can be pretty slow, if there is a cycle. Otherwise, it is fast.                 ///
+    /// That means that this routine can be slower if there is a cycle. Otherwise, it is fast.                 ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     if (Result = NewEstimate) or ((Result < NewEstimate) and (Result < PrevEstimate)) then
       Exit(Result);
