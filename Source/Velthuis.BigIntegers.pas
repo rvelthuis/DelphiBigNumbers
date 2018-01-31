@@ -734,6 +734,7 @@ type
 
     /// <summary>The function equivalent to the operator '*'.</summary>
     class function Multiply(const Left, Right: BigInteger): BigInteger; overload; static;
+    class procedure Multiply(const Left, Right: BigInteger; var Result: BigInteger); overload; static;
 
     /// <summary>Function performing "schoolbook" multiplication.</summary>
     class procedure MultiplyBaseCase(const Left, Right: BigInteger; var Result: BigInteger); static;
@@ -894,7 +895,8 @@ type
     class function ModPow(const ABase, AExponent, AModulus: BigInteger): BigInteger; static;
 
     /// <summary>Returns the specified value raised to the specified power.</summary>
-    class function Pow(const ABase: BigInteger; AExponent: Integer): BigInteger; static;
+    class function Pow(const ABase: BigInteger; AExponent: Integer): BigInteger; overload; static;
+    class procedure Pow(const ABase: BigInteger; AExponent: Integer; var Result: BigInteger); overload; static;
 
     /// <summary>Returns the nth root R of a BigInteger such that R^index <= Radicand < (R+1)^index.</summary>
     class function NthRoot(const Radicand: BigInteger; Index: Integer): BigInteger; static;
@@ -9501,6 +9503,11 @@ begin
 end;
 
 class function BigInteger.Multiply(const Left, Right: BigInteger): BigInteger;
+begin
+  Multiply(Left, Right, Result);
+end;
+
+class procedure BigInteger.Multiply(const Left, Right: BigInteger; var Result: BigInteger);
 var
   LResult: BigInteger; // Avoid prematurely overwriting result when it is same as one of the operands.
 begin
@@ -10035,7 +10042,13 @@ begin
     Error(ecParse, [S, 'BigInteger']);
 end;
 
+
 class function BigInteger.Pow(const ABase: BigInteger; AExponent: Integer): BigInteger;
+begin
+  Pow(ABase, AExponent, Result);
+end;
+
+class procedure BigInteger.Pow(const ABase: BigInteger; AExponent: Integer; var Result: BigInteger);
 var
   LBase: BigInteger;
   LBaseBitLength: Integer;
@@ -10050,13 +10063,19 @@ var
   LResultIsNegative: Boolean;
 begin
   if AExponent < 0 then
-    Error(ecNegativeExponent, [IntToStr(AExponent)]);
+    Error(ecNegativeExponent, ['AExponent']);
 
   if ABase.IsZero then
     if AExponent = 0 then
-      Exit(BigInteger.One)
+    begin
+      ShallowCopy(BigInteger.One, Result);
+      Exit;
+    end
     else
-      Exit(ABase);
+    begin
+      ShallowCopy(ABase, Result);
+      Exit;
+    end;
 
   LResultIsNegative := ABase.IsNegative and Odd(AExponent);
 
@@ -10080,9 +10099,15 @@ begin
     if LBaseBitLength = 1 then
     begin
       if LResultIsNegative then
-        Exit(BigInteger.MinusOne shl (LTrailingZeros * AExponent))
+      begin
+        ShallowCopy(BigInteger.MinusOne shl (LTrailingZeros * AExponent), Result);
+        Exit;
+      end
       else
-        Exit(BigInteger.One shl (LTrailingZeros * AExponent));
+      begin
+        ShallowCopy(BigInteger.One shl (LTrailingZeros * AExponent), Result);
+        Exit;
+      end;
     end;
   end
   else
@@ -10090,9 +10115,15 @@ begin
     LBaseBitLength := LBase.BitLength;
     if LBaseBitLength = 1 then
       if LResultIsNegative then
-        Exit(BigInteger.MinusOne)
+      begin
+        ShallowCopy(BigInteger.MinusOne, Result);
+        Exit;
+      end
       else
-        Exit(BigInteger.One);
+      begin
+        ShallowCopy(BigInteger.One, Result);
+        Exit;
+      end;
   end;
 
   LScaleFactor := Int64(LBaseBitLength) * AExponent;
@@ -10134,12 +10165,18 @@ begin
       else
         Result := BigInteger(LIntResult) shl LShift; // slightly slower: BigInteger is shifted, not the integer.
       if LResultIsNegative then
-        Exit(-Result)
+      begin
+        ShallowCopy(-Result, Result);
+        Exit;
+      end
       else
-        Exit(Result)
+        Exit;
     end
     else
-      Exit(BigInteger(LIntResult * LNewSign));
+    begin
+      ShallowCopy(BigInteger(LIntResult * LNewSign), Result);
+      Exit;
+    end;
   end
   else
   begin
@@ -10151,7 +10188,7 @@ begin
     while LExponent <> 0 do
     begin
       if Odd(LExponent) then
-        LBigResult := LBigResult * LBase;
+        BigInteger.Multiply(LBigResult, LBase, LBigResult);
       LExponent := LExponent shr 1;
       if LExponent <> 0 then
         LBase := Sqr(LBase);
@@ -10162,9 +10199,15 @@ begin
       LBigResult := LBigResult shl (LTrailingZeros * AExponent);
 
     if LResultIsNegative then
-      Exit(-LBigResult)
+    begin
+      ShallowCopy(-LBigResult, Result);
+      Exit;
+    end
     else
-      Exit(LBigResult);
+    begin
+      ShallowCopy(LBigResult, Result);
+      Exit;
+    end;
   end;
 end;
 

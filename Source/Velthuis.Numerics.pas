@@ -1,4 +1,40 @@
-﻿unit Velthuis.Numerics;
+﻿{---------------------------------------------------------------------------}
+{                                                                           }
+{ File:       Velthuis.Numerics.pas                                         }
+{ Function:   Integer tool functions.                                       }
+{ Language:   Delphi version XE3 or later                                   }
+{ Author:     Rudy Velthuis                                                 }
+{ Copyright:  (c) 2016 Rudy Velthuis                                        }
+{                                                                           }
+{ License:    Redistribution and use in source and binary forms, with or    }
+{             without modification, are permitted provided that the         }
+{             following conditions are met:                                 }
+{                                                                           }
+{             * Redistributions of source code must retain the above        }
+{               copyright notice, this list of conditions and the following }
+{               disclaimer.                                                 }
+{             * Redistributions in binary form must reproduce the above     }
+{               copyright notice, this list of conditions and the following }
+{               disclaimer in the documentation and/or other materials      }
+{               provided with the distribution.                             }
+{                                                                           }
+{ Disclaimer: THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER "AS IS"     }
+{             AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT     }
+{             LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND     }
+{             FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO        }
+{             EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE     }
+{             FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,     }
+{             OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,      }
+{             PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,     }
+{             DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED    }
+{             AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT   }
+{             LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)        }
+{             ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF   }
+{             ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.                    }
+{                                                                           }
+{---------------------------------------------------------------------------}
+
+unit Velthuis.Numerics;
 
 interface
 
@@ -18,6 +54,7 @@ interface
 uses
   System.Math, System.Types;
 
+// Return the number of set (1) bits in the given integers.
 function BitCount(U: UInt8): Integer; overload;
 function BitCount(U: UInt16): Integer; overload;
 function BitCount(S: Int32): Integer; overload;
@@ -25,65 +62,88 @@ function BitCount(U: UInt32): Integer; overload;
 function BitCount(S: Int64): Integer; overload;
 function BitCount(S: UInt64): Integer; overload;
 
+// Return the number of significant bits, excluding the sign bit.
 function BitLength(S: Int32): Integer; overload;
 function BitLength(U: UInt32): Integer; overload;
 function BitLength(S: Int64): Integer; overload;
 function BitLength(U: UInt64): Integer; overload;
 
+// Return the number of significant digits.
 function DigitCount(S: Int32): Int32; overload;
 function DigitCount(U: UInt32): UInt32; overload;
 
+// Return an integer value with at most a single one-bit, in the position
+// of the most significant one-bit in the specified integer value.
 function HighestOneBit(S: Int32): Int32; overload;
 function HighestOneBit(U: UInt32): UInt32; overload;
 
+// Checks if the given integer is a power of two.
 function IsPowerOfTwo(S: Int32): Boolean; overload;
 function IsPowerOfTwo(U: UInt32): Boolean; overload;
 
+// Return an integer value with at most a single one-bit, in the position
+// of the least significant one-bit in the given integers value.
 function LowestOneBit(S: Int32): Int32; overload;
 function LowestOneBit(U: UInt32): UInt32; overload;
 
+// Return the number of leading (high order) zero-bits (excluding the sign bit) of
+// the given integers.
 function NumberOfLeadingZeros(U: UInt16): Integer; overload;
 function NumberOfLeadingZeros(S: Int32): Integer; overload;
 function NumberOfLeadingZeros(U: UInt32): Integer; overload;
 function NumberOfLeadingZeros(S: Int64): Integer; overload;
 function NumberOfLeadingZeros(U: UInt64): Integer; overload;
 
+// Return the number of trailing (low order) zero-bits of the given integers.
 function NumberOfTrailingZeros(U: UInt32): Integer; overload;
 function NumberOfTrailingZeros(U: UInt64): Integer; overload;
 
+// Reverse the bits of the given integers.
 function Reverse(U: UInt8): UInt8; overload;
 function Reverse(U: UInt16): UInt16; overload;
 function Reverse(S: Int32): Int32; overload;
 function Reverse(U: UInt32): UInt32; overload;
 
+// Reverse the bytes of the given integers.
 function ReverseBytes(S: Int32): Int32; overload;
 function ReverseBytes(U: UInt32): UInt32; overload;
 
+// Rotate the given integers left by Distance bits.
 function RotateLeft(S: Int32; Distance: Integer): Int32; overload;
 function RotateLeft(U: UInt32; Distance: Integer): UInt32; overload;
 
+// Rotate the given integers right by Distance bits.
 function RotateRight(S: Int32; Distance: Integer): Int32; overload;
 function RotateRight(U: UInt32; Distance: Integer): UInt32; overload;
 
+// Returns the sign of the integer: -1 for negative, 0 for zero and 1 for positive.
 function Sign(S: Int32): TValueSign;
 
+// Return a binary representation of the given integers.
 function ToBinaryString(S: Int32): string; overload;
 function ToBinaryString(U: UInt32): string; overload;
 
+// Return a hexadecimal representation of the given integers.
 function ToHexString(S: Int32): string; overload;
 function ToHexString(U: UInt32): string; overload;
 
+// Return an octal representation of the given integers.
 function ToOctalString(S: Int32): string; overload;
 function ToOctalString(U: UInt32): string; overload;
 
+// Return a string representation of the given integers, in the given numerical base.
 function ToString(S: Int32; Base: Byte): string; overload;
 function ToString(U: UInt32; Base: Byte): string; overload;
+function ToString(S: Int32): string; overload;
+function ToString(U: UInt32): string; overload;
 
+// Compare the given integers and return -1 for less, 0 for equal and 1 for greater.
 function Compare(Left, Right: Int32): Integer; overload;
 function Compare(Left, Right: UInt32): Integer; overload;
 function Compare(Left, Right: Int64): Integer; overload;
 function Compare(Left, Right: UInt64): Integer; overload;
 
+// Calculate a hash code for the given integers.
 function HashCode(Value: Int32): UInt32; overload;
 function HashCode(Value: UInt32): UInt32; overload;
 function HashCode(Value: Int64): UInt32; overload;
@@ -91,10 +151,11 @@ function HashCode(Value: UInt64): UInt32; overload;
 
 implementation
 
-// https://en.wikipedia.org/wiki/Find_first_set
 
 uses
-  System.SysUtils;
+  System.SysUtils, Velthuis.StrConsts;
+
+// https://en.wikipedia.org/wiki/Find_first_set
 
 const
   // Currently not used.
@@ -660,7 +721,7 @@ end;
 function ToString(U: UInt32; Base: Byte): string;
 begin
   if not (Base in [2..36]) then
-    raise Exception.Create('Error Message');  // convert error? argument error?
+    raise EInvalidArgument.Create(SInvalidArgumentBase);
 
   if U = 0 then
     Result := '0'
@@ -673,6 +734,16 @@ begin
       U := U div Base;
     end;
   end;
+end;
+
+function ToString(S: Int32): string;
+begin
+  Result := ToString(S, 10);
+end;
+
+function ToString(U: UInt32): string;
+begin
+  Result := ToString(U, 10);
 end;
 
 function Compare(Left, Right: Int32): Integer;
