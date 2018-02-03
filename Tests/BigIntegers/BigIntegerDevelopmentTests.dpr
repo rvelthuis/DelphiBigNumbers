@@ -34,7 +34,8 @@ uses
   Velthuis.BigRationals in '..\..\Source\Velthuis.BigRationals.pas',
   Velthuis.BigIntegers.Primes in '..\..\Source\Velthuis.BigIntegers.Primes.pas',
   Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas',
-  Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas';
+  Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas',
+  Velthuis.XorShifts in '..\..\Source\Velthuis.XorShifts.pas';
 
 {$R *.RES}
 
