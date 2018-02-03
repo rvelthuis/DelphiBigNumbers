@@ -5,7 +5,7 @@
 {             IRandom interface from Velthuis.RandomNumbers.                }
 { Language:   Delphi version XE3 or later                                   }
 { Author:     Rudy Velthuis                                                 }
-{ Copyright:  (c) 2016 Rudy Velthuis                                        }
+{ Copyright:  (c) 2018 Rudy Velthuis                                        }
 {                                                                           }
 { Literature: https://de.wikipedia.org/wiki/Xorshift                        }
 {             https://en.wikipedia.org/wiki/Xorshift                        }
