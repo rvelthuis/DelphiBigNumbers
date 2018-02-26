@@ -53,6 +53,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Scanner;
+import java.util.Random;
 
 public class BigIntegerTestDataGenerator 
 {
@@ -168,8 +169,9 @@ public class BigIntegerTestDataGenerator
                 generateComparisonResults(bw);
                 generateGCDResults(bw);
                 generateInvModResults(bw);
-                generateMinResults(bw);
+                generateMinResults(bw);               
                 generateMaxResults(bw);
+                generateFactorialResults(bw);
             }
             finally
             {
@@ -179,6 +181,7 @@ public class BigIntegerTestDataGenerator
             bw = newWriter("BigIntegerConvertResults.inc");
             try
             {
+                generateTryParseResults(bw);
                 generateByteArrayResults(bw);
                 generateHexResults(bw);
                 generateAsIntegerResults(bw);
@@ -333,19 +336,24 @@ public class BigIntegerTestDataGenerator
         }
         return result.toString();
     }
-    
-    static void writeMonadicResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
+        
+     static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix) throws IOException
+     {
+         writeUnaryResults(bw, arrayName, results, count, prefix, suffix, "Arguments");
+     }
+        
+    static void writeUnaryResults(BufferedWriter bw, String arrayName, TestResult[] results, int count, String prefix, String suffix, String sourceArrayName) throws IOException
     {
-        writeln(bw, "  %s: array[0..ArgumentCount - 1] of TTestResult =", arrayName, count);
+        writeln(bw, "  %s: array[0..%d - 1] of TTestResult =", arrayName, count);
         writeln(bw, "  (");
 
         for (int i = 0; i < count; ++i)
-            formatResult(bw, results[i], (i == count - 1), String.format("%sArguments[%d]%s", prefix, i, suffix));
+            formatResult(bw, results[i], (i == count - 1), String.format("%s%s[%d]%s", prefix, sourceArrayName, i, suffix));
         writeln(bw, "  );");
         writeln(bw);
     }
 
-    static void writeDyadicResults(BufferedWriter bw, String ArrayName, TestResult[] results, int count, String op) throws IOException
+    static void writeBinaryResults(BufferedWriter bw, String ArrayName, TestResult[] results, int count, String op) throws IOException
     {
         // This routine goes out of its way to nicely indent and format the strings into 40 character portions.
         // There may be a better way to achieve this, but hey, it works.
@@ -523,7 +531,7 @@ public class BigIntegerTestDataGenerator
             }
         }
         
-        writeDyadicResults(bw, "AddResults", results, count, "+");
+        writeBinaryResults(bw, "AddResults", results, count, "+");
     }
 
     static void generateSubtractResults(BufferedWriter bw) throws IOException
@@ -550,7 +558,7 @@ public class BigIntegerTestDataGenerator
             }
         }
         
-        writeDyadicResults(bw, "SubtractResults", results, count, "-");
+        writeBinaryResults(bw, "SubtractResults", results, count, "-");
     }
     
     static void generateMultiplyResults(BufferedWriter bw) throws IOException
@@ -577,7 +585,7 @@ public class BigIntegerTestDataGenerator
             }
         }
         
-        writeDyadicResults(bw, "MultiplyResults", results, count, "*");
+        writeBinaryResults(bw, "MultiplyResults", results, count, "*");
     }
 
     static void generateDivisionResults(BufferedWriter bw) throws IOException
@@ -619,7 +627,7 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeDyadicResults(bw, "DivisionResults", results, count, "div");
+        writeBinaryResults(bw, "DivisionResults", results, count, "div");
     }
 
     static void generateModulusResults(BufferedWriter bw) throws IOException
@@ -661,7 +669,7 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeDyadicResults(bw, "ModulusResults", results, count, "mod");
+        writeBinaryResults(bw, "ModulusResults", results, count, "mod");
     }
 
     static void generateBitwiseAndResults(BufferedWriter bw) throws IOException
@@ -688,7 +696,7 @@ public class BigIntegerTestDataGenerator
             }
         }
         
-        writeDyadicResults(bw, "BitwiseAndResults", results, count, "and");
+        writeBinaryResults(bw, "BitwiseAndResults", results, count, "and");
     }
 
     static void generateBitwiseOrResults(BufferedWriter bw) throws IOException
@@ -715,7 +723,7 @@ public class BigIntegerTestDataGenerator
             }
         }
         
-        writeDyadicResults(bw, "BitwiseOrResults", results, count, "or");
+        writeBinaryResults(bw, "BitwiseOrResults", results, count, "or");
     }
 
     static void generateBitwiseXorResults(BufferedWriter bw) throws IOException
@@ -742,7 +750,7 @@ public class BigIntegerTestDataGenerator
             }
         }
         
-        writeDyadicResults(bw, "BitwiseXorResults", results, count, "xor");
+        writeBinaryResults(bw, "BitwiseXorResults", results, count, "xor");
     }
     
     static void generateSetBitResults(BufferedWriter bw) throws IOException
@@ -858,7 +866,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "NegationResults", results, count, "Negate(", ")");
+        writeUnaryResults(bw, "NegationResults", results, count, "Negate(", ")");
     }
 
     static void generateLogicalNotResults(BufferedWriter bw) throws IOException
@@ -879,7 +887,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "LogicalNotResults", results, count, "not ", "");
+        writeUnaryResults(bw, "LogicalNotResults", results, count, "not ", "");
     }
 
     static void generateLeftShiftResults(BufferedWriter tw) throws IOException
@@ -1166,7 +1174,7 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeDyadicResults(bw, "GCDResults", results, count, "gcd");
+        writeBinaryResults(bw, "GCDResults", results, count, "gcd");
     }
     
     static void generateInvModResults(BufferedWriter bw) throws IOException
@@ -1191,6 +1199,7 @@ public class BigIntegerTestDataGenerator
                     if (b3.signum() == 0)
                     {
                         tr.val = "Error: Zero result -- Java is wrong";
+                        writeln("(%d,%d,%d): Zero result", i, j, n);
                         tr.info = TestResultInfo.ArgumentRange;
                     }
                     else
@@ -1210,7 +1219,7 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeDyadicResults(bw, "InvModResults", results, count, "invMod");
+        writeBinaryResults(bw, "InvModResults", results, count, "invMod");
     }
 
     static void generateMinResults(BufferedWriter bw) throws IOException
@@ -1235,7 +1244,7 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeDyadicResults(bw, "MinResults", results, count, "min");
+        writeBinaryResults(bw, "MinResults", results, count, "min");
     }
 
     static void generateMaxResults(BufferedWriter bw) throws IOException
@@ -1260,7 +1269,109 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeDyadicResults(bw, "MaxResults", results, count, "max");
+        writeBinaryResults(bw, "MaxResults", results, count, "max");
+    }
+    
+    static BigInteger factorial(int n)
+    {
+        BigInteger result = BigInteger.ONE;
+        
+        if (n < 2)
+            return BigInteger.ONE;
+        
+        for (int i = 2; i <= n; i++)
+        {
+            result = result.multiply(BigInteger.valueOf(i));
+        }
+        
+        return result;
+    }
+    
+    static void generateFactorialResults(BufferedWriter bw) throws IOException
+    {
+        int count = BITSHIFTS.length;
+        TestResult[] results = new TestResult[count];
+        
+        for (int i = 0; i < count; i++)
+        {
+            BigInteger b = factorial(BITSHIFTS[i]);
+            
+            TestResult tr = new TestResult();
+            
+            tr.info = TestResultInfo.Ok;
+            tr.val = b.toString();
+            results[i] = tr; 
+        }
+        
+        writeUnaryResults(bw, "FactorialResults", results, count, "Factorial(", ")", "BitShifts");
+    }
+    
+    static String generateRandomStringForBase(int maxLength, int base, Random rand)
+    {
+        
+        final String PARSECHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; 
+        
+        StringBuilder sb = new StringBuilder();
+        int length = 2 + rand.nextInt(maxLength - 2);
+        
+        for (int i = 0; i < length; i++)
+        {
+            int r = rand.nextInt(base + 1);
+            if (r >= PARSECHARS.length())
+                r = PARSECHARS.length() - 1;
+            sb.append(PARSECHARS.charAt(r));
+        }
+        
+        return sb.toString();
+    }
+    
+    static void generateTryParseResults(BufferedWriter bw) throws IOException
+    {
+        // Generate strings
+        final int STRINGS = 90;
+        Random rand = new Random(1234567);
+        int errors = 0;
+
+        writeln(bw, "type");
+        writeln(bw, "  TTryParseResult = record");
+        writeln(bw, "    Str: string;");
+        writeln(bw, "    Str10: string;");
+        writeln(bw, "    Base: Integer;");
+        writeln(bw, "    Result: Boolean;");
+        writeln(bw, "  end;");
+        writeln(bw);
+        
+        writeln(bw, "const");
+        writeln(bw, "  TryParseResults: array[0..%d] of TTryParseResult =", STRINGS - 1);
+        writeln(bw, "  (");
+        
+        for (int i = 0; i < STRINGS; i++)
+        {
+            int base = BASES[rand.nextInt(BASES.length)];
+            String s = generateRandomStringForBase(20, base, rand);
+            String s10;
+            boolean success = true;
+            try
+            {
+                BigInteger b = new BigInteger(s, base);
+                s10 = b.toString(10);
+            }
+            catch (NumberFormatException e) 
+            {
+                success = false;
+                errors++;
+                writeln("(%d): NumberFormatException %s, base = %d", i, e.getMessage(), base);
+                s10 = "error";
+            }
+            
+            writeln(bw, "    (Str: %-23s Str10: %-35s Base: %2d; Result: %s)%s", 
+                String.format("'%s';", s), 
+                String.format("'%s';", s10),
+                base, success ? "True" : "False", i == STRINGS - 1 ? "" : ",");
+        }
+        writeln(bw, "  );");
+        writeln("%d errors.", errors);
+        writeln();
     }
 
     static void generateByteArrayResults(BufferedWriter bw) throws IOException
@@ -1289,11 +1400,8 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "ByteArrayResults", results, count, "", ".ToByteArray");
+        writeUnaryResults(bw, "ByteArrayResults", results, count, "", ".ToByteArray");
     }
-
-    
-    
 
     static void generateHexResults(BufferedWriter bw) throws IOException
     {
@@ -1319,7 +1427,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "HexResults", results, count, "", ".ToString(16)");
+        writeUnaryResults(bw, "HexResults", results, count, "", ".ToString(16)");
     }
 
     static void generateAsIntegerResults(BufferedWriter bw) throws IOException
@@ -1347,7 +1455,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsIntegerResults", results, count, "", ".AsInteger");
+        writeUnaryResults(bw, "AsIntegerResults", results, count, "", ".AsInteger");
     }
 
     static void generateAsCardinalResults(BufferedWriter bw) throws IOException
@@ -1387,7 +1495,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsCardinalResults", results, count, "", ".AsCardinal");
+        writeUnaryResults(bw, "AsCardinalResults", results, count, "", ".AsCardinal");
     }
     
     static void generateAsInt64Results(BufferedWriter bw) throws IOException
@@ -1415,7 +1523,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsInt64Results", results, count, "", ".AsInt64");
+        writeUnaryResults(bw, "AsInt64Results", results, count, "", ".AsInt64");
     }
 
     static void generateAsUInt64Results(BufferedWriter bw) throws IOException
@@ -1452,7 +1560,7 @@ public class BigIntegerTestDataGenerator
             results[i] = tr;
         }
 
-        writeMonadicResults(bw, "AsUInt64Results", results, count, "", ".AsUInt64");
+        writeUnaryResults(bw, "AsUInt64Results", results, count, "", ".AsUInt64");
     }
     
     static void generateFromDoubleResults(BufferedWriter bw) throws IOException
@@ -1587,6 +1695,11 @@ public class BigIntegerTestDataGenerator
     static int[] BITS = new int[]
     {
        1, 4, 10, 100, 1000
+    };
+    
+    static int[] BASES = new int[]
+    {
+        2, 3, 8, 9, 10, 11, 16, 17, 36
     };
 
     static double[] DOUBLES = new double[]

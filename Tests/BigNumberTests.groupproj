@@ -1,0 +1,60 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{59FC6DF5-374A-4A82-A5AC-8B0E02B70E94}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="BigIntegers\BigIntegerDevelopmentTests.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="BigDecimals\BigDecimalDevelopmentTests.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="BigRationals\BigRationalDevelopmentTests.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="BigIntegerDevelopmentTests">
+        <MSBuild Projects="BigIntegers\BigIntegerDevelopmentTests.dproj"/>
+    </Target>
+    <Target Name="BigIntegerDevelopmentTests:Clean">
+        <MSBuild Projects="BigIntegers\BigIntegerDevelopmentTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="BigIntegerDevelopmentTests:Make">
+        <MSBuild Projects="BigIntegers\BigIntegerDevelopmentTests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="BigDecimalDevelopmentTests">
+        <MSBuild Projects="BigDecimals\BigDecimalDevelopmentTests.dproj"/>
+    </Target>
+    <Target Name="BigDecimalDevelopmentTests:Clean">
+        <MSBuild Projects="BigDecimals\BigDecimalDevelopmentTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="BigDecimalDevelopmentTests:Make">
+        <MSBuild Projects="BigDecimals\BigDecimalDevelopmentTests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="BigRationalDevelopmentTests">
+        <MSBuild Projects="BigRationals\BigRationalDevelopmentTests.dproj"/>
+    </Target>
+    <Target Name="BigRationalDevelopmentTests:Clean">
+        <MSBuild Projects="BigRationals\BigRationalDevelopmentTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="BigRationalDevelopmentTests:Make">
+        <MSBuild Projects="BigRationals\BigRationalDevelopmentTests.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="BigIntegerDevelopmentTests;BigDecimalDevelopmentTests;BigRationalDevelopmentTests"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="BigIntegerDevelopmentTests:Clean;BigDecimalDevelopmentTests:Clean;BigRationalDevelopmentTests:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

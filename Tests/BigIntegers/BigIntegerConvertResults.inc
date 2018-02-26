@@ -1,7 +1,7 @@
 //                                                                                                  //
 // File: BigIntegerConvertResults.inc                                                               //
 //                                                                                                  //
-// Test data for Velthuis.BigIntegers.pas, generated 15 Jan, 2017, 02:04:22                         //
+// Test data for Velthuis.BigIntegers.pas, generated 15 Sep, 2017, 13:32:54                         //
 //                                                                                                  //
 // Do not modify the generated data in this file.  Modify the data in the generator source file.    //
 // The source file for the generator is BigIntegerTestDataGenerator.java, in the Test subdirectory. //
@@ -10,7 +10,109 @@
 // http://www.netbeans.org                                                                          //
 //                                                                                                  //
 
-  ByteArrayResults: array[0..ArgumentCount - 1] of TTestResult =
+type
+  TTryParseResult = record
+    Str: string;
+    Str10: string;
+    Base: Integer;
+    Result: Boolean;
+  end;
+
+const
+  TryParseResults: array[0..89] of TTryParseResult =
+  (
+    (Str: '1884533426';           Str10: '772501236';                        Base:  9; Result: True),
+    (Str: 'XDZGKDTJ7BPFY';        Str10: '158207314324491860110';            Base: 36; Result: True),
+    (Str: '8A2EEBACABH4A4E932';   Str10: 'error';                            Base: 17; Result: False),
+    (Str: '30738686603';          Str10: '10780692330';                      Base:  9; Result: True),
+    (Str: '221201010';            Str10: 'error';                            Base:  2; Result: False),
+    (Str: '4T';                   Str10: '173';                              Base: 36; Result: True),
+    (Str: '5525975281';           Str10: '5525975281';                       Base: 10; Result: True),
+    (Str: '7A8449';               Str10: 'error';                            Base: 10; Result: False),
+    (Str: '8QW3KIZUFD7';          Str10: '31980381687657547';                Base: 36; Result: True),
+    (Str: '1DCDCB8F3DBBE';        Str10: '1053978895959753';                 Base: 17; Result: True),
+    (Str: '804728014313';         Str10: '252913313073';                     Base:  9; Result: True),
+    (Str: '311230302102111';      Str10: 'error';                            Base:  3; Result: False),
+    (Str: 'A0F';                  Str10: '2575';                             Base: 16; Result: True),
+    (Str: '7507B3BB56C';          Str10: '8042246288748';                    Base: 16; Result: True),
+    (Str: '214A50352601';         Str10: 'error';                            Base: 10; Result: False),
+    (Str: 'D0G64524B20E16BC0';    Str10: '635351473509160908411';            Base: 17; Result: True),
+    (Str: '001202';               Str10: '47';                               Base:  3; Result: True),
+    (Str: 'BR98XO';               Str10: '710909052';                        Base: 36; Result: True),
+    (Str: '32G6B327E65E9FEF44F';  Str10: '44641370792245883206917';          Base: 17; Result: True),
+    (Str: '156862043A477';        Str10: 'error';                            Base: 10; Result: False),
+    (Str: '80670831093571';       Str10: 'error';                            Base:  9; Result: False),
+    (Str: '8763';                 Str10: '6456';                             Base:  9; Result: True),
+    (Str: '257';                  Str10: '257';                              Base: 10; Result: True),
+    (Str: '000210';               Str10: '21';                               Base:  3; Result: True),
+    (Str: 'A8368201064339A977A';  Str10: 'error';                            Base: 10; Result: False),
+    (Str: '6116782051150268';     Str10: 'error';                            Base:  8; Result: False),
+    (Str: '9CH0B19EE4';           Str10: 'error';                            Base: 17; Result: False),
+    (Str: 'ZCC8SZ9Q72ZELSQZI';    Str10: '281281219162174919546918046';      Base: 36; Result: True),
+    (Str: 'A98AA6';               Str10: 'error';                            Base: 10; Result: False),
+    (Str: '12022031321320';       Str10: 'error';                            Base:  3; Result: False),
+    (Str: '7AC1H69071';           Str10: 'error';                            Base: 17; Result: False),
+    (Str: 'C30B';                 Str10: '49931';                            Base: 16; Result: True),
+    (Str: '457851408';            Str10: 'error';                            Base:  8; Result: False),
+    (Str: '73032320';             Str10: '15480016';                         Base:  8; Result: True),
+    (Str: 'G9A678124AFA45662';    Str10: 'error';                            Base: 16; Result: False),
+    (Str: '3741F7D4G430CAD';      Str10: '576861449495749408';               Base: 17; Result: True),
+    (Str: '1021102012';           Str10: 'error';                            Base:  2; Result: False),
+    (Str: '68902154021257487';    Str10: 'error';                            Base:  9; Result: False),
+    (Str: '3111112';              Str10: 'error';                            Base:  3; Result: False),
+    (Str: '5824091731424';        Str10: 'error';                            Base:  9; Result: False),
+    (Str: '910';                  Str10: 'error';                            Base:  9; Result: False),
+    (Str: '11';                   Str10: '3';                                Base:  2; Result: True),
+    (Str: '020';                  Str10: 'error';                            Base:  2; Result: False),
+    (Str: '541';                  Str10: '541';                              Base: 10; Result: True),
+    (Str: '92C';                  Str10: '2647';                             Base: 17; Result: True),
+    (Str: '41GA39BCBEB';          Str10: 'error';                            Base: 16; Result: False),
+    (Str: '5A9A444319';           Str10: 'error';                            Base: 10; Result: False),
+    (Str: '200GG2E3G8';           Str10: 'error';                            Base: 16; Result: False),
+    (Str: '20221111121100222';    Str10: 'error';                            Base:  2; Result: False),
+    (Str: '70249FG73CA';          Str10: 'error';                            Base: 16; Result: False),
+    (Str: '2C52E570904A07DC';     Str10: '3193867357378971612';              Base: 16; Result: True),
+    (Str: '225';                  Str10: '269';                              Base: 11; Result: True),
+    (Str: '2313003';              Str10: 'error';                            Base:  3; Result: False),
+    (Str: 'H61KFOMQ';             Str10: '1345346273906';                    Base: 36; Result: True),
+    (Str: '34';                   Str10: '52';                               Base: 16; Result: True),
+    (Str: 'QR8PPC';               Str10: '1617876768';                       Base: 36; Result: True),
+    (Str: '1111111213';           Str10: 'error';                            Base:  3; Result: False),
+    (Str: '21212010';             Str10: 'error';                            Base:  2; Result: False),
+    (Str: '345455';               Str10: '117549';                           Base:  8; Result: True),
+    (Str: '60E0EG';               Str10: 'error';                            Base: 16; Result: False),
+    (Str: 'FB42SIVU1M5PU';        Str10: '72538467041692094322';             Base: 36; Result: True),
+    (Str: '83325747';             Str10: 'error';                            Base:  8; Result: False),
+    (Str: '1213121220';           Str10: 'error';                            Base:  3; Result: False),
+    (Str: '739B69B321373A';       Str10: 'error';                            Base: 11; Result: False),
+    (Str: '3381A7A3032319678';    Str10: '153487103455839084';               Base: 11; Result: True),
+    (Str: '23230';                Str10: 'error';                            Base:  3; Result: False),
+    (Str: '6EF3F';                Str10: '454463';                           Base: 16; Result: True),
+    (Str: 'QVL44K1T2ZBQQ8MX';     Str10: '5941892890998190954693689';        Base: 36; Result: True),
+    (Str: '15286601153';          Str10: '5551787838';                       Base:  9; Result: True),
+    (Str: '28138317546';          Str10: 'error';                            Base:  8; Result: False),
+    (Str: '3525633814626555';     Str10: 'error';                            Base:  8; Result: False),
+    (Str: '67401567694';          Str10: 'error';                            Base:  9; Result: False),
+    (Str: 'NMZIGI';               Str10: '1429330482';                       Base: 36; Result: True),
+    (Str: 'BE4G88EECF686';        Str10: '6898671987110680';                 Base: 17; Result: True),
+    (Str: '156671710561217262';   Str10: '3900647519100594';                 Base:  8; Result: True),
+    (Str: '2021210';              Str10: 'error';                            Base:  2; Result: False),
+    (Str: '23020223010';          Str10: 'error';                            Base:  3; Result: False),
+    (Str: 'A9A02AB1A53110336B0';  Str10: 'error';                            Base: 11; Result: False),
+    (Str: '12000002200';          Str10: '98487';                            Base:  3; Result: True),
+    (Str: '68';                   Str10: 'error';                            Base:  8; Result: False),
+    (Str: '112123311';            Str10: 'error';                            Base:  3; Result: False),
+    (Str: '2CZ2HYP5R4JKM';        Str10: '11184442466083437334';             Base: 36; Result: True),
+    (Str: '40708122475029355';    Str10: 'error';                            Base:  9; Result: False),
+    (Str: '254';                  Str10: '254';                              Base: 10; Result: True),
+    (Str: '498B608B0654';         Str10: 'error';                            Base: 11; Result: False),
+    (Str: '6A0';                  Str10: 'error';                            Base: 10; Result: False),
+    (Str: '15D82';                Str10: '111981';                           Base: 17; Result: True),
+    (Str: '10011';                Str10: '19';                               Base:  2; Result: True),
+    (Str: '31A74';                Str10: '46545';                            Base: 11; Result: True),
+    (Str: '964461016676296357';   Str10: 'error';                            Base:  9; Result: False)
+  );
+  ByteArrayResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '00000000000000000000000000000000CCED'),      // Arguments[0].ToByteArray
     (Info: triOk;            Val: '01000000000000000000000000000000CB'),        // Arguments[1].ToByteArray
@@ -82,7 +184,7 @@
                                   'B57CC828')                                   // Arguments[63].ToByteArray
   );
 
-  HexResults: array[0..ArgumentCount - 1] of TTestResult =
+  HexResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '-123400000000000000000000000000000000'),     // Arguments[0].ToString(16)
     (Info: triOk;            Val: '-34FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'),       // Arguments[1].ToString(16)
@@ -154,7 +256,7 @@
                                   '00000000')                                   // Arguments[63].ToString(16)
   );
 
-  AsIntegerResults: array[0..ArgumentCount - 1] of TTestResult =
+  AsIntegerResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsInteger
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsInteger
@@ -222,7 +324,7 @@
     (Info: triOverflow;      Val: 'Overflow')                                   // Arguments[63].AsInteger
   );
 
-  AsCardinalResults: array[0..ArgumentCount - 1] of TTestResult =
+  AsCardinalResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsCardinal
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsCardinal
@@ -290,7 +392,7 @@
     (Info: triOverflow;      Val: 'Overflow')                                   // Arguments[63].AsCardinal
   );
 
-  AsInt64Results: array[0..ArgumentCount - 1] of TTestResult =
+  AsInt64Results: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsInt64
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsInt64
@@ -358,7 +460,7 @@
     (Info: triOverflow;      Val: 'Overflow')                                   // Arguments[63].AsInt64
   );
 
-  AsUInt64Results: array[0..ArgumentCount - 1] of TTestResult =
+  AsUInt64Results: array[0..64 - 1] of TTestResult =
   (
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[0].AsUInt64
     (Info: triOverflow;      Val: 'Overflow'),                                  // Arguments[1].AsUInt64

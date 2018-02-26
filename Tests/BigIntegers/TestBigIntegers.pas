@@ -22,17 +22,22 @@ uses
   Velthuis.RandomNumbers,
   Velthuis.Loggers;
 
+{$IF BigInteger.Immutable}
+{$DEFINE IMMUTABLE}
+{$IFEND}
+
 type
   // Test methods for BigInteger records.
   TTestBigInteger = class(TTestCase)
-  strict private
-    A, B, C, D, E, F: BigInteger;
+//  strict private
+//    A, B, C, D, E, F: BigInteger;
   public
     procedure Error(const Msg: string);
     procedure SetUp; override;
     procedure TearDown; override;
   published
     procedure TestParse;
+    procedure TestTryParse;
     procedure TestCreateBytes;
     procedure TestCreateRandom;
     procedure TestCreateDouble;
@@ -48,9 +53,11 @@ type
     procedure TestClearBit;
     procedure TestFlipBit;
     procedure TestAdd;
+{$IFNDEF IMMUTABLE}
     procedure TestAddFunction;
     procedure TestInc;
     procedure TestDec;
+{$ENDIF}
     procedure TestSubtract;
     procedure TestMultiply;
     procedure TestMultiplyKaratsuba;
@@ -97,6 +104,9 @@ type
     procedure TestSqrt;
     procedure TestToByteArray;
     procedure TestModInverse;
+    procedure TestFactorial;
+    procedure TestPred;
+    procedure TestSucc;
   end;
 
 implementation
@@ -125,7 +135,22 @@ end;
 
 procedure TTestBigInteger.SetUp;
 begin
-//  BigInteger.AvoidPartialFlagsStall(True);
+  Status(Format('Compiler version: %0.1f', [System.CompilerVersion], TFormatSettings.Invariant));
+{$IFDEF WIN64}
+  Status('Win64');
+{$ENDIF}
+{$IFDEF WIN32}
+  Status('Win32');
+{$ENDIF}
+  if Velthuis.BigIntegers.PurePascal then
+    Status('PUREPASCAL')
+  else
+  begin
+    if BigInteger.StallAvoided then
+      Status('Asssembler: partial flag stall code used')
+    else
+      Status('Assembler: plain code');
+  end;
 end;
 
 procedure TTestBigInteger.TearDown;
@@ -133,28 +158,34 @@ begin
 end;
 
 procedure TTestBigInteger.TestIsZero;
+var
+  MinusOne, One, Zero: BigInteger;
 begin
-  A := '-1';
-  B := '1';
-  C := '0';
+  MinusOne := '-1';
+  One := '1';
+  Zero := '0';
 
-  Check(not A.IsZero);
-  Check(not B.IsZero);
-  Check(C.IsZero);
+  Check(not MinusOne.IsZero);
+  Check(not One.IsZero);
+  Check(Zero.IsZero);
 end;
 
 procedure TTestBigInteger.TestIsPositive;
+var
+  MinusOne, One, Zero: BigInteger;
 begin
-  A.FromString('-1');
-  B := '1';
-  C := '0';
+  MinusOne := '-1';
+  One := '1';
+  Zero := '0';
 
-  Check(not A.IsPositive);
-  Check(B.IsPositive);
-  Check(not C.IsPositive);
+  Check(not MinusOne.IsPositive);
+  Check(One.IsPositive);
+  Check(not Zero.IsPositive);
 end;
 
 procedure TTestBigInteger.TestIsEven;
+var
+  A, B, C, D, E: BigInteger;
 begin
   A := -1234;
   B := -1233;
@@ -172,60 +203,79 @@ end;
 procedure TTestBigInteger.TestIsPowerOfTwo;
 var
   I: Integer;
+  Value, MinusValue, ValueMinusOne, ValuePlusOne, MinusValueMinusOne, MinusValuePlusOne: BigInteger;
 
   function Msg(const S: string; const Int: BigInteger): string;
   begin
-    Result := Format('(%d) Value = %s (hex), A = %s (hex), Info: %s', [I, Int.ToString(16), A.ToString(16), S]);
+    Result := Format('(%d) Value = %s (hex), A = %s (hex), Info: %s', [I, Int.ToString(16), Value.ToString(16), S]);
   end;
 
 begin
-  A := 4;
+  Value := 4;
   for I := 4 to 100 do
   begin
-    A := A shl 1;
-    B := -A;
-    C := A - BigInteger.One;
-    D := A + BigInteger.One;
-    E := B - BigInteger.One;
-    F := B + BigInteger.One;
+    Value := Value shl 1;
+    MinusValue := -Value;
+    ValueMinusOne := Value - BigInteger.One;
+    ValuePlusOne := Value + BigInteger.One;
+    MinusValueMinusOne := MinusValue - BigInteger.One;
+    MinusValuePlusOne := MinusValue + BigInteger.One;
 
-    CheckTrue(A.IsPowerOfTwo, Msg('A', A));
-    CheckTrue(B.IsPowerOfTwo, Msg('-A', B));
-    CheckFalse(C.IsPowerOfTwo, Msg('A - 1', C));
-    CheckFalse(D.IsPowerOfTwo, Msg('A + 1', D));
-    CheckFalse(E.IsPowerOfTwo, Msg('-A - 1', E));
-    CheckFalse(F.IsPowerOfTwo, Msg('-A + 1', F));
+    CheckTrue(Value.IsPowerOfTwo, Msg('A', Value));
+    CheckTrue(MinusValue.IsPowerOfTwo, Msg('-A', MinusValue));
+    CheckFalse(ValueMinusOne.IsPowerOfTwo, Msg('A - 1', ValueMinusOne));
+    CheckFalse(ValuePlusOne.IsPowerOfTwo, Msg('A + 1', ValuePlusOne));
+    CheckFalse(MinusValueMinusOne.IsPowerOfTwo, Msg('-A - 1', MinusValueMinusOne));
+    CheckFalse(MinusValuePlusOne.IsPowerOfTwo, Msg('-A + 1', MinusValuePlusOne));
   end;
 end;
 
 procedure TTestBigInteger.TestIsOne;
+var
+  MinusOne, One, Zero: BigInteger;
 begin
-  A := BigInteger.MinusOne;
-  B := BigInteger.One;
-  C := '0';
+  MinusOne := BigInteger.MinusOne;
+  One := BigInteger.One;
+  Zero := '0';
 
-  CheckFalse(A.IsOne);
-  CheckTrue(B.IsOne);
-  CheckFalse(C.IsOne);
+  CheckFalse(MinusOne.IsOne);
+  CheckTrue(One.IsOne);
+  CheckFalse(Zero.IsOne);
 end;
 
 procedure TTestBigInteger.TestToString;
 var
   I: Integer;
-  S1, S2: string;
+  ValueStr, CheckStr: string;
+  Value: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
     BigInteger.Decimal;
-    A := Arguments[I];
-    S1 := A.ToString;
-    S2 := Arguments[I];
-    Check(S1 = S2);
+    Value := Arguments[I];
+    ValueStr := Value.ToString;
+    CheckStr := Arguments[I];
+    Check(ValueStr = CheckStr);
     BigInteger.Hexadecimal;
-    S1 := A.ToString;
-    S2 := HexResults[I].val;
-    Check(S1 = S2);
+    ValueStr := Value.ToString;
+    CheckStr := HexResults[I].val;
+    Check(ValueStr = CheckStr);
     BigInteger.Decimal;
+  end;
+end;
+
+procedure TTestBigInteger.TestTryParse;
+var
+  I: Integer;
+  Res: TTryParseResult;
+  Value: BigInteger;
+begin
+  for I := Low(TryParseResults) to High(TryParseResults) do
+  begin
+    Res := TryParseResults[I];
+    Check(BigInteger.TryParse(Res.Str, Res.Base, Value) = Res.Result);
+    if Res.Result then
+      Check(Value.ToString(10) = Res.Str10);
   end;
 end;
 
@@ -233,11 +283,12 @@ procedure TTestBigInteger.TestToHex;
 var
   I: Integer;
   S1, S2: string;
+  Value: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    S1 := A.ToHexString;
+    Value := Arguments[I];
+    S1 := Value.ToHexString;
     S2 := HexResults[i].val;
     Check(S1 = S2);
   end;
@@ -246,31 +297,33 @@ end;
 procedure TTestBigInteger.TestAdd;
 var
   I, J, N: Integer;
-  A, B, C, D: BigInteger;
+  Left, Right, Sum, CheckSum: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Right := Arguments[J];
       try
-        C := A + B;
+        Sum := Left + Right;
       except
         on E: Exception do
           Error(E.ClassName + ': ' + E.Message);
       end;
-      D := AddResults[N].val;
-      Check(C = D, Format('(%d,%d) %s + %s = %s (%s, diff=%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16), (C - D).ToString(16)]));
+      CheckSum := AddResults[N].val;
+      Check(Sum = CheckSum, Format('(%d,%d) %s + %s = %s (%s, diff=%s)', [I, J, Left.ToString(16), Right.ToString(16), Sum.ToString(16), CheckSum.ToString(16), (Sum - CheckSum).ToString(16)]));
       Inc(N);
     end;
   end;
 end;
 
+{$IF not BigInteger.Immutable}
 procedure TTestBigInteger.TestAddFunction;
 var
   I, J, N: Integer;
+  A, B, C, D: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
@@ -292,24 +345,25 @@ begin
     end;
   end;
 end;
+{$ENDIF}
 
 procedure TTestBigInteger.TestSetBit;
 var
   I, J, N, Bit: Integer;
-  A, B: BigInteger;
+  Value, BitSet: BigInteger;
   TR: TTestResult;
 begin
   N := Length(bits);
   for I := 1 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to High(Bits) do
     begin
       Bit := Bits[J];
       TR := SetBitResults[N];
       Inc(N);
-      B := A.SetBit(Bit);
-      Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.SetBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
+      BitSet := Value.SetBit(Bit);
+      Check(BitSet = BigInteger(TR.Val), Format('(%d,%d): $%s.SetBit(%d) = $%s ($%s)', [I, J, Value.ToString(16), Bit, BitSet.ToString(16), BigInteger(TR.val).ToString(16)]));
     end;
   end;
 end;
@@ -317,60 +371,74 @@ end;
 procedure TTestBigInteger.TestClearBit;
 var
   I, J, N, Bit: Integer;
-  A, B: BigInteger;
+  Value, Cleared: BigInteger;
   TR: TTestResult;
 begin
   N := Length(bits);
   for I := 1 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to High(Bits) do
     begin
       Bit := Bits[J];
       TR := ClearBitResults[N];
       Inc(N);
-      B := A.ClearBit(Bit);
-      Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.ClearBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
+      Cleared := Value.ClearBit(Bit);
+      Check(Cleared = BigInteger(TR.Val), Format('(%d,%d): $%s.ClearBit(%d) = $%s ($%s)', [I, J, Value.ToString(16), Bit, Cleared.ToString(16), BigInteger(TR.val).ToString(16)]));
     end;
+  end;
+end;
+
+procedure TTestBigInteger.TestFactorial;
+var
+  I, N: Integer;
+  Value, CheckValue: BigInteger;
+begin
+  for I := 0 to High(BitShifts) do
+  begin
+    N := BitShifts[I];
+    Value := BigInteger.Factorial(N);
+    CheckValue := FactorialResults[I].Val;
+    Check(Value = CheckValue);
   end;
 end;
 
 procedure TTestBigInteger.TestFlipBit;
 var
   I, J, N, Bit: Integer;
-  A, B: BigInteger;
+  Value, Flipped: BigInteger;
   TR: TTestResult;
 begin
   N := Length(bits);
   for I := 1 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to High(Bits) do
     begin
       Bit := Bits[J];
       TR := FlipBitResults[N];
       Inc(N);
-      B := A.FlipBit(Bit);
-      Check(B = BigInteger(TR.Val), Format('(%d,%d): $%s.FlipBit(%d) = $%s ($%s)', [I, J, A.ToString(16), Bit, B.ToString(16), BigInteger(TR.val).ToString(16)]));
+      Flipped := Value.FlipBit(Bit);
+      Check(Flipped = BigInteger(TR.Val), Format('(%d,%d): $%s.FlipBit(%d) = $%s ($%s)', [I, J, Value.ToString(16), Bit, Flipped.ToString(16), BigInteger(TR.val).ToString(16)]));
     end;
   end;
 end;
 
 procedure TTestBigInteger.TestSqrt;
 var
-  I, J, Exponent: Integer;
+  I, Exp: Integer;
+  Base, Arg, Root, RootSquared, RootPlusOneSquared: BigInteger;
 begin
   for I := 10 to High(BitShifts) do
   begin
-    A := BitShifts[I];
-    for J := 2 to 100 do
+    Base := BitShifts[I];
+    for Exp := 2 to 100 do
     begin
-      Exponent := J;
-      B := BigInteger.Pow(A, Exponent) + BigInteger.Pow(A, Exponent - 1);
-      C := BigInteger.Sqrt(B);
-      D := C * C;
-      E := (C + 1) * (C + 1);
-      Check((D <= B) and (B <= E), Format('(%d,%d) Sqrt(%s) = %s (%s not in [%s..%s])', [I, J, B.ToString(16), C.ToString(16), B.ToString(16), D.ToString(16), E.ToString(16)]));
+      Arg := BigInteger.Pow(Base, Exp) + BigInteger.Pow(Base, Exp - 1);
+      Root := BigInteger.Sqrt(Arg);
+      RootSquared := Root * Root;
+      RootPlusOneSquared := (Root + 1) * (Root + 1);
+      Check((RootSquared <= Arg) and (Arg < RootPlusOneSquared), Format('(%d,%d) Sqrt(%s) = %s (%s not in [%s..%s])', [I, Exp, Arg.ToString(16), Root.ToString(16), Arg.ToString(16), RootSquared.ToString(16), RootPlusOneSquared.ToString(16)]));
     end;
   end;
 end;
@@ -378,37 +446,53 @@ end;
 procedure TTestBigInteger.TestSquare;
 var
   I: Integer;
+  Value, Square, CheckSquare: BigInteger;
 begin
   for I := 0 to High(MultiplyResults) do
   begin
-    A := MultiplyResults[I].val;
-    B := BigInteger.Sqr(A);
-    C := A * A;
-    Check(B = C, Format('(%d) Sqr(%s) = %s (%s)', [I, A.ToString(16), B.ToString(16), C.ToString(16)]));
+    Value := MultiplyResults[I].val;
+    Square := BigInteger.Sqr(Value);
+    CheckSquare := Value * Value;
+    Check(Square = CheckSquare, Format('(%d) Sqr(%s) = %s (%s)', [I, Value.ToString(16), Square.ToString(16), CheckSquare.ToString(16)]));
   end;
 end;
 
 procedure TTestBigInteger.TestSubtract;
 var
   I, J, N: Integer;
+  Minuend, Subtrahend, Difference, CheckDifference: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Minuend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Subtrahend := Arguments[J];
       try
-        C := A - B;
+        Difference := Minuend - Subtrahend;
       except
         on E: Exception do
           Error(E.ClassName + ': ' + E.Message);
       end;
-      D := SubtractResults[N].val;
-      Check(C = D, Format('(%d,%d) %s - %s = %s (%s)', [I, J, A.ToString, B.ToString, C.ToString, D.ToString]));
+      CheckDifference := SubtractResults[N].val;
+      Check(Difference = CheckDifference, Format('(%d,%d) %s - %s = %s (%s)', [I, J, Minuend.ToString, Subtrahend.ToString, Difference.ToString, CheckDifference.ToString]));
       Inc(N);
     end;
+  end;
+end;
+
+procedure TTestBigInteger.TestSucc;
+var
+  Value, Successor, ValuePlusOne: BigInteger;
+  I: Integer;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    Value := Arguments[I];
+    Successor := Value.Succ;
+    ValuePlusOne := Value + BigInteger.One;
+    Check(Successor = ValuePlusOne, Format('(%d) Pred(%s) = %s (%s)', [I, string(Value), string(Successor), string(ValuePlusOne)]));
   end;
 end;
 
@@ -416,25 +500,25 @@ procedure TTestBigInteger.TestMultiply;
 var
   I, J, N: Integer;
   S, ErrorMsg: string;
-  A, B, C, D: BigInteger;
+  Left, Right, Product, CheckProduct: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Right := Arguments[J];
       S := MultiplyResults[N].val;
-      D := S;
+      CheckProduct := S;
       try
-        C := BigInteger.Multiply(A, B);
+        Product := BigInteger.Multiply(Left, Right);
       except
         on E: Exception do
           Error('Multiplication error, ' + E.ClassName + ': ' + E.Message);
       end;
-      ErrorMsg := Format('(%d,%d,%d) %s * %s = %s (%s, diff = %s)', [I, J, N, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16), (D - C).ToString(16)]);
-      Check(C = D, ErrorMsg);
+      ErrorMsg := Format('(%d,%d,%d) %s * %s = %s (%s, diff = %s)', [I, J, N, Left.ToString(16), Right.ToString(16), Product.ToString(16), CheckProduct.ToString(16), (CheckProduct - Product).ToString(16)]);
+      Check(Product = CheckProduct, ErrorMsg);
       Inc(N);
     end;
   end;
@@ -444,19 +528,20 @@ procedure TTestBigInteger.TestMultiplyKaratsuba;
 var
   I: Integer;
   R: IRandom;
+  BaseFactor, Factor, Product, BaseCaseProduct: BigInteger;
 begin
   R := TDelphiRandom.Create($123456);
-  A := BigInteger.Create((BigInteger.KaratsubaThreshold + Random(100)) * 32, R);
+  BaseFactor := BigInteger.Create((BigInteger.KaratsubaThreshold + Random(100)) * 32, R);
   for I := 1 to 20 do
   begin
-    B := BigInteger.Create((BigInteger.KaratsubaThreshold + Random(100)) * 32, R);
-    C := BigInteger.MultiplyKaratsuba(A, B);
+    Factor := BigInteger.Create((BigInteger.KaratsubaThreshold + Random(100)) * 32, R);
+    BigInteger.MultiplyKaratsuba(BaseFactor, Factor, Product);
 
     // It is safe to assume that result given by MultiplyBaseCase is correct.
-    D := BigInteger.MultiplyBaseCase(A, B);
+    BigInteger.MultiplyBaseCase(BaseFactor, Factor, BaseCaseProduct);
 
-    Check(C = D, Format('(%d x %d): %s * %s = %s (%s), diff = %s', [A.Size, B.Size, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16), (C - D).ToString(16)]));
-    A := B;
+    Check(Product = BaseCaseProduct, Format('(%d x %d): %s * %s = %s (%s), diff = %s', [BaseFactor.Size, Factor.Size, BaseFactor.ToString(16), Factor.ToString(16), Product.ToString(16), BaseCaseProduct.ToString(16), (Product - BaseCaseProduct).ToString(16)]));
+    BaseFactor := Factor;
   end;
 end;
 
@@ -464,52 +549,57 @@ procedure TTestBigInteger.TestMultiplyToomCook3;
 var
   I: Integer;
   R: IRandom;
+  BaseFactor, Factor, Product, BaseCaseProduct: BigInteger;
 begin
   R := TDelphiRandom.Create($123456);
-  A := BigInteger.Create((BigInteger.ToomCook3Threshold + Random(100)) * 32, R);
+  BaseFactor := BigInteger.Create((BigInteger.ToomCook3Threshold + Random(100)) * 32, R);
   for I := 1 to 20 do
   begin
-    B := BigInteger.Create((BigInteger.ToomCook3Threshold + Random(100)) * 32, R);
-    C := BigInteger.MultiplyToomCook3(A, B);
+    Factor := BigInteger.Create((BigInteger.ToomCook3Threshold + Random(100)) * 32, R);
+    Product := BigInteger.MultiplyToomCook3(BaseFactor, Factor);
 
     // It is safe to assume that result given by MultiplyBaseCase is correct.
-    D := BigInteger.MultiplyBaseCase(A, B);
+    BigInteger.MultiplyBaseCase(BaseFactor, Factor, BaseCaseProduct);
 
-    Check(C = D, Format('(%d x %d): %s * %s = %s (%s), diff = %s', [A.Size, B.Size, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16), (C - D).ToString(16)]));
-    A := B;
+    Check(Product = BaseCaseProduct, Format('(%d x %d): %s * %s = %s (%s), diff = %s', [BaseFactor.Size, Factor.Size, BaseFactor.ToString(16), Factor.ToString(16), Product.ToString(16), BaseCaseProduct.ToString(16), (Product - BaseCaseProduct).ToString(16)]));
+    BaseFactor := Factor;
   end;
 end;
 
+{$IFNDEF IMMUTABLE}
 procedure TTestBigInteger.TestInc;
 var
   I: Integer;
+  Value, SuccValue, IncValue: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    B := A + 1;
-    C := A;
-    Inc(C);
-    Check(C = B, Format('(%d) %s --> %s (%s)', [I, A.ToString(16), C.ToString(16), B.ToString(16)]));
+    Value := Arguments[I];
+    SuccValue := Value + 1;
+    IncValue := Value;
+    Inc(IncValue);
+    Check(IncValue = SuccValue, Format('(%d) %s --> %s (%s)', [I, Value.ToString(16), IncValue.ToString(16), SuccValue.ToString(16)]));
   end;
 end;
+{$ENDIF}
 
 procedure TTestBigInteger.TestIntDivide;
 var
   I, J, N: Integer;
   TR: TTestResult;
+  Dividend, Divisor, Quotient, CheckQuotient: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Divisor := Arguments[J];
       TR := DivisionResults[N];
       Inc(N);
       try
-        C := A div B;
+        Quotient := Dividend div Divisor;
       except
         on E: EZeroDivide do
         begin
@@ -520,8 +610,8 @@ begin
           Error('TestIntDivide: Unexpected ' + E.ClassName + ' exception: ''' + E.Message + '''');
       end;
       Check(TR.info = triOk, Format('(%d,%d) Expected an exception', [I, J]));
-      D := TR.val;
-      Check(C = D, Format('(%d,%d) %s div %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
+      CheckQuotient := TR.val;
+      Check(Quotient = CheckQuotient, Format('(%d,%d) %s div %s = %s (%s)', [I, J, Dividend.ToString(16), Divisor.ToString(16), Quotient.ToString(16), CheckQuotient.ToString(16)]));
     end;
   end;
 end;
@@ -529,21 +619,22 @@ end;
 procedure TTestBigInteger.TestIntDivide16;
 var
   I, J: Integer;
-  W16: UInt16;
+  U16: UInt16;
+  Dividend, Divisor, U16Equiv, U16Quotent, U16EquivQuotient: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[I];
-      W16 := UInt16(B);
-      C := W16;
-      if W16 = 0 then
+      Divisor := Arguments[I];
+      U16 := UInt16(Divisor);
+      U16Equiv := U16;
+      if U16 = 0 then
         Continue;
-      D := A div W16;
-      E := A div C;
-      Check(E = D, Format('(%d, %d) %s div %x = %s (%s)', [I, J, A.ToString(16), W16, D.ToString(16), E.ToString(16)]));
+      U16Quotent := Dividend div U16;
+      U16EquivQuotient := Dividend div U16Equiv;
+      Check(U16EquivQuotient = U16Quotent, Format('(%d, %d) %s div %x = %s (%s)', [I, J, Dividend.ToString(16), U16, U16Quotent.ToString(16), U16EquivQuotient.ToString(16)]));
     end;
   end;
 end;
@@ -551,21 +642,22 @@ end;
 procedure TTestBigInteger.TestIntDivide32;
 var
   I, J: Integer;
-  W32: UInt16;
+  U32: UInt16;
+  Dividend, Divisor, U32Equiv, U32Quotient, U32EquivQuotient: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[I];
-      W32 := UInt32(B);
-      C := W32;
-      if W32 = 0 then
+      Divisor := Arguments[I];
+      U32 := UInt32(Divisor);
+      U32Equiv := U32;
+      if U32 = 0 then
         Continue;
-      D := A div W32;
-      E := A div C;
-      Check(E = D, Format('(%d, %d) %s div %x = %s (%s)', [I, J, A.ToString(16), W32, D.ToString(16), E.ToString(16)]));
+      U32Quotient := Dividend div U32;
+      U32EquivQuotient := Dividend div U32Equiv;
+      Check(U32EquivQuotient = U32Quotient, Format('(%d, %d) %s div %x = %s (%s)', [I, J, Dividend.ToString(16), U32, U32Quotient.ToString(16), U32EquivQuotient.ToString(16)]));
     end;
   end;
 end;
@@ -574,22 +666,23 @@ procedure TTestBigInteger.TestModInverse;
 var
   I, J, N: Integer;
   TR: TTestResult;
+  Value, Modulus, Inverse: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Modulus := Arguments[J];
       TR := InvModResults[N];
       Inc(N);
-      // Only test if B <> 0 and A and B are coprime.
-      if B.IsZero or (BigInteger.GreatestCommonDivisor(A, B) <> BigInteger.One) then
+      // Only test if B <> 0 and A, B are coprime.
+      if Modulus.IsZero or (BigInteger.GreatestCommonDivisor(Value, Modulus) <> BigInteger.One) then
         Continue;
       try
-        C := BigInteger.Zero;
-        C := BigInteger.ModInverse(A, B);
+        Inverse := BigInteger.Zero;
+        Inverse := BigInteger.ModInverse(Value, Modulus);
       except
         on E: Exception do
         begin
@@ -598,7 +691,7 @@ begin
         end;
       end;
       Check(TR.Info = triOk, Format('(%d,%d,%d): Unexpected error ''%s''', [I, J, N - 1, TR.Val]));
-      Check(C = BigInteger(TR.Val), Format('(%d,%d): ModInverse: %s * %s mod %s = %s', [I, J, A.ToString, C.ToString, B.ToString, (A * C mod B).ToString]));
+      Check(Inverse = BigInteger(TR.Val), Format('(%d,%d): ModInverse: %s * %s mod %s = %s', [I, J, Value.ToString, Inverse.ToString, Modulus.ToString, (Value * Inverse mod Modulus).ToString]));
     end;
   end;
 end;
@@ -607,18 +700,19 @@ procedure TTestBigInteger.TestModulus;
 var
   I, J, N: Integer;
   TR: TTestResult;
+  Dividend, Divisor, Modulus, CheckModulus: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Divisor := Arguments[J];
       TR := ModulusResults[N];
       Inc(N);
       try
-        C := A mod B;
+        Modulus := Dividend mod Divisor;
       except
         on E: EZeroDivide do
         begin
@@ -629,8 +723,8 @@ begin
           Error('TestModulus: Unexpected ' + E.ClassName + ' exception: ' + E.Message);
       end;
       Check(TR.info = triOk, Format('(%d,%d) Expected exception did not occur', [I, J]));
-      D := TR.Val;
-      Check(C = D, Format('(%d,%d) %s mod %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
+      CheckModulus := TR.Val;
+      Check(Modulus = CheckModulus, Format('(%d,%d) %s mod %s = %s (%s)', [I, J, Dividend.ToString(16), Divisor.ToString(16), Modulus.ToString(16), CheckModulus.ToString(16)]));
     end;
   end;
 end;
@@ -638,21 +732,22 @@ end;
 procedure TTestBigInteger.TestModulus16;
 var
   I, J: Integer;
-  W16: UInt16;
+  U16: UInt16;
+  Dividend, Divisor, U16Equiv, U16Quot, U16EquivQuot: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[I];
-      W16 := UInt16(B);
-      C := W16;
-      if W16 = 0 then
+      Divisor := Arguments[I];
+      U16 := UInt16(Divisor);
+      U16Equiv := U16;
+      if U16 = 0 then
         Continue;
-      D := A mod W16;
-      E := A mod C;
-      Check(E = D, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, A.ToString(16), W16, D.ToString(16), E.ToString(16)]));
+      U16Quot := Dividend mod U16;
+      U16EquivQuot := Dividend mod U16Equiv;
+      Check(U16EquivQuot = U16Quot, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, Dividend.ToString(16), U16, U16Quot.ToString(16), U16EquivQuot.ToString(16)]));
     end;
   end;
 end;
@@ -660,21 +755,22 @@ end;
 procedure TTestBigInteger.TestModulus32;
 var
   I, J: Integer;
-  W32: UInt16;
+  U32: UInt32;
+  Dividend, Divisor, U32Equiv, U32Mod, U32EquivMod: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[I];
-      W32 := UInt32(B);
-      C := W32;
-      if W32 = 0 then
+      Divisor := Arguments[I];
+      U32 := UInt32(Divisor);
+      U32Equiv := U32;
+      if U32 = 0 then
         Continue;
-      D := A mod W32;
-      E := A mod C;
-      Check(E = D, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, A.ToString(16), W32, D.ToString(16), E.ToString(16)]));
+      U32Mod := Dividend mod U32;
+      U32EquivMod := Dividend mod U32Equiv;
+      Check(U32EquivMod = U32Mod, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, Dividend.ToString(16), U32, U32Mod.ToString(16), U32EquivMod.ToString(16)]));
     end;
   end;
 end;
@@ -682,35 +778,37 @@ end;
 procedure TTestBigInteger.TestNegative;
 var
   I: Integer;
+  Value, Negated, CheckNegated: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    B := -A;
-    C := NegationResults[I].val;
-    Check(B = C);
+    Value := Arguments[I];
+    Negated := -Value;
+    CheckNegated := NegationResults[I].val;
+    Check(Negated = CheckNegated);
   end;
 end;
 
 procedure TTestBigInteger.TestBitwiseAnd;
 var
   I, J, N: Integer;
+  Left, Right, Anded, CheckAnded: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Right := Arguments[J];
       try
-        C := A and B;
+        Anded := Left and Right;
       except
         on E: Exception do
           Error(E.ClassName + ': ' + E.Message);
       end;
-      D := BitwiseAndResults[N].val;
-      Check(C = D, Format('(%d,%d) %s and %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
+      CheckAnded := BitwiseAndResults[N].val;
+      Check(Anded = CheckAnded, Format('(%d,%d) %s and %s = %s (%s)', [I, J, Left.ToString(16), Right.ToString(16), Anded.ToString(16), CheckAnded.ToString(16)]));
       Inc(N);
     end;
   end;
@@ -719,22 +817,23 @@ end;
 procedure TTestBigInteger.TestBitwiseOr;
 var
   I, J, N: Integer;
+  Left, Right, Ored, CheckOred: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Right := Arguments[J];
       try
-        C := A or B;
+        Ored := Left or Right;
       except
         on E: Exception do
           Error(E.ClassName + ': ' + E.Message);
       end;
-      D := BitwiseOrResults[N].val;
-      Check(C = D, Format('(%d,%d) %s or %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
+      CheckOred := BitwiseOrResults[N].val;
+      Check(Ored = CheckOred, Format('(%d,%d) %s or %s = %s (%s)', [I, J, Left.ToString(16), Right.ToString(16), Ored.ToString(16), CheckOred.ToString(16)]));
       Inc(N);
     end;
   end;
@@ -743,22 +842,23 @@ end;
 procedure TTestBigInteger.TestBitwiseXor;
 var
   I, J, N: Integer;
+  Left, Right, Xored, CheckXored: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Right := Arguments[J];
       try
-        C := A xor B;
+        Xored := Left xor Right;
       except
         on E: Exception do
           Error(E.ClassName + ': ' + E.Message);
       end;
-      D := BitwiseXorResults[N].val;
-      Check(C = D, Format('(%d,%d) %s xor %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), D.ToString(16)]));
+      CheckXored := BitwiseXorResults[N].val;
+      Check(Xored = CheckXored, Format('(%d,%d) %s xor %s = %s (%s)', [I, J, Left.ToString(16), Right.ToString(16), Xored.ToString(16), CheckXored.ToString(16)]));
       Inc(N);
     end;
   end;
@@ -768,26 +868,28 @@ procedure TTestBigInteger.TestCreateBytes;
 var
   I: Integer;
   Bytes: TArray<Byte>;
+  Value, FromBytes: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    Bytes := A.ToByteArray;
-    B := BigInteger.Create(Bytes);
-    Check(A = B, Format('(%d), Create(%s.ToByteArray) = %s', [I, A.ToString(16), B.ToString(16)]));
+    Value := Arguments[I];
+    Bytes := Value.ToByteArray;
+    FromBytes := BigInteger.Create(Bytes);
+    Check(Value = FromBytes, Format('(%d), Create(%s.ToByteArray) = %s', [I, Value.ToString(16), FromBytes.ToString(16)]));
   end;
 end;
 
 procedure TTestBigInteger.TestCreateDouble;
 var
   I: Integer;
+  Value, CheckValue: BigInteger;
 begin
   BigInteger.RoundingMode := BigInteger.TRoundingMode.rmTruncate;
   for I := 0 to High(Doubles) do
   begin
-    A := BigInteger.Create(Doubles[I]);
-    B := CreateDoubleResults[I].val;
-    Check(A = B, Format('(%d) BigInteger.Create(%f) = %s (%s)', [I, Doubles[I], A.ToString(16), B.ToString(16)]));
+    Value := BigInteger.Create(Doubles[I]);
+    CheckValue := CreateDoubleResults[I].val;
+    Check(Value = CheckValue, Format('(%d) BigInteger.Create(%f) = %s (%s)', [I, Doubles[I], Value.ToString(16), CheckValue.ToString(16)]));
   end;
 end;
 
@@ -795,43 +897,46 @@ procedure TTestBigInteger.TestCreateRandom;
 var
   I, NumBits: Integer;
   ARandom: IRandom;
+  Value: BigInteger;
 begin
   ARandom := TDelphiRandom.Create;
   for I := 0 to 1000 do
   begin
     NumBits := I;
-    A := BigInteger.Create(NumBits, ARandom);
-    Check(A.BitLength <= NumBits, Format('%s (bits = %d), Numbits = %d', [A.ToString(16), A.BitLength, NumBits]));
+    Value := BigInteger.Create(NumBits, ARandom);
+    Check(Value.BitLength <= NumBits, Format('%s (bits = %d), Numbits = %d', [Value.ToString(16), Value.BitLength, NumBits]));
   end;
 end;
 
 procedure TTestBigInteger.TestLogicalNot;
 var
   I: Integer;
+  Value, NotValue, CheckNotValue: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    B := not A;
-    C := LogicalNotResults[I].val;
-    Check(B = C, Format('(%d) not %s = %s (%s)', [I, A.ToString(16), B.ToString(16), C.ToString(16)]));
+    Value := Arguments[I];
+    NotValue := not Value;
+    CheckNotValue := LogicalNotResults[I].val;
+    Check(NotValue = CheckNotValue, Format('(%d) not %s = %s (%s)', [I, Value.ToString(16), NotValue.ToString(16), CheckNotValue.ToString(16)]));
   end;
 end;
 
 procedure TTestBigInteger.TestLeftShift;
 var
   I, J, N, Shift: Integer;
+  Value, Shifted, CheckShifted: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to High(BitShifts) do
     begin
       Shift := BitShifts[J];
-      B := A shl Shift;
-      C := LeftShiftResults[N].val;
-      Check(B = C, Format('(%d,%d) %s shl %d = %s (%s)', [I, J, A.ToString(16), Shift, B.ToString(16), C.ToString(16)]));
+      Shifted := Value shl Shift;
+      CheckShifted := LeftShiftResults[N].val;
+      Check(Shifted = CheckShifted, Format('(%d,%d) %s shl %d = %s (%s)', [I, J, Value.ToString(16), Shift, Shifted.ToString(16), CheckShifted.ToString(16)]));
       Inc(N);
     end;
   end;
@@ -840,17 +945,18 @@ end;
 procedure TTestBigInteger.TestRightShift;
 var
   I, J, N, Shift: Integer;
+  Value, Shifted, CheckShifted: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to High(BitShifts) do
     begin
       Shift := BitShifts[J];
-      B := A shr Shift;
-      C := RightShiftResults[N].val;
-      Check(B = C, Format('(%d,%d) %s shr %d = %s (%s)', [I, J, A.ToString(16), Shift, B.ToString(16), C.ToString(16)]));
+      Shifted := Value shr Shift;
+      CheckShifted := RightShiftResults[N].val;
+      Check(Shifted = CheckShifted, Format('(%d,%d) %s shr %d = %s (%s)', [I, J, Value.ToString(16), Shift, Shifted.ToString(16), CheckShifted.ToString(16)]));
       Inc(N);
     end;
   end;
@@ -859,18 +965,19 @@ end;
 procedure TTestBigInteger.TestEqual;
 var
   I, J, N: Integer;
-  B1, B2: Boolean;
+  Comp, CheckComp: Boolean;
+  Left, Right: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
-      B1 := A = B;
-      B2 := ComparisonResults[N, crEqual];
-      Check(B1 = B2, Format('%d,%d: %s = %s: %s (%s)', [i, j, Arguments[i], Arguments[j], BoolToStr(B1), BoolToStr(B2)]));
+      Right := Arguments[J];
+      Comp := Left = Right;
+      CheckComp := ComparisonResults[N, crEqual];
+      Check(Comp = CheckComp, Format('%d,%d: %s = %s: %s (%s)', [I, J, Arguments[I], Arguments[J], BoolToStr(Comp), BoolToStr(CheckComp)]));
       Inc(N);
     end;
   end;
@@ -879,38 +986,43 @@ end;
 procedure TTestBigInteger.TestNotEqual;
 var
   I, J, N: Integer;
-  B1, B2: Boolean;
+  Comp, CheckComp: Boolean;
+  Left, Right: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
-      B1 := A <> B;
-      B2 := ComparisonResults[N, crNotEqual];
-      Check(B1 = B2, Format('%d,%d: %s <> %s: %s (%s)', [i, j, Arguments[i], Arguments[j], BoolToStr(B1), BoolToStr(B2)]));
+      Right := Arguments[J];
+      Comp := Left <> Right;
+      CheckComp := ComparisonResults[N, crNotEqual];
+      Check(Comp = CheckComp, Format('%d,%d: %s <> %s: %s (%s)', [I, j, Arguments[I], Arguments[j], BoolToStr(Comp), BoolToStr(CheckComp)]));
       Inc(N);
     end;
   end;
 end;
 
+// Seems to have become slower since the code change. Is the old method (binary search) better for the relatively small values tested here?
 procedure TTestBigInteger.TestNthRoot;
 var
-  I, J, Exponent: Integer;
+  I, Exponent: Integer;
+  Value, TestValue, Root, PowerOfRoot, PowerOfRootPlusOne: BigInteger;
 begin
-  for I := 2 to High(BitShifts) do
+  for I := 0 to High(BitShifts) do
   begin
-    A := BitShifts[I];
-    for J := 2 to 100 do
+    Value := BitShifts[I];
+    Exponent := 2;
+    while Exponent <= 100 do
     begin
-      Exponent := J;
-      B := BigInteger.Pow(A, Exponent) + BigInteger.Pow(A, Exponent - 1);
-      C := BigInteger.NthRoot(B, Exponent);
-      D := BigInteger.Pow(C, Exponent);
-      E := BigInteger.Pow(C + 1, Exponent);
-      Check((D <= B) and (B <= E), Format('(%d,%d) NthRoot(%s, %d) = %s (%s)', [I, J, B.ToString(16), Exponent, C.ToString(16), A.ToString(16)]));
+      TestValue := BigInteger.Pow(Value, Exponent) + BigInteger.Pow(Value, Exponent - 1);
+      Root := BigInteger.NthRoot(TestValue, Exponent);
+      PowerOfRoot := BigInteger.Pow(Root, Exponent);
+      PowerOfRootPlusOne := BigInteger.Pow(Root.Succ, Exponent);
+      if not ((PowerOfRoot <= TestValue) and (TestValue < PowerOfRootPlusOne)) then
+        Writeln(Format('(%d,%d) NthRoot(%s, %d) = %s (%s)', [I, Exponent, TestValue.ToString(16), Exponent, Root.ToString(16), Value.ToString(16)]));
+      Inc(Exponent, 5);
     end;
   end;
 end;
@@ -918,19 +1030,20 @@ end;
 procedure TTestBigInteger.TestTestBit;
 var
   I, J: Integer;
-  Bool1, Bool2: Boolean;
-    R: Integer;
+  BitIsSet, CheckBitIsSet: Boolean;
+  Rand: Integer;
+  Value, ShiftedValue: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     for J := 0 to 19 do
     begin
-      R := System.Random(A.BitLength + 4 * SizeOf(TLimb));
-      B := BigInteger.One shl R;
-      Bool1 := A.TestBit(R);
-      Bool2 := (B and A) <> 0;
-      Check(Bool1 = Bool2, Format('%d,%d: %s.TestBit(%d): %s (%s) <-- %s (%s)', [I, J, A.ToString(16), R, BoolToStr(Bool1), BoolToStr(Bool2), A.ToString(16), B.ToString(16)]));
+      Rand := System.Random(Value.BitLength + 4 * SizeOf(TLimb));
+      ShiftedValue := BigInteger.One shl Rand;
+      BitIsSet := Value.TestBit(Rand);
+      CheckBitIsSet := (ShiftedValue and Value) <> 0;
+      Check(BitIsSet = CheckBitIsSet, Format('%d,%d: %s.TestBit(%d): %s (%s) <-- %s (%s)', [I, J, Value.ToString(16), Rand, BoolToStr(BitIsSet), BoolToStr(CheckBitIsSet), Value.ToString(16), ShiftedValue.ToString(16)]));
     end;
   end;
 end;
@@ -938,18 +1051,19 @@ end;
 procedure TTestBigInteger.TestGreaterThan;
 var
   I, J, N: Integer;
-  B1, B2: Boolean;
+  Comp, CheckComp: Boolean;
+  Left, Right: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
-      B1 := A > B;
-      B2 := ComparisonResults[N, crGreater];
-      Check(B1 = B2, Format('%d,%d: %s > %s: %s (%s)', [i, j, Arguments[i], Arguments[j], BoolToStr(B1), BoolToStr(B2)]));
+      Right := Arguments[J];
+      Comp := Left > Right;
+      CheckComp := ComparisonResults[N, crGreater];
+      Check(Comp = CheckComp, Format('%d,%d: %s > %s: %s (%s)', [I, J, Arguments[I], Arguments[J], BoolToStr(Comp), BoolToStr(CheckComp)]));
       Inc(N);
     end;
   end;
@@ -958,18 +1072,19 @@ end;
 procedure TTestBigInteger.TestGreaterThanOrEqual;
 var
   I, J, N: Integer;
-  B1, B2: Boolean;
+  Comp, CheckComp: Boolean;
+  Left, Right: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
-      B1 := A >= B;
-      B2 := ComparisonResults[N, crGreaterEqual];
-      Check(B1 = B2, Format('%d,%d: %s >= %s: %s (%s)', [i, j, Arguments[i], Arguments[j], BoolToStr(B1), BoolToStr(B2)]));
+      Right := Arguments[J];
+      Comp := Left >= Right;
+      CheckComp := ComparisonResults[N, crGreaterEqual];
+      Check(Comp = CheckComp, Format('%d,%d: %s >= %s: %s (%s)', [I, J, Arguments[I], Arguments[J], BoolToStr(Comp), BoolToStr(CheckComp)]));
       Inc(N);
     end;
   end;
@@ -978,18 +1093,19 @@ end;
 procedure TTestBigInteger.TestLessThan;
 var
   I, J, N: Integer;
-  B1, B2: Boolean;
+  Comp, CheckComp: Boolean;
+  Left, Right: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
-      B1 := A < B;
-      B2 := ComparisonResults[N, crLess];
-      Check(B1 = B2, Format('%d,%d: %s < %s: %s (%s)', [i, j, Arguments[i], Arguments[j], BoolToStr(B1), BoolToStr(B2)]));
+      Right := Arguments[J];
+      Comp := Left < Right;
+      CheckComp := ComparisonResults[N, crLess];
+      Check(Comp = CheckComp, Format('%d,%d: %s < %s: %s (%s)', [I, J, Arguments[I], Arguments[J], BoolToStr(Comp), BoolToStr(CheckComp)]));
       Inc(N);
     end;
   end;
@@ -998,45 +1114,53 @@ end;
 procedure TTestBigInteger.TestLessThanOrEqual;
 var
   I, J, N: Integer;
-  B1, B2: Boolean;
+  Comp, CheckComp: Boolean;
+  Left, Right: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Left := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
-      B1 := A <= B;
-      B2 := ComparisonResults[N, crLessEqual];
-      Check(B1 = B2, Format('%d,%d: %s <= %s: %s (%s)', [i, j, Arguments[i], Arguments[j], BoolToStr(B1), BoolToStr(B2)]));
+      Right := Arguments[J];
+      Comp := Left <= Right;
+      CheckComp := ComparisonResults[N, crLessEqual];
+      Check(Comp = CheckComp, Format('%d,%d: %s <= %s: %s (%s)', [I, J, Arguments[I], Arguments[J], BoolToStr(Comp), BoolToStr(CheckComp)]));
       Inc(N);
     end;
   end;
+end;
+
+function Dbl2Hex(const D: Double): string;
+begin
+  Result := Format('%.8X', [PUInt64(@D)^]);
 end;
 
 procedure TTestBigInteger.TestAsDouble;
 var
   I: Integer;
   D1, D2: Double;
+  Value: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    D1 := A.AsDouble;
+    Value := Arguments[I];
+    D1 := Value.AsDouble;
     D2 := DoubleResults[I];
     if IsInfinite(D1) then
       Check(IsInfinite(D2))
     else if IsNan(D1) then
       Check(IsNan(D2))
     else
-      Check(SameValue(D1, D2), Format('%d: Double(%s) = %0.15f (%0.15f)', [I, A.ToString, D1, D2]));
+      Check(SameValue(D1, D2), Format('(%d): Double(%s) = %0.15f # $%s (%0.15f # $%s)', [I, Value.ToString, D1, Dbl2Hex(D1), D2, Dbl2Hex(D2)]));
   end;
 end;
 
 procedure TTestBigInteger.TestAsInteger;
 var
   I, Int1, Int2: Integer;
+  A: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
@@ -1058,6 +1182,7 @@ procedure TTestBigInteger.TestAsCardinal;
 var
   I: Integer;
   Card1, Card2: Cardinal;
+  A: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
@@ -1079,12 +1204,13 @@ procedure TTestBigInteger.TestAsInt64;
 var
   I: Integer;
   Int1, Int2: Int64;
+  Value: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     try
-      Int1 := A.AsInt64;
+      Int1 := Value.AsInt64;
       Int2 := StrToInt64(AsInt64Results[I].val);
       Check(Int1 = Int2);
     except
@@ -1101,14 +1227,15 @@ var
   I: Integer;
   UInt1: UInt64;
   S1, S2: string;
+  Value: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Value := Arguments[I];
     try
       // Must use string comparison, because on some versions there is no suitable StrToUInt64, so
       // there is no way to compare UInt64s.
-      UInt1 := A.AsUInt64;
+      UInt1 := Value.AsUInt64;
       S1 := Format('%u', [UInt1]);
     except
       on E: EConvertError do
@@ -1120,44 +1247,48 @@ begin
         Error('TestAsUInt64: Unexpected exception: ' + E.ClassName + ': ' + E.Message);
     end;
     S2 := AsUInt64Results[I].val;
-    Check(S1 = S2, Format('%d: %s.ToUInt64 = %s (%s)', [I, A.ToString, S1, S2]));
+    Check(S1 = S2, Format('%d: %s.ToUInt64 = %s (%s)', [I, Value.ToString, S1, S2]));
   end;
 end;
 
+{$IFNDEF IMMUTABLE}
 procedure TTestBigInteger.TestDec;
 var
   I: Integer;
+  Value, PredValue, DecValue: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
-    B := A - 1;
-    C := A;
-    Dec(C);
-    Check(C = B, Format('(%d) %s --> %s (%s)', [I, A.ToString, C.ToString, B.ToString]));
-    Check(A = B + 1);
+    Value := Arguments[I];
+    PredValue := Value - 1;
+    DecValue := Value;
+    Dec(DecValue);
+    Check(DecValue = PredValue, Format('(%d) %s --> %s (%s)', [I, Value.ToString, DecValue.ToString, PredValue.ToString]));
+    Check(Value = PredValue + 1);
   end;
 end;
+{$ENDIF}
 
 procedure TTestBigInteger.TestDivMod;
 var
   I, J, N: Integer;
   TRDiv, TRMod: TTestResult;
+  Dividend, Divisor, Quotient, Remainder, CheckQ, CheckR: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Divisor := Arguments[J];
       TRDiv := DivisionResults[N];
       TRMod := ModulusResults[N];
       Inc(N);
       try
-        C := 0;
-        D := 0;
-        BigInteger.DivMod(A, B, C, D);
+        Quotient := 0;
+        Remainder := 0;
+        BigInteger.DivMod(Dividend, Divisor, Quotient, Remainder);
       except
         on E: EZeroDivide do
         begin
@@ -1167,11 +1298,11 @@ begin
         on E: Exception do
           Error('Unexpected ' + E.ClassName + ' exception: ''' + E.Message + '''');
       end;
-      Check(TRDiv.info = triOK, Format('%d,%d: Expected an exception for %s div %s', [I, J, A.ToString, B.ToString]));
-      E := TRDiv.val;
-      F := TRMod.val;
-      Check(C = E, Format('(%d,%d) %s div %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), E.ToString(16)]));
-      Check(D = F, Format('(%d,%d) %s mod %s = "%s" ("%s")', [I, J, A.ToString(16), B.ToString(16), D.ToString(16), F.ToString(16)]));
+      Check(TRDiv.info = triOK, Format('%d,%d: Expected an exception for %s div %s', [I, J, Dividend.ToString, Divisor.ToString]));
+      CheckQ := TRDiv.val;
+      CheckR := TRMod.val;
+      Check(Quotient = CheckQ, Format('(%d,%d) %s div %s = %s (%s)', [I, J, Dividend.ToString(16), Divisor.ToString(16), Quotient.ToString(16), CheckQ.ToString(16)]));
+      Check(Remainder = CheckR, Format('(%d,%d) %s mod %s = "%s" ("%s")', [I, J, Dividend.ToString(16), Divisor.ToString(16), Remainder.ToString(16), CheckR.ToString(16)]));
     end;
   end;
 end;
@@ -1180,21 +1311,22 @@ procedure TTestBigInteger.TestDivModKnuth;
 var
   I, J, N: Integer;
   TRDiv, TRMod: TTestResult;
+  Dividend, Divisor, Quotient, Remainder, CheckQ, CheckR: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[J];
+      Divisor := Arguments[J];
       TRDiv := DivisionResults[N];
       TRMod := ModulusResults[N];
       Inc(N);
       try
-        C := 0;
-        D := 0;
-        BigInteger.DivModKnuth(A, B, C, D);
+        Quotient := 0;
+        Remainder := 0;
+        BigInteger.DivModKnuth(Dividend, Divisor, Quotient, Remainder);
       except
         on E: EZeroDivide do
         begin
@@ -1204,11 +1336,11 @@ begin
         on E: Exception do
           Error('Unexpected ' + E.ClassName + ' exception: ''' + E.Message + '''');
       end;
-      Check(TRDiv.info = triOK, Format('%d,%d: Expected an exception for %s div %s', [I, J, A.ToString, B.ToString]));
-      E := TRDiv.val;
-      F := TRMod.val;
-      Check(C = E, Format('(%d,%d) %s div %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), C.ToString(16), E.ToString(16)]));
-      Check(D = F, Format('(%d,%d) %s mod %s = %s (%s)', [I, J, A.ToString(16), B.ToString(16), D.ToString(16), F.ToString(16)]));
+      Check(TRDiv.info = triOK, Format('%d,%d: Expected an exception for %s div %s', [I, J, Dividend.ToString, Divisor.ToString]));
+      CheckQ := TRDiv.val;
+      CheckR := TRMod.val;
+      Check(Quotient = CheckQ, Format('(%d,%d) %s div %s = %s (%s)', [I, J, Dividend.ToString(16), Divisor.ToString(16), Quotient.ToString(16), CheckQ.ToString(16)]));
+      Check(Remainder = CheckR, Format('(%d,%d) %s mod %s = %s (%s)', [I, J, Dividend.ToString(16), Divisor.ToString(16), Remainder.ToString(16), CheckR.ToString(16)]));
     end;
   end;
 end;
@@ -1216,24 +1348,25 @@ end;
 procedure TTestBigInteger.TestDivMod16;
 var
   I, J: Integer;
-  W16: UInt16;
+  U16: UInt16;
+  Dividend, Divisor, U16Equiv, U16OpResult, BigIntOpResult: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[I];
-      W16 := UInt16(B);
-      C := W16;
-      if W16 = 0 then
+      Divisor := Arguments[I];
+      U16 := UInt16(Divisor);
+      U16Equiv := U16;
+      if U16 = 0 then
         Continue;
-      D := BigInteger.Divide(A, W16);
-      E := BigInteger.Divide(A, C);
-      Check(E = D, Format('(%d, %d) %s div %x = %s (%s)', [I, J, A.ToString(16), W16, D.ToString(16), E.ToString(16)]));
-      D := BigInteger.Remainder(A, W16);
-      E := BigInteger.Remainder(A, C);
-      Check(E = D, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, A.ToString(16), W16, D.ToString(16), E.ToString(16)]));
+      U16OpResult := BigInteger.Divide(Dividend, U16);
+      BigIntOpResult := BigInteger.Divide(Dividend, U16Equiv);
+      Check(BigIntOpResult = U16OpResult, Format('(%d, %d) %s div %x = %s (%s)', [I, J, Dividend.ToString(16), U16, U16OpResult.ToString(16), BigIntOpResult.ToString(16)]));
+      U16OpResult := BigInteger.Remainder(Dividend, U16);
+      BigIntOpResult := BigInteger.Remainder(Dividend, U16Equiv);
+      Check(BigIntOpResult = U16OpResult, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, Dividend.ToString(16), U16, U16OpResult.ToString(16), BigIntOpResult.ToString(16)]));
     end;
   end;
 end;
@@ -1241,24 +1374,25 @@ end;
 procedure TTestBigInteger.TestDivMod32;
 var
   I, J: Integer;
-  W32: UInt32;
+  U32: UInt32;
+  Dividend, Divisor, U32Equiv, U32OpResult, BigIntOpResult: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
-    A := Arguments[I];
+    Dividend := Arguments[I];
     for J := 0 to High(Arguments) do
     begin
-      B := Arguments[I];
-      W32 := UInt32(B);
-      C := W32;
-      if W32 = 0 then
+      Divisor := Arguments[I];
+      U32 := UInt32(Divisor);
+      U32Equiv := U32;
+      if U32 = 0 then
         Continue;
-      D := BigInteger.Divide(A, W32);
-      E := BigInteger.Divide(A, C);
-      Check(E = D, Format('(%d, %d) %s div %x = %s (%s)', [I, J, A.ToString(16), W32, D.ToString(16), E.ToString(16)]));
-      D := BigInteger.Remainder(A, W32);
-      E := BigInteger.Remainder(A, C);
-      Check(E = D, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, A.ToString(16), W32, D.ToString(16), E.ToString(16)]));
+      U32OpResult := BigInteger.Divide(Dividend, U32);
+      BigIntOpResult := BigInteger.Divide(Dividend, U32Equiv);
+      Check(BigIntOpResult = U32OpResult, Format('(%d, %d) %s div %x = %s (%s)', [I, J, Dividend.ToString(16), U32, U32OpResult.ToString(16), BigIntOpResult.ToString(16)]));
+      U32OpResult := BigInteger.Remainder(Dividend, U32);
+      BigIntOpResult := BigInteger.Remainder(Dividend, U32Equiv);
+      Check(BigIntOpResult = U32OpResult, Format('(%d, %d) %s mod %x = %s (%s)', [I, J, Dividend.ToString(16), U32, U32OpResult.ToString(16), BigIntOpResult.ToString(16)]));
     end;
   end;
 end;
@@ -1268,22 +1402,21 @@ var
   I: Integer;
   R: IRandom;
   Threshold: Integer;
-  ASize, BSize: Integer;
-  G, H: BigInteger;
+  DendSize, DorSize: Integer;
+  Dividend, Divisor, KnuthQ, KnuthR, BZQ, BZR: BigInteger;
 begin
   R := TDelphiRandom.Create($1234567);
   for I := 1 to 20 do
   begin
     Threshold := 160;
-    ASize := Threshold * 145;
-    A := BigInteger.Create(ASize, R);
-    BSize := Threshold * 65;
-    B := BigInteger.Create(BSize, R);
-    BigInteger.DivModKnuth(A, B, C, D);
-    BigInteger.DivModBurnikelZiegler(A, B, E, F);
-    BigInteger.DivMod(A, B, G, H);
-    Check(C = E, Format('%d: %s div %s = %s (%s)', [I, A.ToString(16), B.ToString(16), E.ToString(16), C.ToString(16)])); // Check quotients
-    Check(D = F, Format('%d: %s mod %s = %s (%s)', [I, A.ToString(16), B.ToString(16), F.ToString(16), D.ToString(16)])); // Check remainders
+    DendSize := Threshold * 145;
+    Dividend := BigInteger.Create(DendSize, R);
+    DorSize := Threshold * 65;
+    Divisor := BigInteger.Create(DorSize, R);
+    BigInteger.DivModKnuth(Dividend, Divisor, KnuthQ, KnuthR);
+    BigInteger.DivModBurnikelZiegler(Dividend, Divisor, BZQ, BZR);
+    Check(KnuthQ = BZQ, Format('%d: %s div %s = %s (%s)', [I, Dividend.ToString(16), Divisor.ToString(16), BZQ.ToString(16), KnuthQ.ToString(16)])); // Check quotients
+    Check(KnuthR = BZR, Format('%d: %s mod %s = %s (%s)', [I, Dividend.ToString(16), Divisor.ToString(16), BZR.ToString(16), KnuthR.ToString(16)])); // Check remainders
   end;
 end;
 
@@ -1294,24 +1427,26 @@ end;
 procedure TTestBigInteger.TestBitLength;
 var
   I: Integer;
+  Value: BigInteger;
 begin
-  A := 1;
+  Value := 1;
   for I := 1 to 1000 do
   begin
-    Check(A.BitLength = I);
-    A := A + A;
+    Check(Value.BitLength = I);
+    Value := Value + Value;
   end;
-  A := 1;
+  Value := 1;
   for I := 1 to 1000 do
   begin
-    Check(A.BitLength = I);
-    A := A + A + BigInteger.One;
+    Check(Value.BitLength = I);
+    Value := Value + Value + BigInteger.One;
   end;
 end;
 
 procedure TTestBigInteger.TestGreatestCommonDivisor;
 var
   I, J, N: Integer;
+  A, B, GCD, CheckGCD: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
@@ -1320,10 +1455,10 @@ begin
     for J := 0 to High(Arguments) do
     begin
       B := Arguments[J];
-      C := BigInteger.GreatestCommonDivisor(A, B);
-      D := GCDResults[N].val;
+      GCD := BigInteger.GreatestCommonDivisor(A, B);
+      CheckGCD := GCDResults[N].val;
 
-      Check(C = D);
+      Check(GCD = CheckGCD);
       Inc(N);
     end;
   end;
@@ -1333,6 +1468,7 @@ procedure TTestBigInteger.TestLn;
 var
   I: Integer;
   D1, D2: Double;
+  A: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin
@@ -1358,20 +1494,19 @@ end;
 procedure TTestBigInteger.TestMax;
 var
   I, J, N: Integer;
+  A, B, Maximum, CheckMax: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
   begin
     A := Arguments[I];
-
     for J := 0 to High(Arguments) do
     begin
       B := Arguments[J];
-
-      C := BigInteger.Max(A, B);
-      D := MaxResults[N].val;
+      Maximum := BigInteger.Max(A, B);
+      CheckMax := MaxResults[N].val;
       Inc(N);
-      Check(C = D);
+      Check(Maximum = CheckMax);
     end;
   end;
 end;
@@ -1379,6 +1514,7 @@ end;
 procedure TTestBigInteger.TestMin;
 var
   I, J, N: Integer;
+  A, B, Mimimum, CheckMin: BigInteger;
 begin
   N := 0;
   for I := 0 to High(Arguments) do
@@ -1389,10 +1525,10 @@ begin
     begin
       B := Arguments[J];
 
-      C := BigInteger.Min(A, B);
-      D := MinResults[N].val;
+      Mimimum := BigInteger.Min(A, B);
+      CheckMin := MinResults[N].val;
       Inc(N);
-      Check(C = D);
+      Check(Mimimum = CheckMin);
     end;
   end;
 end;
@@ -1404,7 +1540,7 @@ end;
 
 procedure TTestBigInteger.TestModPow;
 var
-  A, B, C, D: BigInteger;
+  Base, Exponent, Modulus, ModPower: BigInteger;
   I, J, K, N: Integer;
   TR: TTestResult;
   HadException: Boolean;
@@ -1413,36 +1549,36 @@ begin
   I := 2;
   while I < High(Arguments) do
   begin
-    A := BigInteger(Arguments[I]);
-    A := BigInteger.Abs(A);
+    Base := BigInteger(Arguments[I]);
+    Base := BigInteger.Abs(Base);
     J := 0;
     while J < High(Arguments) do
     begin
-      B := BigInteger(Arguments[J]);
-      B := BigInteger.Abs(B);
+      Exponent := BigInteger(Arguments[J]);
+      Exponent := BigInteger.Abs(Exponent);
       K := 1;
       while K < High(Arguments) do
       begin
-        C := BigInteger(Arguments[K]);
-        C := BigInteger.Abs(C);
+        Modulus := BigInteger(Arguments[K]);
+        Modulus := BigInteger.Abs(Modulus);
 
         TR := ModPowResults[N];
 
         HadException := False;
         try
-          D := BigInteger.ModPow(A, B, C);
+          ModPower := BigInteger.ModPow(Base, Exponent, Modulus);
         except
           on E: Exception do
           begin
-            Check(TR.Info <> triOk, Format('%d: Unexpect exception on ModPow(%s, %s, %s): %s -- %s', [N, string(A), string(B), string(C), E.ClassName, E.Message]));
+            Check(TR.Info <> triOk, Format('%d: Unexpect exception on ModPow(%s, %s, %s): %s -- %s', [N, string(Base), string(Exponent), string(Modulus), E.ClassName, E.Message]));
             HadException := True;
           end;
         end;
 
         if not HadException then
         begin
-          Check(TR.Info = triOk, Format('%d: ModPos(%s, %s, %s) has Java error: %s', [N, string(A), string(B), string(C), TR.Val]));
-          Check(BigInteger(TR.Val) = D, Format('(%d,%d,%d,%d): ModPow(%s, %s, %s) = %s (%s)', [I, J, K, N, string(A), string(B), string(C), string(D), TR.Val]));
+          Check(TR.Info = triOk, Format('%d: ModPos(%s, %s, %s) has Java error: %s', [N, string(Base), string(Exponent), string(Modulus), TR.Val]));
+          Check(BigInteger(TR.Val) = ModPower, Format('(%d,%d,%d,%d): ModPow(%s, %s, %s) = %s (%s)', [I, J, K, N, string(Base), string(Exponent), string(Modulus), string(ModPower), TR.Val]));
         end;
         Inc(N);
         Inc(K, 5);
@@ -1456,14 +1592,14 @@ end;
 procedure TTestBigInteger.TestParse;
 var
   I: Integer;
-  S0, S1: string;
-  A: BigInteger;
+  ParseString, StringResult: string;
+  Value: BigInteger;
 begin
   for I := High(MultiplyResults) downto 0 do
   begin
-    S0 := MultiplyResults[I].val;
+    ParseString := MultiplyResults[I].val;
     try
-      A := S0;
+      Value := ParseString;
     except
       on E: Exception do
       begin
@@ -1471,7 +1607,7 @@ begin
       end;
     end;
     try
-      S1 := A.ToString(10);
+      StringResult := Value.ToString(10);
     except
       on E: Exception do
       begin
@@ -1479,26 +1615,41 @@ begin
         raise;
       end;
     end;
-    Check(S0 = S1, Format('MultiplyResults[%d]: ''%s'' --> %s (%s), classic: %s', [I, S0, S1, S0, A.ToStringClassic(10)]));
+    Check(ParseString = StringResult, Format('MultiplyResults[%d]: ''%s'' --> %s (%s), classic: %s', [I, ParseString, StringResult, ParseString, Value.ToStringClassic(10)]));
   end;
 end;
 
 procedure TTestBigInteger.TestPow;
 var
   I, J, N, Exponent: Integer;
+  Base, Power, CheckPower: BigInteger;
 begin
   N := 0;
   for I := 0 to High(BitShifts) do
   begin
-    A := BitShifts[I];
+    Base := BitShifts[I];
     for J := 0 to High(BitShifts) do
     begin
       Exponent := BitShifts[J];
-      B := BigInteger.Pow(A, Exponent);
-      C := PowerResults[N].val;
-      Check(B = C, Format('(%d,%d) Pow(%s, %d) = %s (%s)', [I, J, A.ToString, Exponent, B.ToString, C.ToString]));
+      Power := BigInteger.Pow(Base, Exponent);
+      CheckPower := PowerResults[N].val;
+      Check(Power = CheckPower, Format('(%d,%d) Pow(%s, %d) = %s (%s)', [I, J, Base.ToString, Exponent, Power.ToString, CheckPower.ToString]));
       Inc(N);
     end;
+  end;
+end;
+
+procedure TTestBigInteger.TestPred;
+var
+  Value, Predecessor, ValueMinusOne: BigInteger;
+  I: Integer;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    Value := Arguments[I];
+    Predecessor := Value.Pred;
+    ValueMinusOne := Value - BigInteger.One;
+    Check(Predecessor = ValueMinusOne, Format('(%d) Pred(%s) = %s (%s)', [I, string(Value), string(Predecessor), string(ValueMinusOne)]));
   end;
 end;
 
@@ -1507,6 +1658,7 @@ var
   I, J: Integer;
   S1, S2: string;
   Bytes: TArray<Byte>;
+  A: BigInteger;
 begin
   for I := 0 to High(Arguments) do
   begin

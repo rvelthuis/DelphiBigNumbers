@@ -1,7 +1,7 @@
 //                                                                                                  //
 // File: BigIntegerBitwiseResults.inc                                                               //
 //                                                                                                  //
-// Test data for Velthuis.BigIntegers.pas, generated 15 Jan, 2017, 02:04:20                         //
+// Test data for Velthuis.BigIntegers.pas, generated 15 Sep, 2017, 13:32:51                         //
 //                                                                                                  //
 // Do not modify the generated data in this file.  Modify the data in the generator source file.    //
 // The source file for the generator is BigIntegerTestDataGenerator.java, in the Test subdirectory. //
@@ -14528,7 +14528,7 @@
     (Info: triOk;            Val: '0')                                          // 4095: Arguments[63] xor Arguments[63]
   );
 
-  NegationResults: array[0..ArgumentCount - 1] of TTestResult =
+  NegationResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '1585715829851573239739325670632039865384' + 
                                   '960'),                                       // Negate(Arguments[0])
@@ -14605,7 +14605,7 @@
                                   '0000000000000000000')                        // Negate(Arguments[63])
   );
 
-  LogicalNotResults: array[0..ArgumentCount - 1] of TTestResult =
+  LogicalNotResults: array[0..64 - 1] of TTestResult =
   (
     (Info: triOk;            Val: '1585715829851573239739325670632039865384' + 
                                   '959'),                                       // not Arguments[0]

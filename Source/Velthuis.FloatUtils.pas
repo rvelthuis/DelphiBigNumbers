@@ -55,6 +55,9 @@ function IsPositiveInfinity(const AValue: Single): Boolean; overload;
 function IsPositiveInfinity(const AValue: Double): Boolean; overload;
 function IsPositiveInfinity(const AValue: Extended): Boolean; overload;
 
+function GetSignificand(const AValue: Single): UInt32; overload;
+function GetSignificand(const AValue: Double): UInt64; overload;
+function GetSignificand(const AValue: Extended): UInt64; overload;
 function GetMantissa(const AValue: Single): UInt32; overload;
 function GetMantissa(const AValue: Double): UInt64; overload;
 function GetMantissa(const AValue: Extended): UInt64; overload;
@@ -67,9 +70,9 @@ function IsDenormal(const AValue: Single): Boolean; overload;
 function IsDenormal(const AValue: Double): Boolean; overload;
 function IsDenormal(const AValue: Extended): Boolean; overload;
 
-function MakeSingle(Sign: TValueSign; Mantissa: UInt32; Exponent: Integer): Single;
-function MakeDouble(Sign: TValueSign; Mantissa: UInt64; Exponent: Integer): Double;
-function MakeExtended(Sign: TValueSign; Mantissa: UInt64; Exponent: Integer): Extended;
+function MakeSingle(Sign: TValueSign; Significand: UInt32; Exponent: Integer): Single;
+function MakeDouble(Sign: TValueSign; Significand: UInt64; Exponent: Integer): Double;
+function MakeExtended(Sign: TValueSign; Significand: UInt64; Exponent: Integer): Extended;
 
 type
   PUInt8  = ^UInt8;
@@ -79,23 +82,23 @@ type
 
   PExt80Rec = ^TExt80Rec;
   TExt80Rec = packed record
-    Mantissa: UInt64;
+    Significand: UInt64;
     ExponentAndSign: Word;
   end;
 
 const
-  CSingleExponentShift  = 23;
-  CDoubleExponentShift  = 52;
-  CSingleExponentMask   = $FF;
-  CDoubleExponentMask   = $7FF;
-  CExtendedExponentMask = $7FFF;
-  CSingleBias           = CSingleExponentMask shr 1;
-  CDoubleBias           = CDoubleExponentMask shr 1;
-  CExtendedBias         = CExtendedExponentMask shr 1;
-  CSingleMantissaMask   = UInt32(1) shl CSingleExponentShift - 1;
-  CDoubleMantissaMask   = UInt64(1) shl CDoubleExponentShift - 1;
-  CSingleSignMask       = UInt32(1) shl 31;
-  CDoubleSignMask       = UInt64(1) shl 63;
+  CSingleExponentShift   = 23;
+  CDoubleExponentShift   = 52;
+  CSingleExponentMask    = $FF;
+  CDoubleExponentMask    = $7FF;
+  CExtendedExponentMask  = $7FFF;
+  CSingleBias            = CSingleExponentMask shr 1;
+  CDoubleBias            = CDoubleExponentMask shr 1;
+  CExtendedBias          = CExtendedExponentMask shr 1;
+  CSingleSignificandMask = UInt32(1) shl CSingleExponentShift - 1;
+  CDoubleSignificandMask = UInt64(1) shl CDoubleExponentShift - 1;
+  CSingleSignMask        = UInt32(1) shl 31;
+  CDoubleSignMask        = UInt64(1) shl 63;
 
 implementation
 
@@ -108,14 +111,14 @@ uses
 
 {$POINTERMATH ON}
 
-function GetRawMantissa(const AValue: Single): UInt32; overload; inline;
+function GetRawSignificand(const AValue: Single): UInt32; overload; inline;
 begin
-  Result := PUInt32(@AValue)^ and CSingleMantissaMask;
+  Result := PUInt32(@AValue)^ and CSingleSignificandMask;
 end;
 
-function GetRawMantissa(const AValue: Double): UInt64; overload; inline;
+function GetRawSignificand(const AValue: Double): UInt64; overload; inline;
 begin
-  Result := PUInt64(@AValue)^ and CDoubleMantissaMask;
+  Result := PUInt64(@AValue)^ and CDoubleSignificandMask;
 end;
 
 function GetRawExponent(const AValue: Single): Integer; overload; inline;
@@ -163,36 +166,51 @@ begin
   Result := System.Math.IsInfinite(AValue) and (Sign(AValue) > 0);
 end;
 
-function GetMantissa(const AValue: Single): UInt32; overload;
+function GetSignificand(const AValue: Single): UInt32; overload;
 var
   E: Integer;
 begin
   E := GetRawExponent(AValue);
-  Result := GetRawMantissa(AValue);
+  Result := GetRawSignificand(AValue);
   if (0 < E) and (E < CSingleExponentMask) then
     Result := Result or (UInt32(1) shl CSingleExponentShift);
 end;
 
-function GetMantissa(const AValue: Double): UInt64; overload;
+function GetSignificand(const AValue: Double): UInt64; overload;
 var
   E: Integer;
 begin
   E := GetRawExponent(AValue);
-  Result := GetRawMantissa(AValue);
+  Result := GetRawSignificand(AValue);
   if (0 < E) and (E < CDoubleExponentMask) then
     Result := Result or ((UInt64(1) shl CDoubleExponentShift));
 end;
 
-function GetMantissa(const AValue: Extended): UInt64; overload;
+function GetSignificand(const AValue: Extended): UInt64; overload;
 begin
   Result := PUInt64(@AValue)^;
+end;
+
+function GetMantissa(const AValue: Single): UInt32; overload;
+begin
+  Result := GetSignificand(AValue);
+end;
+
+function GetMantissa(const AValue: Double): UInt64; overload;
+begin
+  Result := GetSignificand(AValue);
+end;
+
+function GetMantissa(const AValue: Extended): UInt64; overload;
+begin
+  Result := GetSignificand(AValue);
 end;
 
 function GetExponent(const AValue: Single): Integer; overload;
 var
   M, E: UInt32;
 begin
-  M := GetRawMantissa(AValue);
+  M := GetRawSignificand(AValue);
   E := GetRawExponent(AValue);
   if (0 < E) and (E < CSingleExponentMask) then
     Result := E - CSingleBias
@@ -213,7 +231,7 @@ var
   M: UInt64;
   E: UInt32;
 begin
-  M := GetRawMantissa(AValue);
+  M := GetRawSignificand(AValue);
   E := GetRawExponent(AValue);
   if (0 < E) and (E < CDoubleExponentMask) then
     Result := E - CDoubleBias
@@ -252,44 +270,44 @@ end;
 
 function IsDenormal(const AValue: Single): Boolean; overload;
 begin
-  Result := ((PUInt32(@AValue)^ shr CSingleExponentShift and CSingleExponentMask) = 0) and (GetMantissa(AValue) <> 0);
+  Result := ((PUInt32(@AValue)^ shr CSingleExponentShift and CSingleExponentMask) = 0) and (GetSignificand(AValue) <> 0);
 end;
 
 function IsDenormal(const AValue: Double): Boolean; overload;
 begin
-  Result := ((PUInt64(@AValue)^ shr 52) = 0) and (GetMantissa(AValue) <> 0);
+  Result := ((PUInt64(@AValue)^ shr 52) = 0) and (GetSignificand(AValue) <> 0);
 end;
 
 function IsDenormal(const AValue: Extended): Boolean; overload;
 begin
-  Result := ((PUInt16(@AValue)[4] and $7FFF) = 0) and (GetMantissa(AValue) <> 0);
+  Result := ((PUInt16(@AValue)[4] and $7FFF) = 0) and (GetSignificand(AValue) <> 0);
 end;
 
-function MakeSingle(Sign: TValueSign; Mantissa: UInt32; Exponent: Integer): Single;
+function MakeSingle(Sign: TValueSign; Significand: UInt32; Exponent: Integer): Single;
 var
   U: UInt32;
 begin
   U := (Sign and CSingleSignMask) or
        ((UInt32(Exponent + CSingleBias) and CSingleExponentMask) shl CSingleExponentShift) or
-       (Mantissa and CSingleMantissaMask);
+       (Significand and CSingleSignificandMask);
   PUInt32(@Result)^ := U;
 end;
 
-function MakeDouble(Sign: TValueSign; Mantissa: UInt64; Exponent: Integer): Double;
+function MakeDouble(Sign: TValueSign; Significand: UInt64; Exponent: Integer): Double;
 var
   U: UInt64;
 begin
   U := UInt64(Int64(Sign) and CDoubleSignMask) or
        (UInt64((Exponent + CDoubleBias) and CDoubleExponentMask) shl CDoubleExponentShift) or
-       (Mantissa and CDoubleMantissaMask);
+       (Significand and CDoubleSignificandMask);
   PUInt64(@Result)^ := U;
 end;
 
-function MakeExtended(Sign: TValueSign; Mantissa: UInt64; Exponent: Integer): Extended;
+function MakeExtended(Sign: TValueSign; Significand: UInt64; Exponent: Integer): Extended;
 var
   E: TExt80Rec;
 begin
-  E.Mantissa := Mantissa;
+  E.Significand := Significand;
   E.ExponentAndSign := (Sign and $8000) or ((Exponent + CExtendedBias) and CExtendedExponentMask);
   PExt80Rec(@Result)^ := E;
 end;

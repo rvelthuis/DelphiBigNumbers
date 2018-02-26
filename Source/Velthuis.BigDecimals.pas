@@ -1,7 +1,7 @@
 ﻿{---------------------------------------------------------------------------}
 {                                                                           }
 { File:       Velthuis.BigDecimals.pas                                      }
-{ Function:   A multiple precision decimal implementation, based on the     }
+{ HFunction:  A multiple precision decimal implementation, based on the     }
 {             BigInteger implementation in Velthuis.BigIntegers.pas.        }
 { Language:   Delphi version XE2 or later                                   }
 { Author:     Rudy Velthuis                                                 }
@@ -112,12 +112,24 @@ unit Velthuis.BigDecimals;
 {$IFEND}
 
 {$IF CompilerVersion >= 21.0}   // Delphi 2010
-  {$DEFINE HASCLASSCONSTRUCTORS}
+  {$DEFINE HasClassConstructors}
 {$IFEND}
 
 {$IF SizeOf(Extended) > SizeOf(Double)}
-  {$DEFINE HASEXTENDED}
+  {$DEFINE HasExtended}
 {$IFEND}
+
+{$IF CompilerVersion < 29.0}
+  {$IF (DEFINED(WIN32) or DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
+    {$DEFINE CPU32BITS}
+  {$IFEND}
+  {$IF (DEFINED(WIN64) OR DEFINED(CPUX64)) AND NOT DEFINED(CPU64BITS)}
+    {$DEFINE CPU64BITS}
+  {$IFEND}
+{$IFEND}
+
+{$DEFINE Experimental}
+
 
 interface
 
@@ -134,10 +146,11 @@ type
   /// "know" that rounding is not necessary, and the code determines that, to get the desired result, rounding is
   /// necessary after all.</summary>
   ERoundingNecessary = class(Exception);
+  EIntPowerExponent = class(Exception);
 
   PBigDecimal = ^BigDecimal;
 
-  /// <summary>BigDecimal is a multiple precision floating decimal point binary mantissa data type. It consists
+  /// <summary>BigDecimal is a multiple precision floating decimal point binary significand data type. It consists
   /// of a BigInteger and a scale, which is the negative decimal exponent.</summary>
   /// <remarks><para>BigDecimal "remembers" the precision with which it was initialized. So BigDecimal('1.79') and
   /// BigDecimal('1.790000') are distinct values, although they compare as equal.</para>
@@ -176,10 +189,16 @@ type
       /// <summary>Minimum value a BigDecimal's scale can have</summary>
       MinScale = -MaxScale - 1;
 
+{$IF defined(CPU32BITS)}
+      IntPowerExponentThreshold = 128;
+{$ELSE}
+      IntPowerExponentThreshold = 256;
+{$IFEND}
+
   private
     type
       // Error codes to be used when calling the private static BigDecimal.Error method.
-      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecOverflow, ecUnderflow, ecInvalidArg, ecRounding);
+      TErrorCode = (ecParse, ecDivByZero, ecConversion, ecOverflow, ecUnderflow, ecInvalidArg, ecRounding, ecExponent);
 
     var
       // The unscaled value of the BigDecimal.
@@ -224,7 +243,7 @@ type
       // BigDecimal with value 0.1: unscaled value = 1, scale = 1.
       FOneTenth: BigDecimal;
 
-{$IFDEF HASCLASSCONSTRUCTORS}
+{$IFDEF HasClassConstructors}
     class constructor InitClass;
 {$ELSE}
     class procedure InitClass; static;
@@ -239,16 +258,18 @@ type
     // is 2, then the result is [179324, 5], which is as close to scale=2 as we can get without altering the value.
     class procedure InPlaceRemoveTrailingZeros(var Value: BigDecimal; TargetScale: Integer); static;
 
-    // Checks if the given floating point type string is 'NaN', 'NegInfinity' or 'Infinity'.
-    class procedure CheckInvalidFloatString(const S, TypeStr: string); static;
-
     // Converts the current BigDecimal to sign, significand and exponent for the given significand size in bits.
     // Can be used to convert to components for Single, Double and Extended.
     class procedure ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer;
-      var Sign: Integer; var Significand: UInt64; var Exponent: Integer); static;
+      var Sign: Integer; var Exponent: Integer; var Significand: UInt64); static;
+
+    // Converts the current sign, significand and exponent, extracted from a Single, Double or Extended,
+    // into a BigDecimal.
+    class procedure ConvertFromFloatComponents(Sign: TValueSign; Exponent: Integer; Significand: UInt64;
+      var Result: BigDecimal); static;
 
     // Raises exceptions where the type depends on the error code and the message on the arguments.
-    class procedure Error(ErrorCode: TErrorCode; Args: array of const); static;
+    class procedure Error(ErrorCode: TErrorCode; ErrorInfo: array of const); static;
 
     // Gets a BigInteger of the given power of five, either from a prefilled array or using BigInteger.Pow.
     class function GetPowerOfFive(N: Integer): BigInteger; static;
@@ -256,7 +277,7 @@ type
     // Gets a BigInteger of the given power of ten, either from a prefilled array or using BigInteger.Pow.
     class function GetPowerOfTen(N: Integer): BigInteger; static;
 
-    // Initialize or reset values of scale and precision to 0.
+    // Initialize or reset scale and precision to 0.
     procedure Init; inline;
 
     // Checks if the NewScale value is a valid scale value. If so, simply returns NewScale. Otherwise, raises
@@ -271,7 +292,7 @@ type
     /// <summary>Creates a BigDecimal with given unscaled value and given scale.</summary>
     constructor Create(const UnscaledValue: BigInteger; Scale: Integer); overload;
 
-  {$IFDEF HASEXTENDED}
+  {$IFDEF HasExtended}
     /// <summary>Creates a BigDecimal with the same value as the given Extended parameter.</summary>
     /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the parameter contains a NaN or infinity.</exception>
     constructor Create(const E: Extended); overload;
@@ -293,16 +314,16 @@ type
     constructor Create(const UnscaledValue: BigInteger); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given unsigned 64 bit integer parameter.</summary>
-    constructor Create(const U: UInt64); overload;
+    constructor Create(const U64: UInt64); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given signed 64 bit integer parameter.</summary>
-    constructor Create(const I: Int64); overload;
+    constructor Create(const I64: Int64); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given unsigned 32 bit integer parameter.</summary>
-    constructor Create(U: UInt32); overload;
+    constructor Create(U32: UInt32); overload;
 
     /// <summary>Creates a BigDecimal with the same value as the given signed 32 bit integer parameter.</summary>
-    constructor Create(I: Int32); overload;
+    constructor Create(I32: Int32); overload;
 
 
     // -- Mathematical operators --
@@ -414,7 +435,7 @@ type
 
     // -- Implicit conversion operators --
 
-  {$IFDEF HASEXTENDED}
+  {$IFDEF HasExtended}
     /// <summary>Returns a BigDecimal with the exact value of the given Extended parameter.</summary>
     class operator Implicit(const E: Extended): BigDecimal;
   {$ENDIF}
@@ -440,23 +461,23 @@ type
 
     // -- Explicit conversion operators --
 
-  {$IFDEF HASEXTENDED}
+  {$IFDEF HasExtended}
     /// <summary>Returns an Extended with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     class operator Explicit(const Value: BigDecimal): Extended;
   {$ENDIF}
 
     /// <summary>Returns a Double with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     class operator Explicit(const Value: BigDecimal): Double;
 
     /// <summary>Returns a Single with the best approximation of the given BigDecimal value.
     /// The conversion uses the default rounding mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     class operator Explicit(const Value: BigDecimal): Single;
 
@@ -558,6 +579,12 @@ type
     /// <summary>Returns the square root of the given BigDecimal, using the default precision.</summary>
     class function Sqrt(const Value: BigDecimal): BigDecimal; overload; static;
 
+    /// <summary>Returns the integer power of the given BigDecimal, in unlimited precision.</summary>
+    class function IntPower(const Base: BigDecimal; Exponent: Integer): BigDecimal; overload; static;
+
+    /// <summary>Returns the integer power of the given BigDecimal, in the given precision.</summary>
+    class function IntPower(const Base: BigDecimal; Exponent, Precision: Integer): BigDecimal; overload; static;
+
 
     // -- Comparison functions --
 
@@ -609,7 +636,7 @@ type
 
     /// <summary>Rounds the current BigDecimal to a value with at most Digits digits, using the given rounding
     /// mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     /// <remarks><para>The System.Math.RoundTo function uses the floating point equivalent of rmNearestEven, while
     /// System.Math.SimpleRoundTo uses the equivalent of rmNearestUp. This function is more versatile.</para>
@@ -619,7 +646,7 @@ type
 
     /// <summary>Rounds the current BigDecimal to a value with at most Digits digits, using the default rounding
     /// mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     /// <remarks><para>The System.Math.RoundTo function uses the floating point equivalent of rmNearestEven, while
     /// System.Math.SimpleRoundTo uses the equivalent of rmNearestUp. This function is more versatile.</para>
@@ -629,12 +656,12 @@ type
 
     /// <summary>Rounds the current BigDecimal to a value with the given scale, using the given rounding
     /// mode.</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     function RoundToScale(NewScale: Integer; ARoundingMode: RoundingMode): BigDecimal;
 
     /// <summary>Rounds the current Bigdecimal to a certain precision (number of significant digits).</summary>
-    /// <exception cref="ERoundingNecessaryException">ERoundingNecessaryException is raised if a rounding mode
+    /// <exception cref="ERoundingNecessary">ERoundingNecessary is raised if a rounding mode
     /// rmUnnecessary was specified but rounding is necessary after all.</exception>
     function RoundToPrecision(APrecision: Integer): BigDecimal; overload;
 
@@ -659,6 +686,14 @@ type
     /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('0.5678').</remarks>
     function Frac: BigDecimal;
 
+    /// <summary>Returns a BigDecimal rounded down, towards negative infinity, to the next integral value.</summary>
+    /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('1234');</remarks>
+    function Floor: BigDecimal;
+
+    /// <summary>Returns a BigDecimal rounded up, towards positive infinity, to the next integral value.</summary>
+    /// <remarks>Example: BigDecimal('1234.5678') results in BigDecimal('1235');</remarks>
+    function Ceil: BigDecimal;
+
     /// <summary>Returns the number of significant digits of the current BigDecimal.</summary>
     function Precision: Integer;
 
@@ -679,11 +714,17 @@ type
     ///  BigDecimal('1234.56789').</para></remarks>
     function RemoveTrailingZeros(TargetScale: Integer): BigDecimal;
 
-    /// <summary>Returns the square root of the current BigDecimal, with the given precision</summary>
+    /// <summary>Returns the square root of the current BigDecimal, with the given precision.</summary>
     function Sqrt(Precision: Integer): BigDecimal; overload;
 
     /// <summary>Returns the square root of the current BigDecimal, with the default precision.</summary>
     function Sqrt: BigDecimal; overload;
+
+    /// <summary>Returns the integer power of the current BigDecimal, with unlimited precision.</summary>
+    function IntPower(Exponent: Integer): BigDecimal; overload;
+
+    /// <summary>Returns the integer power of the current BigDecimal, with the given precision.</summary>
+    function IntPower(Exponent, Precision: Integer): BigDecimal; overload;
 
     /// <summary>Returns the square of the current BigDecimal.</summary>
     function Sqr: BigDecimal; overload;
@@ -764,18 +805,7 @@ implementation
 {$OVERFLOWCHECKS OFF}
 
 uses
-  Velthuis.ExactFloatStrings, Velthuis.FloatUtils;
-
-resourcestring
-  SErrorBigDecimalParsing = '''%s'' is not valid BigDecimal value.';
-  SDivisionByZero         = 'Division by zero';
-  SConversionFailed       = 'BigDecimal value too large for conversion to %s';
-  SInvalidArg             = '%s parameter may not be NaN or +/- Infinity';
-  SOverflow               = 'Resulting value too big to represent';
-  SUnderflow              = 'Resulting value too small to represent';
-  SInvalidArgument        = 'Invalid argument %s';
-  SRounding               = 'Rounding necessary';
-  SInvalidOperation       = 'Invalid BigDecimal operation';
+  Velthuis.FloatUtils, Velthuis.Numerics, Velthuis.StrConsts;
 
 var
   PowersOfTen: TArray<BigInteger>;
@@ -895,11 +925,8 @@ begin
         if Remainder + Remainder > Divisor then         // 1.78 --> 1.8, 1.72 --> 1.7, 1.75 --> see next
           Inc(Quotient)
         else if Remainder + Remainder = Divisor then    // the "Half" condition.
-          if Mode = rmNearestUp then                    // 1.75 --> 1.8, 1.65 --> 1.7, -1-75 --> -1.8, -1.65 --> -1.7
-            Inc(Quotient)
-          else if Mode = rmNearestEven then             // 1.75 --> 1.8, 1.65 --> 1.6, -1.75 --> -1.8, -1.65 --> -1.6
-            if not Quotient.IsEven then
-              Inc(Quotient);
+          if (Mode = rmNearestUp) or ((Mode = rmNearestEven) and not Quotient.IsEven) then
+            Inc(Quotient);
       rmUnnecessary:                                    // No remainder allowed.
         Error(ecRounding, []);
     end;
@@ -964,14 +991,6 @@ begin
   Value.Create(LValue, LScale);
 end;
 
-// Checks if the strings contain 'NaN', 'NegInfinity' or 'Infinity', the results of ExactString.
-// Ideally, this is not necessary and conversion is completely in binary.
-class procedure BigDecimal.CheckInvalidFloatString(const S, TypeStr: string);
-begin
-  if (S = 'NaN') or (S = 'NegInfinity') or (S = 'Infinity') then // DO NOT TRANSLATE
-    Error(ecInvalidArg, [TypeStr]);
-end;
-
 class function BigDecimal.Compare(const Left, Right: BigDecimal): TValueSign;
 const
   Values: array[Boolean] of Integer = (-1, 1);
@@ -999,9 +1018,9 @@ begin
 end;
 
 // Converts Value to components for binary FP format, with Significand, binary Exponent and Sign. Significand
-// (or mantissa) is SignificandSize bits. This can be used for conversion to Extended, Double and Single, and,
+// (a.k.a. mantissa) is SignificandSize bits. This can be used for conversion to Extended, Double and Single, and,
 // if desired, IEEE 754-2008 binary128 (note: binary32 is equivalent to Single and binary64 to Double).
-class procedure BigDecimal.ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer; var Sign: Integer; var Significand: UInt64; var Exponent: Integer);
+class procedure BigDecimal.ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer; var Sign: Integer; var Exponent: Integer; var Significand: UInt64);
 var
   LDivisor, LQuotient, LRemainder, LLowBit, LSignificand: BigInteger;
   LBitLen, LScale: Integer;
@@ -1071,36 +1090,107 @@ begin
   FScale := Scale;
 end;
 
-// TODO: The following float conversions simply convert the float to a string and then use that to
-// initialize the BigDecimal. This works fine, but can perhaps be cut short a little, since
-// ExactString internally already converts the single to a BigInteger and a scale.
+class procedure BigDecimal.ConvertFromFloatComponents(Sign: TValueSign; Exponent: Integer; Significand: UInt64; var Result: BigDecimal);
+type
+  TUInt64 = packed record
+    Lo, Hi: UInt32;
+  end;
+var
+  NewUnscaledValue: BigInteger;
+  NewScale: Integer;
+  Shift: Integer;
+begin
+  Shift := NumberOfTrailingZeros(Significand);
+
+  Significand := Significand shr Shift;
+  Inc(Exponent, Shift);
+
+  NewUnscaledValue := Significand;
+
+  NewScale := 0;
+  if Exponent < 0 then
+  begin
+    // To get rid of the binary exponent (make it 0), BigInt must repeatedly be divided by 2.
+    // This isn't done directly: on each "iteration", BigInt is multipiled by 5 and then the
+    // decimal point is moved by one, which is equivalent with a division by 10.
+    // So, effectively, the result is divided by 2.
+    // Instead of in a loop, this is done directly using Pow()
+    NewUnscaledValue := NewUnscaledValue * BigInteger.Pow(5, -Exponent);
+    NewScale := -Exponent;
+  end
+  else if Exponent > 0 then
+    NewUnscaledValue := NewUnscaledValue shl Exponent;
+
+  Result := BigDecimal.Create(NewUnscaledValue, NewScale);
+  if Sign < 0 then
+    Result := -Result;
+end;
 
 constructor BigDecimal.Create(const S: Single);
 var
-  Str: string;
+  Significand: UInt64;
+  Exponent: Integer;
+  Sign: TValueSign;
 begin
-  Str := Velthuis.ExactFloatStrings.ExactString(S);
-  CheckInvalidFloatString(Str, 'Single'); // DO NOT TRANSLATE
-  Create(Str);
+  if IsInfinite(S) or IsNan(S) then
+    Error(ecInvalidArg, ['Single']);
+
+  if S = 0.0 then
+  begin
+    Self := BigDecimal.Zero;
+    Exit;
+  end;
+
+  Significand := GetSignificand(S);
+  Exponent := GetExponent(S) - 23;
+  Sign := System.Math.Sign(S);
+
+  ConvertFromFloatComponents(Sign, Exponent, Significand, Self);
 end;
 
 constructor BigDecimal.Create(const D: Double);
 var
-  Str: string;
+  Significand: UInt64;
+  Exponent: Integer;
+  Sign: TValueSign;
 begin
-  Str := Velthuis.ExactFloatStrings.ExactString(D);
-  CheckInvalidFloatString(Str, 'Double'); // DO NOT TRANSLATE
-  Create(Str);
+  if IsInfinite(D) or IsNan(D) then
+    Error(ecInvalidArg, ['Double']);
+
+  if D = 0.0 then
+  begin
+    Self := BigDecimal.Zero;
+    Exit;
+  end;
+
+  Significand := GetSignificand(D);
+  Exponent := GetExponent(D) - 52;
+  Sign := System.Math.Sign(D);
+
+  ConvertFromFloatComponents(Sign, Exponent, Significand, Self);
 end;
 
-{$IFDEF HASEXTENDED}
+{$IFDEF HasExtended}
 constructor BigDecimal.Create(const E: Extended);
 var
-  Str: string;
+  Significand: UInt64;
+  Exponent: Integer;
+  Sign: TValueSign;
 begin
-  Str := Velthuis.ExactFloatStrings.ExactString(E);
-  CheckInvalidFloatString(Str, 'Extended'); // DO NOT TRANSLATE
-  Create(Str);
+  if IsInfinite(E) or IsNan(E) then
+    Error(ecInvalidArg, ['Extended']);
+
+  if E = 0.0 then
+  begin
+    Self := BigDecimal.Zero;
+    Exit;
+  end;
+
+  Significand := GetSignificand(E);
+  Exponent := GetExponent(E) - 63;
+  Sign := System.Math.Sign(E);
+
+  ConvertFromFloatComponents(Sign,Exponent, Significand, Self);
 end;
 {$ENDIF}
 
@@ -1108,31 +1198,31 @@ constructor BigDecimal.Create(const S: string);
 begin
   Init;
   if not TryParse(S, InvariantSettings, Self) then
-    Error(ecParse, [S]);
+    Error(ecParse, [S, 'BigDecimal']);
 end;
 
-constructor BigDecimal.Create(const I: Int64);
+constructor BigDecimal.Create(const I64: Int64);
 begin
   Init;
-  FValue := BigInteger(I);
+  FValue := BigInteger.Create(I64);
 end;
 
-constructor BigDecimal.Create(const U: UInt64);
+constructor BigDecimal.Create(const U64: UInt64);
 begin
   Init;
-  FValue := BigInteger(U);
+  FValue := BigInteger.Create(U64);
 end;
 
-constructor BigDecimal.Create(U: UInt32);
+constructor BigDecimal.Create(U32: UInt32);
 begin
   Init;
-  FValue := BigInteger(U);
+  FValue := BigInteger.Create(U32);
 end;
 
-constructor BigDecimal.Create(I: Int32);
+constructor BigDecimal.Create(I32: Int32);
 begin
   Init;
-  FValue := BigInteger(I);
+  FValue := BigInteger.Create(I32);
 end;
 
 constructor BigDecimal.Create(const UnscaledValue: BigInteger);
@@ -1145,7 +1235,7 @@ class function BigDecimal.Divide(const Left, Right: BigDecimal; Precision: Integ
   ARoundingMode: RoundingMode): BigDecimal;
 var
   LQuotient, LRemainder, LDivisor: BigInteger;
-  NewScale, TargetScale: Integer;
+  LScale, TargetScale: Integer;
   LSign: Integer;
   LMultiplier: Integer;
 begin
@@ -1156,8 +1246,17 @@ begin
   // So the dividend must be scaled up by at least Precision powers of ten. The end result must be rounded //
   // toward the target scale, which is Left.Scale - Right.Scale.                                           //
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Is there a way to find out beforehand if we need the full precision? Take the above: 0.01/0.0025 = 4. //
+  // So we would only need to scale up BigInteger(1) to BigInteger(100) and then divide. Is there a way to //
+  // determine this? OTOH, for 0.01/0.003 we need the full precision. Is there a way to determine if a     //
+  // division will result in a non-terminating decimal expansion or if it is terminating, where it will    //
+  // terminate?                                                                                            //
+  // The decimal expansion will be terminating if the divisor can be reduced to 2^n * 5^m, with n,m >= 0,  //
+  // in other words, if it can be reduced to only powers of 2 and 5.                                       //
+  // Not sure if there is a fast way to determine this. I guess not.                                       //
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  if Right.FValue = BigInteger.Zero then
+  if Right.FValue.IsZero then
     Error(ecDivByZero, []);
   TargetScale := Left.Scale - Right.Scale;
   if Left.FValue.IsZero then
@@ -1174,45 +1273,32 @@ begin
 //  LDivisor := BigInteger.Abs(Right.FValue);
   LDivisor := Right.FValue;
 
-  (* $$RV:
-
-     Assume L.Precision = 12, R.Precision = 4 and desired precision = 10, then the following results in:
-
-       LMultiplier = 10 + 4 - 12 + 4 = 6
-
-     * Q: Do we really need that?
-     * Q: Can't we calculate a rough precision instead, i.e. not use .Precision? Does that help?
-       A: We should try to avoid calculating the BigDecimal.Precision at all.
-     * Q: Could it be that all this scaling up and down is too expensive, and that we should try to get it right
-          at once?
-       A: YES!
-     * Q: What about using a NativeUInt instead of a BigInteger for "small" values of .FValue (below MaxInt or
-          some such).
-
-  *)
-
   // Determine minimum power of ten with which to multiply the dividend.
-  // The + 4 is empirical.
-//$$RV: removing the following reduces the time by 35%! (13.9s -> 8.8s)
-  LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
+  // Previous code used:
+  //  LMultiplier := RangeCheckedScale(Precision + Right.Precision - Left.Precision + 3);
+  // but the code below is 20% faster - Calculating precision can be slow.
+  LMultiplier := RangeCheckedScale(Precision + (Right.FValue.Size - Left.FValue.Size + 1) * 9 + 3);
 
   // Do the division of the scaled up dividend by the divisor. Quotient and remainder are needed.
-//  BigInteger.DivMod(BigInteger.Abs(Left.FValue) * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
   BigInteger.DivMod(Left.FValue * GetPowerOfTen(LMultiplier), LDivisor, LQuotient, LRemainder);
 
   // Calculate the scale that matches the division.
-  NewScale := RangeCheckedScale(TargetScale + LMultiplier);
+  LScale := RangeCheckedScale(TargetScale + LMultiplier);
 
   // Create a preliminary result.
-  Result.Create(LQuotient, NewScale);
+  Result.Create(LQuotient, LScale);
 
   // Reduce the precision, if necessary.
-  Result := Result.RoundToScale(RangeCheckedScale(NewScale + Precision - Result.Precision), ARoundingMode);
+  // Wow! This is slow. Time reduction of >50% if it could be omitted, e.g. if division were
+  // accurate enough already.
+  Result := Result.RoundToScale(RangeCheckedScale(LScale + Precision - Result.Precision), ARoundingMode);
+  // Can this be combined with InPlaceRemoveTrailingZeros?
 
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
-//$$RV: removing the following reduces the time by approx 20% (30s -> 24s).
-  InPlaceRemoveTrailingZeros(Result, TargetScale);
+  // This should be optional, as it is slower.
+
+  //  InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
@@ -1243,7 +1329,7 @@ begin
   Result := Compare(Left, Right) = 0;
 end;
 
-class procedure BigDecimal.Error(ErrorCode: TErrorCode; Args: array of const);
+class procedure BigDecimal.Error(ErrorCode: TErrorCode; ErrorInfo: array of const);
 begin
   // Raise an exception that matches the given error code. The message is determined by the
   // format strings and the Args parameter.
@@ -1251,13 +1337,13 @@ begin
   case ErrorCode of
     ecParse:
        // Not a valid BigDecimal string representation.
-      raise EConvertError.CreateFmt(SErrorBigDecimalParsing, Args);
+      raise EConvertError.CreateFmt(SErrorParsingFmt, ErrorInfo);
     ecDivByZero:
       // Division by zero.
       raise EZeroDivide.Create(SDivisionByZero);
     ecConversion:
-      // Bigdecimal too large for conversion to...
-      raise EConvertError.CreateFmt(SConversionFailed, Args);
+      // BigDecimal too large for conversion to...
+      raise EConvertError.CreateFmt(SConversionFailedFmt, ErrorInfo);
     ecOverflow:
       // Scale would become too low.
       raise EOverflow.Create(SOverflow);
@@ -1266,10 +1352,13 @@ begin
       raise EUnderflow.Create(SUnderflow);
     ecInvalidArg:
       // Parameter is NaN or +/-Infinity.
-      raise EInvalidArgument.CreateFmt(SInvalidArg, Args);
+      raise EInvalidArgument.CreateFmt(SInvalidArgumentFloatFmt, ErrorInfo);
     ecRounding:
       // Rounding was necessary but rmUnnecessary was specified.
       raise ERoundingNecessary.Create(SRounding);
+    ecExponent:
+      // Exponent outside the allowed range
+      raise EIntPowerExponent.Create(SExponent);
     else
       // Invalid operand to operator.
       raise EInvalidOpException.Create(SInvalidOperation);
@@ -1279,7 +1368,7 @@ end;
 class operator BigDecimal.Explicit(const Value: BigDecimal): Single;
 var
   LSign, LExponent: Integer;
-  LMantissa: UInt64;
+  LSignificand: UInt64;
   LDiff: Integer;
   LLowBits: UInt32;
   LRem: UInt32;
@@ -1287,11 +1376,11 @@ begin
   if Value.FValue.IsZero then
     Exit(0.0);
 
-  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a mantissa, sign and binary exponent using
-  // the given size of the mantissa (24 bits for Single).
-  ConvertToFloatComponents(Value, 24, LSign, LMantissa, LExponent);
+  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a signficand, sign and binary exponent using
+  // the given size of the significand (24 bits for Single).
+  ConvertToFloatComponents(Value, 24, LSign, LExponent, LSignificand);
 
-  // Compose calculated sign, mantissa and exponent into a proper Single.
+  // Compose calculated sign, significand and exponent into a proper Single.
 
   // Handle special values:
 
@@ -1308,23 +1397,23 @@ begin
     if LDiff >= 24 then
       Exit(0.0);
     LLowBits := UInt32(1) shl LDiff;
-    LRem := LMantissa and (LLowBits - 1);
-    LMantissa := LMantissa shr LDiff;
+    LRem := LSignificand and (LLowBits - 1);
+    LSignificand := LSignificand shr LDiff;
     if LRem + LRem >= LLowBits then
-      Inc(LMantissa);
+      Inc(LSignificand);
     if LSign < 0 then
-      LMantissa := LMantissa or $80000000;
-    Result := PSingle(@LMantissa)^;
+      LSignificand := LSignificand or $80000000;
+    Result := PSingle(@LSignificand)^;
   end
   else
-    Result := Velthuis.FloatUtils.MakeSingle(LSign, LMantissa, LExponent);
+    Result := Velthuis.FloatUtils.MakeSingle(LSign, LSignificand, LExponent);
 end;
 
 class operator BigDecimal.Explicit(const Value: BigDecimal): Double;
 var
   LSign: Integer;
   LExponent: Integer;
-  LMantissa: UInt64;
+  LSignificand: UInt64;
   LDiff: Integer;
   LLowBits: UInt64;
   LRem: UInt64;
@@ -1332,11 +1421,11 @@ begin
   if Value.FValue.IsZero then
     Exit(0.0);
 
-  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a mantissa, sign and binary exponent using
-  // the given size of the mantissa (53 bits for Double).
-  ConvertToFloatComponents(Value, 53, LSign, LMantissa, LExponent);
+  // Convert the given BigDecimal (i.e. UnscaledValue and decimal Scale) to a significand, sign and binary exponent using
+  // the given size of the significand (53 bits for Double).
+  ConvertToFloatComponents(Value, 53, LSign, LExponent, LSignificand);
 
-  // Compose calculated sign, mantissa and exponent into a proper Double.
+  // Compose calculated sign, significand and exponent into a proper Double.
 
   // Handle special values:
 
@@ -1354,23 +1443,60 @@ begin
       Exit(0.0);
 
     LLowBits := UInt64(1) shl LDiff;            // mask for the low bits after shift
-    LRem := LMantissa and (LLowBits - 1);       // low bits, IOW LMantissa mod 2^LDiff
-    LMantissa := LMantissa shr LDiff;           // LMantissa div 2^LDiff
+    LRem := LSignificand and (LLowBits - 1);    // low bits, IOW LSignificand mod 2^LDiff
+    LSignificand := LSignificand shr LDiff;     // LSignificand div 2^LDiff
     if LRem + LRem >= LLowBits then
-      Inc(LMantissa);                           // round up
+      Inc(LSignificand);                        // round up
     if LSign < 0 then
-      LMantissa := LMantissa or $8000000000000000;
-    Result := PDouble(@LMantissa)^;
+      LSignificand := LSignificand or $8000000000000000;
+    Result := PDouble(@LSignificand)^;
   end
   else
-    Result := Velthuis.FloatUtils.MakeDouble(LSign, LMantissa, LExponent);
+    Result := Velthuis.FloatUtils.MakeDouble(LSign, LSignificand, LExponent);
 end;
 
-{$IFDEF HASEXTENDED}
+{$IFDEF HasExtended}
 class operator BigDecimal.Explicit(const Value: BigDecimal): Extended;
+var
+  LSign, LExponent: Integer;
+  LSignificand: UInt64;
+  LDiff: Integer;
+  LLowBits: UInt64;
+  LExtendedRec: packed record
+    Man: UInt64;
+    Exp: Int16;
+  end;
+  LRem: UInt64;
 begin
-  // TODO: use binary data, see above.
-  Result := StrToFloat(Value.ToPlainString);
+  ConvertToFloatComponents(Value, 64, LSign, LExponent, LSignificand);
+
+  // Handle special values
+  // * Infinities
+  if LExponent > 16383 then
+    if LSign < 0 then
+      Result := NegInfinity
+    else
+      Result := Infinity
+  else
+  // * Denormals
+  if LExponent < -16382 then
+  begin
+    LDiff := -16382 - LExponent;
+    if LDiff >= 64 then
+      Exit(0.0);
+    LLowBits := UInt64(1) shl LDiff;
+    LRem := LSignificand and (LLowBits - 1);
+    LSignificand := LSignificand shr LDiff;
+    if LRem + LRem >= LLowBits then
+      Inc(LSignificand);
+    LExtendedRec.Man := LSignificand;
+    LExtendedRec.Exp := 0;
+    if LSign < 0 then
+      LExtendedRec.Exp := LExtendedRec.Exp or Int16($8000);
+    Result := PExtended(@LExtendedRec)^;
+  end
+  else
+    Result := Velthuis.FloatUtils.MakeExtended(LSign, LSignificand, LExponent);
 end;
 {$ENDIF}
 
@@ -1401,6 +1527,22 @@ begin
   Result := BigDecimal.Abs(Self - Self.Int());
 end;
 
+function BigDecimal.Floor: BigDecimal;
+begin
+  if Scale > 0 then
+    Result := Self.RoundToScale(0, rmFloor)
+  else
+    Result := Self;
+end;
+
+function BigDecimal.Ceil: BigDecimal;
+begin
+  if Scale > 0 then
+    Result := Self.RoundToScale(0, rmCeiling)
+  else
+    Result := Self;
+end;
+
 class operator BigDecimal.Explicit(const Value: BigDecimal): BigInteger;
 var
   Rounded: BigDecimal;
@@ -1411,7 +1553,7 @@ end;
 
 // Note: 5^N = 10^N div 2^N = 10^N shr N;
 // Powers of five are required when converting a decimal scale/unscaled value combination to a binary
-// exponent/mantissa combination with the same value.
+// exponent/significand combination with the same value.
 class function BigDecimal.GetPowerOfFive(N: Integer): BigInteger;
 begin
   Result := GetPowerOfTen(N) shr N;
@@ -1456,7 +1598,7 @@ begin
   Result.Create(D);
 end;
 
-{$IFDEF HASEXTENDED}
+{$IFDEF HasExtended}
 class operator BigDecimal.Implicit(const E: Extended): BigDecimal;
 begin
   Result.Create(E);
@@ -1489,7 +1631,7 @@ begin
   FPrecision := 0;
 end;
 
-{$IFDEF HASCLASSCONSTRUCTORS}
+{$IFDEF HasClassConstructors}
 class constructor BigDecimal.InitClass;
 {$ELSE}
 class procedure BigDecimal.InitClass;
@@ -1522,6 +1664,8 @@ begin
   BigDecimal.FOne := BigDecimal.Create(BigInteger.One, 0);
   BigDecimal.FTwo := BigDecimal.Create(BigInteger(2), 0);
   BigDecimal.FTen := BigDecimal.Create(BigInteger.Ten, 0);
+  BigDecimal.FHalf := BigDecimal.Create(BigInteger(5), 1);
+  BigDecimal.FOneTenth := BigDecimal.Create(BigInteger(1), 1);
 
   ///////////////////////////////////////////////////////////////////////////////////////////////
   // Note: one might expect constants like pi or e, but since BigDecimal relies on a certain   //
@@ -1563,6 +1707,85 @@ begin
 
   if Result.Scale < LTargetScale then
     Result := Result.RoundToScale(LTargetScale, rmUnnecessary);
+end;
+
+class function BigDecimal.IntPower(const Base: BigDecimal; Exponent, Precision: Integer): BigDecimal;
+var
+  LBase: BigDecimal;
+  LNegativeExp: Boolean;
+begin
+  if Exponent = 0 then
+    Exit(BigDecimal.One);
+
+  LNegativeExp := Exponent < 0;
+  if LNegativeExp then
+    Exponent := -Exponent;
+
+  if Exponent > 9999999 then
+    Error(ecExponent, []);
+
+  if (Base.Precision > 8) and (Exponent >= IntPowerExponentThreshold) then
+  begin
+    Result := One;
+    LBase := Base;
+    while Exponent <> 0 do
+    begin
+      if Odd(Exponent) then
+        Result := (Result * LBase).RoundToPrecision(Precision + 3);
+      LBase := (LBase * LBase).RoundToPrecision(Precision + 3);
+      Exponent := Exponent shr 1;
+    end;
+  end
+  else
+    Result := IntPower(Base, Exponent);
+
+  if LNegativeExp then
+    Result := Result.Reciprocal(Precision)
+  else
+    Result := Result.RoundToPrecision(Precision);
+
+  if Result.Scale < Precision then
+    Result := Result.RemoveTrailingZeros(0);
+end;
+
+class function BigDecimal.IntPower(const Base: BigDecimal; Exponent: Integer): BigDecimal;
+var
+  LBase: BigDecimal;
+  LNegativeExp: Boolean;
+begin
+
+  if Exponent = 0 then
+    Exit(BigDecimal.One);
+
+  LNegativeExp := Exponent < 0;
+  if LNegativeExp then
+    Exponent := -Exponent;
+
+  if Exponent > 9999999 then
+    Error(ecExponent, []);
+
+  Result := One;
+  LBase := Base;
+  while Exponent <> 0 do
+  begin
+    if Odd(Exponent) then
+      Result := Result * LBase;
+    LBase := LBase * LBase;
+    Exponent := Exponent shr 1;
+  end;
+
+  if LNegativeExp then
+    Result := BigDecimal.Divide(BigDecimal.One, Result, DefaultPrecision);
+end;
+
+function BigDecimal.IntPower(Exponent, Precision: Integer): BigDecimal;
+begin
+  Result := IntPower(Self, Exponent, Precision);
+end;
+
+function BigDecimal.IntPower(Exponent: Integer): BigDecimal;
+begin
+  Result := IntPower(Self, Exponent);
 end;
 
 function BigDecimal.IsZero: Boolean;
@@ -1660,14 +1883,14 @@ class function BigDecimal.Parse(const S: string; const Settings: TFormatSettings
 begin
   Result.Init;
   if not TryParse(S, Settings, Result) then
-    Error(ecParse, [S]);
+    Error(ecParse, [S, 'BigDecimal']);
 end;
 
 class function BigDecimal.Parse(const S: string): BigDecimal;
 begin
   Result.Init;
   if not TryParse(S, Result) then
-    Error(ecParse, [S]);
+    Error(ecParse, [S, 'BigDecimal']);
 end;
 
 class operator BigDecimal.Positive(const Value: BigDecimal): BigDecimal;
@@ -1750,7 +1973,7 @@ begin
   try
     Result := Rounded.FValue.AsInt64;
   except
-    Error(ecConversion, ['Int64']);
+    Error(ecConversion, ['BigDecimal', 'Int64']);
   end;
 end;
 
@@ -1887,7 +2110,7 @@ begin
   Epsilon := Half * BigDecimal.Create(BigInteger(1), Precision);
 
   // Newton-Raphson kind of loop to refine the result, until a difference below the determined epsilon is reached.
-  while (Result * Result - Self).Abs >= Epsilon do
+  while ((Result * Result - Self).Abs >= Epsilon) and not Result.IsZero do
     Result := Half * (Result + BigDecimal.Divide(Self, Result, Precision * 2));
 
   // Round the result and remove any unnecessary trailing zeroes.
@@ -1996,7 +2219,7 @@ begin
   try
     Result := Rounded.FValue.AsInt64;
   except
-    Error(ecConversion, ['Int64']);
+    Error(ecConversion, ['BigDecimal', 'Int64']);
   end;
 end;
 
@@ -2078,7 +2301,7 @@ begin
     LChr := LPtr^;
   end;
 
-  // Parsed mantissa to end or up to first 'e' or 'E'.
+  // Parsed significand to end or up to first 'e' or 'E'.
   if Assigned(LDecimalPointPos) then
     LNumDecimals := LPtr - LDecimalPointPos - 1;
 
@@ -2109,7 +2332,7 @@ begin
 
   Value.FScale := LNumDecimals;
   Value.FValue := BigInteger(LIntValue);
-  if LIsNegative then
+  if not Value.FValue.IsZero and LIsNegative then
     Value.FValue.SetSign(-1);
   Result := True;
 end;
@@ -2121,7 +2344,7 @@ begin
   Result.FScale := Self.Scale;
 end;
 
-{$IFNDEF HASCLASSCONSTRUCTORS}
+{$IFNDEF HasClassConstructors}
 initialization
   BigDecimal.InitClass;
 {$ENDIF}
