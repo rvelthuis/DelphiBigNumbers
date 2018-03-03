@@ -42,7 +42,7 @@
 { NOTE:                                                                     }
 {                                                                           }
 { Due to a serious misunderstanding of how visualizers work, I assumed      }
-{ that it was nevessary to parse the EvalResult parameter of                }
+{ that it was necessary to parse the EvalResult parameter of                }
 { GetReplacementValue. I did not know that it was possible to let the       }
 { current thread evaluate the expression passed to it (usually the          }
 { variable name). Now, simply '.ToString' is added to the expression        }
