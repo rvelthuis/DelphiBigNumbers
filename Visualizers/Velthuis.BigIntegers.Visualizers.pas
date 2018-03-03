@@ -59,6 +59,10 @@ interface
 procedure Register;
 {$ENDIF}
 
+{$IF RTLVersion >= 32.0}
+{$DEFINE GENERICS}
+{$IFEND}
+
 implementation
 
 uses
@@ -71,19 +75,26 @@ resourcestring
 type
   TDebuggerBigIntegerVisualizer = class(TInterfacedObject,
                                         IOTADebuggerVisualizer,
+                                      {$IFDEF GENERICS}
+                                        IOTADebuggerVisualizer250,
+                                      {$ENDIF}
                                         IOTADebuggerVisualizerValueReplacer,
                                         IOTAThreadNotifier,
                                         IOTAThreadNotifier160)
   private
     FCompleted: Boolean;
     FDeferredResult: string;
+    FNotifierIndex: Integer;
   public
+    constructor Create;
     // IOTADEbuggerVisualizer
     function GetSupportedTypeCount: Integer;
-    procedure GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean);
+    procedure GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean); overload;
     function GetVisualizerIdentifier: string;
     function GetVisualizerName: string;
     function GetVisualizerDescription: string;
+    // IOTADEbuggerVisualizer250
+    procedure GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean; var IsGeneric: Boolean); overload;
     // IOTADebuggerVisualizerValueReplacer
     function GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
     // IOTAThreadNotifier
@@ -109,6 +120,12 @@ end;
 procedure TDebuggerBigIntegerVisualizer.BeforeSave;
 begin
   // Can be ignored.
+end;
+
+constructor TDebuggerBigIntegerVisualizer.Create;
+begin
+  inherited;
+  FNotifierIndex := -1;
 end;
 
 procedure TDebuggerBigIntegerVisualizer.Destroyed;
@@ -141,7 +158,6 @@ var
   EvalRes: TOTAEvaluateResult;
   Services: IOTADebuggerServices;
   Done: Boolean;
-  FNotifierIndex: Integer;
 begin
   Result := EvalResult;
   if Supports(BorlandIDEServices, IOTADebuggerServices, Services) then
@@ -193,6 +209,15 @@ begin
     TypeName := '';
   end;
 end;
+
+{$IFDEF GENERICS}
+procedure TDebuggerBigIntegerVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants,
+  IsGeneric: Boolean);
+begin
+  GetSupportedType(Index, TypeName, AllDescendants);
+  IsGeneric := False;
+end;
+{$ENDIF}
 
 function TDebuggerBigIntegerVisualizer.GetSupportedTypeCount: Integer;
 begin
