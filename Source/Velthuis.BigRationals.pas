@@ -168,14 +168,14 @@ type
     ///   double. This means that the numerator and denominator values can be rather big.</remarks>
     constructor Create(const Value: Double); overload;
 
-{$IFDEF HasExtended}
-    /// <summary>Creates a new BigRational with the exact same value as the given Extended value.</summary>
-    /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the Extended represents a positive or
-    ///   negative infinity or a NaN.</exception>
-    /// <remarks>Note that this is an exact conversion, taking into account the exact bit representation of the
-    ///   Extended. This means that the numerator and denominator values can be rather big.</remarks>
-    constructor Create(const Value: Extended); overload;
-{$ENDIF}
+//{$IFDEF HasExtended}
+//    /// <summary>Creates a new BigRational with the exact same value as the given Extended value.</summary>
+//    /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the Extended represents a positive or
+//    ///   negative infinity or a NaN.</exception>
+//    /// <remarks>Note that this is an exact conversion, taking into account the exact bit representation of the
+//    ///   Extended. This means that the numerator and denominator values can be rather big.</remarks>
+//    constructor Create(const Value: Extended); overload;
+//{$ENDIF}
 
     /// <summary>Creates a new BigRational from the given value, with a denominator of 1.</summary>
     constructor Create(const Value: Int64); overload;
@@ -582,12 +582,12 @@ begin
   Create(Num, Denom);
 end;
 
-{$IFDEF HasExtended}
-constructor BigRational.Create(const Value: Extended);
-begin
-  Create(Double(Value));
-end;
-{$ENDIF HasExtended}
+//{$IFDEF HasExtended}
+//constructor BigRational.Create(const Value: Extended);
+//begin
+//  Create(Double(Value));
+//end;
+//{$ENDIF HasExtended}
 
 class function BigRational.Divide(const Left, Right: BigRational): BigRational;
 begin
