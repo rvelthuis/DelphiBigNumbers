@@ -1,0 +1,41 @@
+// Delphi 10.2 Tokyo
+{$IFDEF VER320}
+{$LIBSUFFIX '250'}
+{$ENDIF}
+
+// Delphi 10.1 Berlin
+{$IFDEF VER310}
+{$LIBSUFFIX '240'}
+{$ENDIF}
+
+// Delphi 10 Seattle
+{$IFDEF VER300}{$LIBSUFFIX '230'}
+{$ENDIF}
+
+// Delphi XE8
+{$IFDEF VER290}{$LIBSUFFIX '220'}
+{$ENDIF}
+
+// Delphi XE7
+{$IFDEF VER280}{$LIBSUFFIX '210'}
+{$ENDIF}
+
+// Delphi XE6
+{$IFDEF VER270}{$LIBSUFFIX '200'}
+{$ENDIF}
+
+// Delphi XE5
+{$IFDEF VER260}{$LIBSUFFIX '190'}
+{$ENDIF}
+
+// Delphi XE4
+{$IFDEF VER250}{$LIBSUFFIX '180'}
+{$ENDIF}
+
+// Delphi XE3
+{$IFDEF VER240}{$LIBSUFFIX '170'}
+{$ENDIF}
+
+// Delphi XE2
+{$IFDEF VER230}{$LIBSUFFIX '160'}
+{$ENDIF}

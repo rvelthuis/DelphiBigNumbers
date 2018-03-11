@@ -1,0 +1,52 @@
+package BigNumbers;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Velthuis BigInteger and BigDecimal for Delphi'}
+
+{$INCLUDE 'LibSuffixes.inc'}
+
+{$IMPLICITBUILD ON}
+
+requires
+  rtl;
+
+contains
+  Velthuis.StrConsts in '..\Source\Velthuis.StrConsts.pas',
+  Velthuis.BigDecimals in '..\Source\Velthuis.BigDecimals.pas',
+  Velthuis.BigIntegers in '..\Source\Velthuis.BigIntegers.pas',
+  Velthuis.BigIntegers.Primes in '..\Source\Velthuis.BigIntegers.Primes.pas',
+  Velthuis.ExactFloatStrings in '..\Source\Velthuis.ExactFloatStrings.pas',
+  Velthuis.FloatUtils in '..\Source\Velthuis.FloatUtils.pas',
+  Velthuis.Loggers in '..\Source\Velthuis.Loggers.pas',
+  Velthuis.Numerics in '..\Source\Velthuis.Numerics.pas',
+  Velthuis.RandomNumbers in '..\Source\Velthuis.RandomNumbers.pas',
+  Velthuis.Sizes in '..\Source\Velthuis.Sizes.pas',
+  Velthuis.XorShifts in '..\Source\Velthuis.XorShifts.pas';
+
+end.
+
+

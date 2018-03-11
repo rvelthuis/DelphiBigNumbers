@@ -584,8 +584,11 @@ end;
 
 //{$IFDEF HasExtended}
 //constructor BigRational.Create(const Value: Extended);
+//var
+//  D: Double;
 //begin
-//  Create(Value);
+//  D := Value;
+//  Create(D);
 //end;
 //{$ENDIF HasExtended}
 

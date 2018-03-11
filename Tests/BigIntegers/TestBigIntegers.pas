@@ -26,6 +26,10 @@ uses
 {$DEFINE IMMUTABLE}
 {$IFEND}
 
+{$IF RTLVersion >= 29.0}
+{$DEFINE HASINVARIANT}
+{$IFEND}
+
 type
   // Test methods for BigInteger records.
   TTestBigInteger = class(TTestCase)
@@ -135,7 +139,11 @@ end;
 
 procedure TTestBigInteger.SetUp;
 begin
+{$IF HASINVARIANT}
   Status(Format('Compiler version: %0.1f', [System.CompilerVersion], TFormatSettings.Invariant));
+{$ELSE}
+  Status(Format('Compiler version: %0.1f', [System.CompilerVersion]));
+{$ENDIF}
 {$IFDEF WIN64}
   Status('Win64');
 {$ENDIF}

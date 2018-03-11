@@ -1,4 +1,4 @@
-{---------------------------------------------------------------------------}
+{---------------------------------------------------------------------------} }
 {                                                                           }
 { File:       Velthuis.BigIntegers.Visualizers.pas                          }
 { Function:   Visualizers for the BigInteger and BigDecimal classes,        }
@@ -38,6 +38,19 @@
 {                                                                           }
 {---------------------------------------------------------------------------}
 
+{===========================================================================}
+{ NOTE:                                                                     }
+{                                                                           }
+{ Due to a serious misunderstanding of how visualizers work, I assumed      }
+{ that it was necessary to parse the EvalResult parameter of                }
+{ GetReplacementValue. I did not know that it was possible to let the       }
+{ current thread evaluate the expression passed to it (usually the          }
+{ variable name). Now, simply '.ToString' is added to the expression        }
+{ and the result is dequoted before it is returned. The entire parsing      }
+{ code was removed.                                                         }
+{===========================================================================}
+
+
 unit Velthuis.BigIntegers.Visualizers;
 
 interface
@@ -45,6 +58,10 @@ interface
 {$IFNDEF DLLEXPERT}
 procedure Register;
 {$ENDIF}
+
+{$IF RTLVersion >= 32.0}
+{$DEFINE GENERICS}
+{$IFEND}
 
 implementation
 
@@ -58,38 +75,26 @@ resourcestring
 type
   TDebuggerBigIntegerVisualizer = class(TInterfacedObject,
                                         IOTADebuggerVisualizer,
+                                      {$IFDEF GENERICS}
+                                        IOTADebuggerVisualizer250,
+                                      {$ENDIF}
                                         IOTADebuggerVisualizerValueReplacer,
                                         IOTAThreadNotifier,
                                         IOTAThreadNotifier160)
   private
     FCompleted: Boolean;
     FDeferredResult: string;
-    class function ParseBigIntegerEvalResult(const AEvalResult: string): string; static;
-    class function ParseBigDecimalEvalResult(const AEvalResult: string): string; static;
-    class procedure Error(const S: string = ''); static;
-    class function IsDecimalDigit(C: Char): Boolean; inline; static;
-    class function IsDigit(C: Char): Boolean; static;
-    class function IsIdentifierChar(C: Char): Boolean; inline; static;
-    class function IsIdentifierStartChar(C: Char): Boolean; inline; static;
-    class function IsIntegerStart(C: Char): Boolean; static;
-    class procedure OptionalIdentifier(var P: PChar; const Identifier: string); static;
-    class function ParseBigDecimal(var P: PChar): BigDecimal; static;
-    class function ParseBigInteger(var P: PChar): BigInteger; static;
-    class function ParseIdentifier(var P: PChar): string; inline; static;
-    class function ParseInt32(var P: PChar): Integer; static;
-    class function ParseMagnitude(var P: PChar): TMagnitude; static;
-    class function ParseUInt32(var P: PChar): UInt32; static;
-    class procedure RequiredChar(var P: PChar; C: Char); static;
-    class procedure SkipComment(var P: PChar); inline; static;
-    class procedure SkipDelimiter(var P: PChar); static;
-    class procedure SkipWhitespace(var P: PChar); inline; static;
+    FNotifierIndex: Integer;
   public
+    constructor Create;
     // IOTADEbuggerVisualizer
     function GetSupportedTypeCount: Integer;
-    procedure GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean);
+    procedure GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean); overload;
     function GetVisualizerIdentifier: string;
     function GetVisualizerName: string;
     function GetVisualizerDescription: string;
+    // IOTADEbuggerVisualizer250
+    procedure GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants: Boolean; var IsGeneric: Boolean); overload;
     // IOTADebuggerVisualizerValueReplacer
     function GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
     // IOTAThreadNotifier
@@ -117,6 +122,12 @@ begin
   // Can be ignored.
 end;
 
+constructor TDebuggerBigIntegerVisualizer.Create;
+begin
+  inherited;
+  FNotifierIndex := -1;
+end;
+
 procedure TDebuggerBigIntegerVisualizer.Destroyed;
 begin
   // Can be ignored.
@@ -136,343 +147,86 @@ begin
     FDeferredResult := ResultStr;
 end;
 
-// Parser
-
-class procedure TDebuggerBigIntegerVisualizer.Error(const S: string = '');
-begin
-  if S = '' then
-    raise Exception.Create('Visualizer error')
-  else
-    raise Exception.Create(S);
-end;
-
-class function TDebuggerBigIntegerVisualizer.IsDecimalDigit(C: Char): Boolean;
-begin
-  Result := ((C >= '0') and (C <= '9'));
-end;
-
-class function TDebuggerBigIntegerVisualizer.IsIdentifierStartChar(C: Char): Boolean;
-begin
-  Result := ((C >= 'A') and (C <= 'Z')) or ((C >= 'a') and (C <= 'z')) or (C = '_');
-end;
-
-class function TDebuggerBigIntegerVisualizer.IsIdentifierChar(C: Char): Boolean;
-begin
-  Result := IsIdentifierStartChar(C) or IsDecimalDigit(C);
-end;
-
-class function TDebuggerBigIntegerVisualizer.IsDigit(C: Char): Boolean;
-begin
-  Result := ((C >= '0') and (C <= '9'));
-end;
-
-class function TDebuggerBigIntegerVisualizer.IsIntegerStart(C: Char): Boolean;
-begin
-  Result := IsDigit(C) or (C = '-');
-end;
-
-class procedure TDebuggerBigIntegerVisualizer.SkipWhitespace(var P: PChar);
-begin
-  while P^ = ' ' do
-    Inc(P);
-end;
-
-class procedure TDebuggerBigIntegerVisualizer.SkipComment(var P: PChar);
-begin
-  if P^ = '{' then
-  begin
-    repeat
-      Inc(P);
-    until P^ = '}';
-    Inc(P);
-  end;
-end;
-
-class procedure TDebuggerBigIntegerVisualizer.SkipDelimiter(var P: PChar);
-begin
-  if (P^ = ',') or (P^ = ';') then
-    Inc(P);
-end;
-
-class procedure TDebuggerBigIntegerVisualizer.RequiredChar(var P: PChar; C: Char);
-begin
-  if P^ = C then
-    Inc(P)
-  else
-    Error;
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseIdentifier(var P: PChar): string;
-begin
-  Result := '';
-  repeat
-    if IsIdentifierChar(P^) then
-    begin
-      Result := Result + P^;
-      Inc(P);
-    end
-    else
-      Error;
-  until P^ = ':';
-  Inc(P);
-end;
-
-// If a field identifier was specified, it must be Identifier. If not, ignore.
-class procedure TDebuggerBigIntegerVisualizer.OptionalIdentifier(var P: PChar; const Identifier: string);
+function TDebuggerBigIntegerVisualizer.GetReplacementValue(const Expression,
+  TypeName, EvalResult: string): string;
 var
-  Id: string;
-begin
-  if IsIdentifierStartChar(P^) then
-  begin
-    Id := ParseIdentifier(P);
-    if UpperCase(Id) <> UpperCase(Identifier) then
-      Error(Format('%s missing', [Identifier]));
-  end;
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseUInt32(var P: PChar): UInt32;
-begin
-  Result := 0;
-
-  // Skip whitespace
-  SkipWhitespace(P);
-
-  // parse digits
-  while IsDecimalDigit(P^) do
-  begin
-    Result := Result * 10 + UInt32(Ord(P^) - Ord('0'));
-    Inc(P);
-  end;
-
-  SkipWhitespace(P);
-  SkipComment(P);
-  SkipWhitespace(P);
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseInt32(var P: PChar): Integer;
-var
-  Sign: Boolean;
-begin
-  if not IsIntegerStart(P^) then
-    Error;
-
-  Result := 0;
-  Sign := False;
-
-  // Check for sign
-  if P^ = '-' then
-  begin
-    Sign := True;
-    Inc(P);
-  end;
-
-  // Parse number
-  while IsDigit(P^) do
-  begin
-    Result := Result * 10 + (Ord(P^) - Ord('0'));
-    Inc(P);
-  end;
-
-  SkipWhitespace(P);
-  SkipComment(P);
-  SkipWhitespace(P);
-
-  // Prepend sign
-  if Sign then
-    Result := -Result;
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseMagnitude(var P: PChar): TMagnitude;
-var
-  Limbs: TList<TLimb>;
-begin
-  RequiredChar(P, '(');
-
-  // Check for empty magnitude
-  if P^ = ')' then
-  begin
-    Inc(P);
-    Exit(nil);
-  end;
-
-  // Parse values in magnitude
-  Limbs := TList<TLimb>.Create;
-  try
-    while P^ <> ')' do
-    begin
-      Limbs.Add(ParseUInt32(P));
-      SkipDelimiter(P);
-    end;
-
-    if Limbs.Count > 0 then
-      Result := Limbs.ToArray
-    else
-      Result := nil;
-
-  finally
-    Limbs.Free;
-  end;
-
-  RequiredChar(P, ')');
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseBigInteger(var P: PChar): BigInteger;
-var
-  LMagnitude: TMagnitude;
-  LSize: Integer;
-begin
-  RequiredChar(P, '(');
-
-  OptionalIdentifier(P, 'FData');
-  LMagnitude := ParseMagnitude(P);
-  SkipDelimiter(P);
-
-  SkipWhitespace(P);
-  OptionalIdentifier(P, 'FSize');
-  LSize := ParseInt32(P);
-
-  RequiredChar(P, ')');
-
-  // BigInteger takes two parameters: magnitude and sign
-  SetLength(LMagnitude, LSize and BigInteger.SizeMask);
-
-  // Turn parsed data into BigInteger
-  Result := BigInteger.Create(LMagnitude, LSize < 0);
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseBigIntegerEvalResult(const AEvalResult: string): string;
-var
-  P: PChar;
-  LValue: BigInteger;
-begin
-  P := PChar(AEvalResult);
-
-  try
-    LValue := ParseBigInteger(P);
-  except
-    on E: Exception do
-      Exit(AEvalResult + ' ' + E.Message);
-  end;
-
-  Result := LValue.ToString(10);
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseBigDecimal(var P: PChar): BigDecimal;
-var
-  LScale: Integer;
-  LValue: BigInteger;
-begin
-  LValue := BigInteger.Zero;
-
-  RequiredChar(P, '(');
-
-  OptionalIdentifier(P, 'FValue');
-  LValue := ParseBigInteger(P);
-  SkipDelimiter(P);
-
-  SkipWhiteSpace(P);
-  OptionalIdentifier(P, 'FScale');
-  LScale := ParseInt32(P);
-  SkipDelimiter(P);
-
-  SkipWhiteSpace(P);
-  OptionalIdentifier(P, 'FPrecision');
-  {LPrecision :=} ParseInt32(P);
-
-  RequiredChar(P, ')');
-
-  Result := BigDecimal.Create(LValue, LScale);
-end;
-
-class function TDebuggerBigIntegerVisualizer.ParseBigDecimalEvalResult(const AEvalResult: string): string;
-var
-  P: PChar;
-  LValue: BigDecimal;
-begin
-  P := PChar(AEvalResult);
-
-  try
-    LValue := ParseBigDecimal(P);
-  except
-    Exit(AEvalResult);
-  end;
-
-  Result := LValue.ToString;
-end;
-
-function TDebuggerBigIntegerVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
-begin
-(*
   CurProcess: IOTAProcess;
-  CurThread: IOTAthread;
+  CurThread: IOTAThread;
   ResultStr: array[0..255] of Char;
   CanModify: Boolean;
   ResultAddr, ResultSize, ResultVal: Longword;
-  Evalres: TOTAEvaluateResult;
-  DebugSvcs: IOTADebuggerServices;
+  EvalRes: TOTAEvaluateResult;
+  Services: IOTADebuggerServices;
   Done: Boolean;
 begin
   Result := EvalResult;
-  if Supports(BorlandIDEservices, IOTADebuggerServices, DebugSvcs) then
-    CurProcess := DebugSvcs.CurrentProcess;
+  if Supports(BorlandIDEServices, IOTADebuggerServices, Services) then
+    CurProcess := Services.CurrentProcess;
   if (CurProcess <> nil) and (CurProcess.GetProcessType <> optOSX32) then
   begin
     CurThread := CurProcess.CurrentThread;
     if CurThread <> nil then
-    repeat
-      Done := True;
-      Evalres := CurThread.Evaluate(Expression + '.ToString', @ResultStr, Length(ResultStr),
-        CanModify, eseAll, '', ResultAddr, ResultSize, ResultVal, ''. 0);
-      case EvalRes of
-        erOK:
-          Result := ResultStr;
-        erDeferred:
-          begin
-            FCompleted := False;
-            FDeferredResult := '';
-            FNotifierIndex := CurThread.AddNotifier(Self);
-            while not FCompleted do
-              DebugSvcs.ProcessDebugEvents;
-            CurThread.RemoveNotifier(FNotifierIndex);
-            FNotifierIndex := -1;
-            if FDeferredResult <> '' then
-              Result := FDeferredResult
-            else
-              Result := EvalResult;
-          end;
-        erBusy:
-          begin
-            DebugSvcs.ProcessDebugEvents;
-            Done := False;
-          end;
-      end;
-    until Done;
+      repeat
+        Done := True;
+        EvalRes := CurThread.Evaluate(Expression + '.ToString', @ResultStr,
+          Length(ResultStr), CanModify, eseAll, '', ResultAddr, ResultSize,
+          ResultVal, '', 0);
+        case EvalRes of
+          erOK:
+            Result := AnsiDequotedStr(ResultStr, '''');
+          erDeferred:
+            begin
+              FCompleted := False;
+              FDeferredResult := '';
+              FNotifierIndex := CurThread.AddNotifier(Self);
+              while not FCompleted do
+                Services.ProcessDebugEvents;
+              CurThread.RemoveNotifier(FNotifierIndex);
+              FNotifierIndex := -1;
+              if FDeferredResult <> '' then
+                Result := AnsiDequotedStr(FDeferredResult, '''')
+              else
+                Result := EvalResult;
+            end;
+          erBusy:
+            begin
+              Services.ProcessDebugEvents;
+              Done := False;
+            end;
+        end;
+      until Done;
   end;
-end;
-*)
-
-  ShowMessageFmt('Expression = ''%s'', TypeName = ''%s'', EvalResult = ''%s''', [Expression, Typename, Result]);
-//  if (EvalResult <> '') and (EvalResult[1] = '(') then
-//    if TypeName = 'BigInteger' then
-//      Result := ParseBigIntegerEvalResult(EvalResult)
-//    else if TypeName = 'BigDecimal' then
-//      Result := ParseBigDecimalEvalResult(EvalResult)
-//    else
-//      Result := '***' + EvalResult
-//  else
-    Result := Expression + '.ToString';
 end;
 
 procedure TDebuggerBigIntegerVisualizer.GetSupportedType(Index: Integer; var TypeName: string;
   var AllDescendants: Boolean);
 begin
+  AllDescendants := False;
+  case Index of
+    0: TypeName := 'BigInteger';
+    1: TypeName := 'BigDecimal';
+  else
+    TypeName := '';
+  end;
+end;
+
+{$IFDEF GENERICS}
+procedure TDebuggerBigIntegerVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants,
+  IsGeneric: Boolean);
+begin
+<<<<<<< HEAD
   ShowMessageFmt('GetSupportedType %d', [Index]);
   AllDescendants := False;
   if Index = 0 then
     TypeName := 'BigInteger'
   else if Index = 1 then
     TypeName := 'BigDecimal';
+=======
+  GetSupportedType(Index, TypeName, AllDescendants);
+  IsGeneric := False;
+>>>>>>> 29e4381c1e7ab38f7973cd8cd658555672efab0c
 end;
+{$ENDIF}
 
 function TDebuggerBigIntegerVisualizer.GetSupportedTypeCount: Integer;
 begin
@@ -573,4 +327,3 @@ exports
 {$ENDIF}
 
 end.
-
