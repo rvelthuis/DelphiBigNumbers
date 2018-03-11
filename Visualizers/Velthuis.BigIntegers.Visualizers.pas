@@ -1,4 +1,4 @@
-{---------------------------------------------------------------------------} }
+{---------------------------------------------------------------------------}
 {                                                                           }
 { File:       Velthuis.BigIntegers.Visualizers.pas                          }
 { Function:   Visualizers for the BigInteger and BigDecimal classes,        }
@@ -214,17 +214,8 @@ end;
 procedure TDebuggerBigIntegerVisualizer.GetSupportedType(Index: Integer; var TypeName: string; var AllDescendants,
   IsGeneric: Boolean);
 begin
-<<<<<<< HEAD
-  ShowMessageFmt('GetSupportedType %d', [Index]);
-  AllDescendants := False;
-  if Index = 0 then
-    TypeName := 'BigInteger'
-  else if Index = 1 then
-    TypeName := 'BigDecimal';
-=======
   GetSupportedType(Index, TypeName, AllDescendants);
   IsGeneric := False;
->>>>>>> 29e4381c1e7ab38f7973cd8cd658555672efab0c
 end;
 {$ENDIF}
 
@@ -294,7 +285,6 @@ procedure RegisterVisualizer;
 var
   DebuggerServices: IOTADebuggerServices;
 begin
-  ShowMessage('RegisterVisualizer');
   Visualizer := TDebuggerBigIntegerVisualizer.Create;
   if Supports(IDEServices, IOTADebuggerServices, DebuggerServices) then
     DebuggerServices.RegisterDebugVisualizer(Visualizer);
@@ -312,7 +302,6 @@ function InitWizard(const BorlandIDEServices: IBorlandIDEServices;
   RegisterProc: TWizardRegisterProc;
   var Terminate: TWizardTerminateProc): Boolean; stdcall;
 begin
-  ShowMessage('DLL InitWizard 2');
   Result := Assigned(BorlandIDEServices);
   if Result then
   begin
