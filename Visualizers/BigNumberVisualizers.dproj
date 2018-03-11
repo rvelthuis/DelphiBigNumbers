@@ -103,9 +103,8 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(MSBuildProjectName);FileDescription=$(MSBuildProjectName);ProductName=$(MSBuildProjectName)</VerInfo_Keys>
-        <DCC_ExeOutput>.\$(Platform)\$(Config)\Temp</DCC_ExeOutput>
+        <DCC_ExeOutput>C:\Users\Rudy\Documents\GitHub\DelphiBigNumbers\Visualizers\Win32\Release\Temp\</DCC_ExeOutput>
         <DCC_Define>DLLEXPERT;$(DCC_Define)</DCC_Define>
-        <Manifest_File>(None)</Manifest_File>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
     </PropertyGroup>

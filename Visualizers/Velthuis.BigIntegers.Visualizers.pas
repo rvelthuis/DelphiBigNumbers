@@ -49,7 +49,7 @@ procedure Register;
 implementation
 
 uses
-  System.Classes, System.SysUtils, ToolsAPI, Velthuis.BigIntegers, Velthuis.BigDecimals, System.Generics.Collections;
+  System.Classes, System.SysUtils, ToolsAPI, Velthuis.BigIntegers, Velthuis.BigDecimals, System.Generics.Collections, Vcl.Dialogs;
 
 resourcestring
   SBigIntegerVisualizerName = 'BigInteger and BigDecimal Visualizers for Delphi';
@@ -402,20 +402,71 @@ end;
 
 function TDebuggerBigIntegerVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
 begin
-  if (EvalResult <> '') and (EvalResult[1] = '(') then
-    if TypeName = 'BigInteger' then
-      Result := ParseBigIntegerEvalResult(EvalResult)
-    else if TypeName = 'BigDecimal' then
-      Result := ParseBigDecimalEvalResult(EvalResult)
-    else
-      Result := EvalResult
-  else
-    Result := EValResult;
+(*
+  CurProcess: IOTAProcess;
+  CurThread: IOTAthread;
+  ResultStr: array[0..255] of Char;
+  CanModify: Boolean;
+  ResultAddr, ResultSize, ResultVal: Longword;
+  Evalres: TOTAEvaluateResult;
+  DebugSvcs: IOTADebuggerServices;
+  Done: Boolean;
+begin
+  Result := EvalResult;
+  if Supports(BorlandIDEservices, IOTADebuggerServices, DebugSvcs) then
+    CurProcess := DebugSvcs.CurrentProcess;
+  if (CurProcess <> nil) and (CurProcess.GetProcessType <> optOSX32) then
+  begin
+    CurThread := CurProcess.CurrentThread;
+    if CurThread <> nil then
+    repeat
+      Done := True;
+      Evalres := CurThread.Evaluate(Expression + '.ToString', @ResultStr, Length(ResultStr),
+        CanModify, eseAll, '', ResultAddr, ResultSize, ResultVal, ''. 0);
+      case EvalRes of
+        erOK:
+          Result := ResultStr;
+        erDeferred:
+          begin
+            FCompleted := False;
+            FDeferredResult := '';
+            FNotifierIndex := CurThread.AddNotifier(Self);
+            while not FCompleted do
+              DebugSvcs.ProcessDebugEvents;
+            CurThread.RemoveNotifier(FNotifierIndex);
+            FNotifierIndex := -1;
+            if FDeferredResult <> '' then
+              Result := FDeferredResult
+            else
+              Result := EvalResult;
+          end;
+        erBusy:
+          begin
+            DebugSvcs.ProcessDebugEvents;
+            Done := False;
+          end;
+      end;
+    until Done;
+  end;
+end;
+*)
+
+  ShowMessageFmt('Expression = ''%s'', TypeName = ''%s'', EvalResult = ''%s''', [Expression, Typename, Result]);
+//  if (EvalResult <> '') and (EvalResult[1] = '(') then
+//    if TypeName = 'BigInteger' then
+//      Result := ParseBigIntegerEvalResult(EvalResult)
+//    else if TypeName = 'BigDecimal' then
+//      Result := ParseBigDecimalEvalResult(EvalResult)
+//    else
+//      Result := '***' + EvalResult
+//  else
+    Result := Expression + '.ToString';
 end;
 
 procedure TDebuggerBigIntegerVisualizer.GetSupportedType(Index: Integer; var TypeName: string;
   var AllDescendants: Boolean);
 begin
+  ShowMessageFmt('GetSupportedType %d', [Index]);
   AllDescendants := False;
   if Index = 0 then
     TypeName := 'BigInteger'
@@ -489,6 +540,7 @@ procedure RegisterVisualizer;
 var
   DebuggerServices: IOTADebuggerServices;
 begin
+  ShowMessage('RegisterVisualizer');
   Visualizer := TDebuggerBigIntegerVisualizer.Create;
   if Supports(IDEServices, IOTADebuggerServices, DebuggerServices) then
     DebuggerServices.RegisterDebugVisualizer(Visualizer);
@@ -506,6 +558,7 @@ function InitWizard(const BorlandIDEServices: IBorlandIDEServices;
   RegisterProc: TWizardRegisterProc;
   var Terminate: TWizardTerminateProc): Boolean; stdcall;
 begin
+  ShowMessage('DLL InitWizard 2');
   Result := Assigned(BorlandIDEServices);
   if Result then
   begin
