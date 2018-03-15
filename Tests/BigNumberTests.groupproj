@@ -65,16 +65,6 @@
     <Target Name="BigNumberVisualizers:Make">
         <MSBuild Projects="..\Visualizers\BigNumberVisualizers.dproj" Targets="Make"/>
     </Target>
-<<<<<<< HEAD
-    <Target Name="Build">
-        <CallTarget Targets="BigIntegerDevelopmentTests;BigDecimalDevelopmentTests;BigRationalDevelopmentTests;BigNumberVisualizers"/>
-    </Target>
-    <Target Name="Clean">
-        <CallTarget Targets="BigIntegerDevelopmentTests:Clean;BigDecimalDevelopmentTests:Clean;BigRationalDevelopmentTests:Clean;BigNumberVisualizers:Clean"/>
-    </Target>
-    <Target Name="Make">
-        <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make;BigNumberVisualizers:Make"/>
-=======
     <Target Name="BigNumbers">
         <MSBuild Projects="..\Visualizers\BigNumbers.dproj"/>
     </Target>
@@ -101,7 +91,6 @@
     </Target>
     <Target Name="Make">
         <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make;BigNumberVisualizers:Make;BigNumbers:Make;BigNumVisualizers:Make"/>
->>>>>>> 29e4381c1e7ab38f7973cd8cd658555672efab0c
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
