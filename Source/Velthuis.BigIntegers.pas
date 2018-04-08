@@ -7,6 +7,14 @@
 { Language:   Delphi version XE2 or later                                    }
 { Author:     Rudy Velthuis                                                  }
 { Copyright:  (c) 2015,2016,2017 Rudy Velthuis                               }
+{----------------------------------------------------------------------------}
+{             Schönhage-Strasssen algorithm:                                 }
+{             Copyright (c) 2011, Tim Buktu                                  }
+{             All rights reserved.                                           }
+{             https://github.com/tbuktu/ntru/blob/master/src/main/java/      }
+{               net/sf/ntru/arith/Sch%C3%B6nhageStrassen.java                }
+{             License as below                                               }
+{----------------------------------------------------------------------------}
 { Notes:      See http://praxis-velthuis.de/rdc/programs/bigintegers.html    }
 {                                                                            }
 {             For tests, see BigIntegerDevelopmentTests.dproj. The data      }
@@ -34,6 +42,7 @@
 {             3. Richard P. Brent and Paul Zimmermann,                       }
 {                "Modern Computer Arithmetic"                                }
 {                http://arxiv.org/pdf/1004.4710v1.pdf                        }
+{                https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf  }
 {             4. Christoph Burnikel, Joachim Ziegler                         }
 {                "Fast Recursive Division"                                   }
 {                cr.yp.to/bib/1998/burnikel.ps                               }
@@ -55,14 +64,14 @@
 {             following conditions are met:                                  }
 {                                                                            }
 {             * Redistributions of source code must retain the above         }
-{               copyright notice, this list of conditions and the following  }
-{               disclaimer.                                                  }
+{               copyright notices, this list of conditions and the           }
+{               following disclaimer.                                        }
 {             * Redistributions in binary form must reproduce the above      }
 {               copyright notice, this list of conditions and the following  }
 {               disclaimer in the documentation and/or other materials       }
 {               provided with the distribution.                              }
 {                                                                            }
-{ Disclaimer: THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER "AS IS"      }
+{ Disclaimer: THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS"     }
 {             AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      }
 {             LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND      }
 {             FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO         }
@@ -906,9 +915,15 @@ type
       var Root, Remainder: BigInteger); static;
 
     /// <summary>Returns the square root R of Radicand, such that R^2 < Radicand < (R+1)^2</summary>
-    class function Sqrt(const Radicand: BigInteger): BigInteger; static;
+    class function BaseCaseSqrt(const Radicand: BigInteger): BigInteger; static;
 
     /// <summary>If R is the square root of Radicand, returns Radicand - R^2.</summary>
+    class procedure BaseCaseSqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger); static;
+
+    /// <summary>Returns the square root R of the radicand, such that R^2 < radicand < (R+1)^2.</summary>
+    class function Sqrt(const Radicand: BigInteger): BigInteger; static;
+
+    /// <summary>Returns square root and remainder of the radicand.</summary>
     class procedure SqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger); static;
 
     /// <summary>Returns the square of Value, i.e. Value*Value</summary>
@@ -10755,7 +10770,7 @@ begin
   case Index of
     0: Exit(BigInteger.Zero);
     1: Exit(Radicand);
-    2: Exit(Sqrt(Radicand));
+    2: Exit(BaseCaseSqrt(Radicand));
   end;
   if Index < 0 then
     Error(ecNegativeExponent, ['NthRoot']);
@@ -10808,7 +10823,7 @@ end;
 ///                                                                                            ///
 /// https://stackoverflow.com/questions/4407839#16804098                                       ///
 //////////////////////////////////////////////////////////////////////////////////////////////////
-class function BigInteger.Sqrt(const Radicand: BigInteger): BigInteger;
+class function BigInteger.BaseCaseSqrt(const Radicand: BigInteger): BigInteger;
 var
   PrevEstimate, NewEstimate: BigInteger;
 begin
@@ -10816,7 +10831,7 @@ begin
     Exit(Radicand);
   if Radicand.IsNegative then
     Error(ecNegativeRadicand, ['Sqrt']); // Do not translate!
-  Result := BigInteger.Zero.SetBit(Radicand.BitLength shr 1);
+  Result := Radicand shr (Radicand.BitLength shr 1);
   PrevEstimate := Result;
   // Loop until we hit the same value twice in a row, or wind up alternating.
   repeat
@@ -10829,10 +10844,74 @@ begin
   until False;
 end;
 
-class procedure BigInteger.SqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger);
+class procedure BigInteger.BaseCaseSqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger);
 begin
-  Root := Sqrt(Radicand);
+  Root := BaseCaseSqrt(Radicand);
   Remainder := Radicand - Sqr(Root);
+end;
+
+class function BigInteger.Sqrt(const Radicand: BigInteger): BigInteger;
+var
+  Rem: BigInteger;
+begin
+  SqrtRemainder(Radicand, Result, Rem);
+end;
+
+// Richard P. Brent and Paul Zimmermann, "Modern Computer Arithmetic", Algorithm 1.12
+class procedure BigInteger.SqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger);
+var
+  RadCopy: BigInteger;
+  Limbs: Integer;
+  BaseToL, BaseMask: BigInteger;
+  A3, A2, A1, A0: BigInteger;
+  RootQ, RemQ: BigInteger;
+  Quot, Rem: BigInteger;
+begin
+  if Radicand.Size < 22 then
+  begin
+    BaseCaseSqrtRemainder(Radicand, Root, Remainder);
+    Exit;
+  end;
+
+  // l = trunc((n - 1) / 4)
+  Limbs := (Radicand.Size - 1) div 4;
+
+  // if l = 0 then return BaseCaseSqrtRem(m) <-- See above: there is a threshold > 0
+
+  BaseToL := BigInteger.One shl (CLimbBits * Limbs);
+  BaseMask := BaseToL - 1;
+
+  // Write m = a3*beta^3*l + a2*beta^2*l + a1*beta^l + a0 with 0 <= a2, a1, a0 < beta^l
+  A0 := Radicand and BaseMask;
+  RadCopy := Radicand shr (CLimbBits * Limbs);
+  A1 := RadCopy and BaseMask;
+  RadCopy := RadCopy shr (CLimbBits * Limbs);
+  A2 := RadCopy and BaseMask;
+  A3 := RadCopy shr (CLimbBits * Limbs);
+
+  // (s^', r') <-- SqrtRem(a3*beta^l + a2)
+  BigInteger.SqrtRemainder(A3 * BaseToL + A2, RootQ, RemQ);
+
+  // (q, u) <-- DivRem(r'*beta^l + a1, 2*s')
+  BigInteger.DivMod(RemQ * BaseToL + A1, RootQ shl 1, Quot, Rem);
+
+  // s <-- s'*beta^l + q
+  Root := RootQ * BaseToL + Quot;
+
+  // r <-- u*beta^l + a0 - q^2
+  Remainder := Rem * BaseToL + A0 - BigInteger.Sqr(Quot);
+
+  // if r < 0 then
+  if Remainder < 0 then
+  begin
+    // r <-- r + 2*s - 1
+    Remainder := Remainder + 2 * Root - 1;
+
+    // s <-- s - 1
+    Root := Root - 1;
+  end;
+
+  // return (s, r)
 end;
 
 class procedure BigInteger.DivThreeHalvesByTwo(
@@ -10859,6 +10938,7 @@ begin
     Remainder := Remainder + Right;
   end;
 end;
+
 
 class procedure BigInteger.DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer;
   var Quotient, Remainder: BigInteger);
