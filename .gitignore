@@ -1,5 +1,6 @@
 # NEVER FORGET: Git is case-sensitive!
 
+*.todo
 **/__history/
 **/__recovery/
 Tests/BigIntegers/Win32/**

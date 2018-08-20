@@ -10,6 +10,11 @@
 { Literature: https://de.wikipedia.org/wiki/Xorshift                        }
 {             https://en.wikipedia.org/wiki/Xorshift                        }
 {                                                                           }
+{ Acknowledgement:                                                          }
+{             Several of the algorithms below were developed by             }
+{             Sebastiano Vigna and released to the public domain,           }
+{             see http://vigna.di.unimi.it/                                 }
+{                                                                           }
 { License:    Redistribution and use in source and binary forms, with or    }
 {             without modification, are permitted provided that the         }
 {             following conditions are met:                                 }
@@ -132,16 +137,31 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math, Winapi.Windows;
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
 
+function SplitMix64(var X: UInt64) : UInt64;
+var
+  Z: UInt64;
+begin
+  Inc(X, UInt64($9E3779B97F4A7C15));
+  Z := (X xor (X shr 30)) * UInt64($BF58476D1CE4E5B9);
+  Z := (Z xor (Z shr 27)) * UInt64($94D049BB133111EB);
+  Result := Z xor (Z shr 31);
+end;
+
 { TXorShift32 }
 
 constructor TXorShift32.Create;
+var
+  C: Int64;
 begin
-  FSeed := 314159265;
+  if QueryPerformanceCounter(C) then
+    FSeed := UInt32(C)
+  else
+    FSeed := GetTickCount;
 end;
 
 function TXorShift32.GetSeed: Int64;
@@ -165,8 +185,13 @@ end;
 { TXorShift64 }
 
 constructor TXorShift64.Create;
+var
+  C: Int64;
 begin
-  FSeed := 88172645463325252;
+  if QueryPerformanceCounter(C) then
+    FSeed := C
+  else
+    FSeed := 88172645463325252 + GetTickCount;
 end;
 
 function TXorShift64.GetSeed: Int64;

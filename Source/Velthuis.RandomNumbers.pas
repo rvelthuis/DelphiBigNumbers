@@ -114,14 +114,13 @@ uses
 { TRandom }
 
 const
-  CSeedMask      = Int64(1) shl 48 - 1;
-  CMultiplicator = Int64($00000005DEECE66D);
-  CConstant      = Int64($000000000000000B);
-  CSeedSize      = 48 div 8;
+  CMultiplier = Int64(6364136223846793005);
+  CIncrement  = Int64(1442695040888963407);
+  CSeedSize   = 64 div 8;
 
 constructor TRandom.Create(Seed: Int64);
 begin
-  FSeed := Seed and CSeedMask;
+  FSeed := Seed;
 end;
 
 function TRandom.Next(Bits: Integer): UInt32;
@@ -129,8 +128,8 @@ begin
 {$IFOPT Q+}
 {$DEFINE HasRangeChecks}
 {$ENDIF}
-  FSeed := (FSeed * $5DEECE66D + 11) and (UInt64(1) shl 48 - 1);
-  Result := UInt32(FSeed shr (48 - Bits));
+  FSeed := (FSeed * CMultiplier + CIncrement);
+  Result := UInt32(FSeed shr (64 - Bits)); // Use the highest bits; Lower bits have lower period.
 {$IFDEF HasRangeChecks}
 {$RANGECHECKS ON}
 {$ENDIF}
@@ -143,7 +142,7 @@ end;
 
 procedure TRandom.SetSeed(ASeed: Int64);
 begin
-  FSeed := ASeed and CSeedMask;
+  FSeed := ASeed;
 end;
 
 { TDelphiRandom }
