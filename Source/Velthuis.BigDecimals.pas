@@ -1445,7 +1445,7 @@ begin
     LLowBits := UInt64(1) shl LDiff;            // mask for the low bits after shift
     LRem := LSignificand and (LLowBits - 1);    // low bits, IOW LSignificand mod 2^LDiff
     LSignificand := LSignificand shr LDiff;     // LSignificand div 2^LDiff
-    if LRem + LRem >= LLowBits then
+    if (LRem + LRem > LLowBits) or ((LRem + LRem = LLowBits) and (Odd(LSignificand))) then
       Inc(LSignificand);                        // round up
     if LSign < 0 then
       LSignificand := LSignificand or $8000000000000000;
