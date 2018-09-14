@@ -1181,9 +1181,9 @@ var
   // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
 
-implementation
-
 {$HPPEMIT END '#include "Velthuis.BigIntegers.operators.hpp"'}
+
+implementation
 
 // To switch PUREPASCAL for debug purposes. UNDEF PUREPASCAL before the routine and DEFINE PUREPASCAL
 // after the routine, if PP was defined.
