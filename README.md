@@ -21,6 +21,19 @@ These are implementations of the multi-precision `BigInteger`, `BigDecimal` and 
 A type that holds a number as fraction (ratio) of two `BigIntegers`, a numerator and a denominator, i.e. `1/7` or `100/3`. 
 This type is very good at simple arithmetic (`+`, `-`, `*`, `/`), since it doesn't lose precision or need any rounding. Still a work in progress...
 
+## C++Builder
+
+The newest version of BigIntegers has additional overloaded operators and additional constructors that are compatible
+with C++Builder. So now you simply include:
+
+    #include "Velthuis.BigIntegers.hpp"
+
+and then you can do things like:
+
+    BigInteger a = 17;
+    BigInteger b = "123";
+    BigInteger c = a + b;
+
 ## Directory structure
 
 ```
@@ -47,5 +60,4 @@ BigNumbers
    Visualizers                                  --- Sources for IDE debug visualizer DLL and packages for BigInteger 
                                                     and BigDecimal   
 ```
-
 

@@ -221,6 +221,11 @@ uses
   {$DEFINE HasExtended}
 {$IFEND}
 
+// For PAnsiChar:
+{$IF NOT DECLARED(PAnsiChar)}
+  {$DEFINE NoAnsi}
+{$IFEND}
+
 // Assembler is only supplied for Windows targets.
 // For other targets, PUREPASCAL must be defined.
 {$IFNDEF PUREPASCAL}
@@ -1177,6 +1182,8 @@ var
   DoDebug: Boolean = True;
 
 implementation
+
+{$HPPEMIT END '#include "Velthuis.BigIntegers.operators.hpp"'}
 
 // To switch PUREPASCAL for debug purposes. UNDEF PUREPASCAL before the routine and DEFINE PUREPASCAL
 // after the routine, if PP was defined.
@@ -3079,11 +3086,13 @@ begin
   Compact;
 end;
 
+{$IFNDEF NoAnsi}
 constructor BigInteger.Create(const Value: PAnsiChar);
 begin
   if not TryParse(string(AnsiString(Value)), Self) then
     Error(ecParse, [string(AnsiString(Value)), 'BigInteger']);
 end;
+{$ENDIF}
 
 constructor BigInteger.Create(const Value: PWideChar);
 begin
@@ -10454,11 +10463,13 @@ begin
     Error(ecParse, [Value, 'BigInteger']);
 end;
 
+{$IFNDEF NoAnsi}
 class operator BigInteger.Implicit(const Value: PAnsiChar): BigInteger;
 begin
   if not TryParse(string(AnsiString(Value)), Result) then
     Error(ecParse, [string(AnsiString(Value)), 'BigInteger']);
 end;
+{$ENDIF}
 
 class operator BigInteger.Implicit(const Value: PWideChar): BigInteger;
 begin
