@@ -74,3 +74,5 @@ Docs/**
 **/TestNthRoot64.*
 **/Profiling/**
 !Tests/BigNumberTests.groupproj
+*.hpp
+!**/Velthuis.BigIntegers.operators.hpp
