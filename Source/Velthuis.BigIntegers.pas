@@ -1181,7 +1181,9 @@ var
   // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
 
+{$HPPEMIT END '#if __BCPLUSPLUS__ <= 0x0730'}
 {$HPPEMIT END '#include "Velthuis.BigIntegers.operators.hpp"'}
+{$HPPEMIT END '#endif'}
 
 implementation
 
@@ -1440,24 +1442,25 @@ type
     Length: NativeInt;
   end;
 
-  Swapper = class
-    class procedure Swap<T>(var A, B: T); inline;
-  end;
-
-// This fine for simple types, BUT DO NOT USE THIS FOR MANAGED RECORDS like BigInteger!
-// It will add an extra implicit try-finally around the code, even if there is already
-// a try-finally around the enclosing ("calling") code.
-// Directly swapping the values in code does not create the try-finally.
-class procedure Swapper.Swap<T>(var A, B: T);
+procedure SwapIntegers(var L, R: Integer); inline;
 var
-  Temp: T;
+  Temp: Integer;
 begin
-  Temp := A;
-  A := B;
-  B := Temp;
+  Temp := L;
+  L := R;
+  R := Temp;
 end;
 
-function FindSize(Limb: PLimb; Size: Integer): Integer;
+procedure SwapPLimbs(var L, R: PLimb); inline;
+var
+  Temp: PLimb;
+begin
+  Temp := L;
+  L := R;
+  R := Temp;
+end;
+
+function ActualSize(Limb: PLimb; Size: Integer): Integer;
 {$IFDEF PUREPASCAL}
 begin
   while (Size > 0) and (Limb[Size - 1] = 0) do
@@ -1710,7 +1713,7 @@ begin
     end;
   end;
 
-  NewSize := FindSize(PLimb(ResData), ResSize);
+  NewSize := ActualSize(PLimb(ResData), ResSize);
   if NewSize = 0 then
   begin
     Result.FSize := 0;
@@ -1912,9 +1915,8 @@ var
 begin
   if LSize < RSize then
   begin
-    // Swap left and right pointers and sizes.
-    Swapper.Swap(LSize, RSize);
-    Swapper.Swap(Left, Right);
+    SwapIntegers(LSize, RSize);
+    SwapPLimbs(Left Right);
   end;
   for I := 0 to RSize - 1 do
     Result[I] := Left[I] xor Right[I];
@@ -2198,12 +2200,13 @@ class procedure BigInteger.InternalOr(Left, Right, Result: PLimb; LSize, RSize: 
 {$IFDEF PUREPASCAL}
 var
   I: Integer;
+  L: PLimb;
 begin
+  // Ensure Left/LSize belong to largest BigInteger.
   if LSize < RSize then
   begin
-    // Swap left and right pointers and sizes.
-    Swapper.Swap(LSize, RSize);
-    Swapper.Swap(Left, Right);
+    SwapIntegers(LSize, RSize);
+    SwapPLimbs(Left, Right);
   end;
   for I := 0 to RSize - 1 do
     Result[I] := Left[I] or Right[I];
@@ -2870,7 +2873,7 @@ begin
     Exit;
   end;
 
-  NewSize := FindSize(PLimb(Data), Size and SizeMask);
+  NewSize := ActualSize(PLimb(Data), Size and SizeMask);
   if NewSize < (Size and SizeMask) then
   begin
     if NewSize = 0 then
@@ -3383,7 +3386,7 @@ begin
     // then set ARight to ARight - ALeft (which is even).
     if ALeft > ARight then
     begin
-      // Swap ALeft and ARight. Swapper.Swap(ALeft, ARight) has too much overhead.
+      // Swap ALeft and ARight.
       Temp := ALeft;
       Aleft := ARight;
       ARight := Temp;
@@ -4256,11 +4259,17 @@ class procedure BigInteger.InternalAddPurePascal(Left, Right, Result: PLimb; LSi
 var
   LCount, LTail: Integer;
   Sum: NativeUInt;
+  I: Integer;
+  L: PLimb;
 begin
   if LSize < RSize then
   begin
-    Swapper.Swap(Left, Right);
-    Swapper.Swap(LSize, RSize);
+    I := LSize;
+    LSize := RSize;
+    RSize := I;
+    L := Left;
+    Left := Right;
+    Right := L;
   end;
 
   Sum := 0;
@@ -4437,8 +4446,8 @@ begin
   // Ensure that Left is the longer of both magnitudes.
   if RSize > LSize then
   begin
-    Swapper.Swap(Left, Right);
-    Swapper.Swap(LSize, RSize);
+    SwapPLimbs(Left, Right);
+    SwapIntegers(LSize, RSize);
   end;
 
   // Each new row is one limb further to the left.
@@ -9713,7 +9722,7 @@ begin
     FInternalAdd(PLimb(Largest^.FData), PLimb(Smallest^.FData), PLimb(ResData), LSize, SSize);
 
   // Compact and set sign.
-  NewSize := FindSize(PLimb(ResData), ResSize);
+  NewSize := ActualSize(PLimb(ResData), ResSize);
   if NewSize = 0 then
   begin
     Result := Zero;
