@@ -170,7 +170,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  { $DEFINE PUREPASCAL}
+  {$DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
@@ -194,6 +194,7 @@ uses
 // --- Permanent settings ---
 
 {$OPTIMIZATION ON}
+{$STACKFRAMES OFF}
 
 // For Delphi XE3 and up:
 {$IF CompilerVersion >= 24.0 }
@@ -812,6 +813,15 @@ type
     /// <summary>Returns the negation of Value.</summary>
     class function Negate(const Value: BigInteger): BigInteger; static;
 
+    /// <summary>The procedural equivalent of the operator 'shl'.</summary>
+    class procedure ShiftLeft(const Value: BigInteger; Shift: Integer; var Result: BigInteger); overload; static;
+    /// <summary>The function equivalent of the operator 'shl'.</summary>
+    class function ShiftLeft(const Value: BigInteger; Shift: Integer): BigInteger; overload; static;
+
+    /// <summary>The procedural equivalent of the operator 'shr'.</summary>
+    class procedure ShiftRight(const Value: BigInteger; Shift: Integer; var Result: BigInteger); overload; static;
+    /// <summary>The function equivalent of the operator 'shr'.</summary>
+    class function ShiftRight(const Value: BigInteger; Shift: Integer): BigInteger; overload; static;
 
     // -- Self-referential operator functions --
 
@@ -924,6 +934,8 @@ type
 
     /// <summary>Returns the specified value raised to the specified power.</summary>
     class function Pow(const ABase: BigInteger; AExponent: Integer): BigInteger; overload; static;
+
+    /// <summary>Returns the specified value raised to the spefied power in Result,</summary>
     class procedure Pow(const ABase: BigInteger; AExponent: Integer; var Result: BigInteger); overload; static;
 
     /// <summary>Returns the nth root R of a BigInteger such that R^index <= Radicand < (R+1)^index.</summary>
@@ -1034,7 +1046,7 @@ type
     class procedure InternalAddPlain(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     // Internal function subtracting two magnitudes. Contains code to avoid a partial flag stall.
     class procedure InternalSubtractModified(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
-    // Internal function subtracting two magnitudes. Does not contain code to avoid a partial flag stall.
+    // Internal func9tion subtracting two magnitudes. Does not contain code to avoid a partial flag stall.
     class procedure InternalSubtractPlain(Larger, Smaller, Result: PLimb; LSize, SSize: Integer); static;
     // Internal perfect division by 3 (guaranteed that there is no remainder).
     class procedure InternalDivideBy3(Value, Result: PLimb; ASize: Integer); static;
@@ -1580,16 +1592,6 @@ begin
   Result := BigInteger.Max(A, B);
 end;
 
-function GreaterSize(Left, Right: Integer): Integer; inline;
-begin
-  Result := IntMax(SizeBitsOf(Left), SizeBitsOf(Right));
-end;
-
-function LesserSize(Left, Right: Integer): Integer; inline;
-begin
-  Result := IntMin(SizeBitsOf(Left), SizeBitsOf(Right));
-end;
-
 function AllocLimbs(Size: Integer): PLimb; inline;
 begin
   GetMem(Result, Size * CLimbSize);
@@ -1916,7 +1918,7 @@ begin
   if LSize < RSize then
   begin
     SwapIntegers(LSize, RSize);
-    SwapPLimbs(Left Right);
+    SwapPLimbs(Left, Right);
   end;
   for I := 0 to RSize - 1 do
     Result[I] := Left[I] xor Right[I];
@@ -2200,7 +2202,6 @@ class procedure BigInteger.InternalOr(Left, Right, Result: PLimb; LSize, RSize: 
 {$IFDEF PUREPASCAL}
 var
   I: Integer;
-  L: PLimb;
 begin
   // Ensure Left/LSize belong to largest BigInteger.
   if LSize < RSize then
@@ -8732,23 +8733,41 @@ begin
   Result := FData = nil;
 end;
 
-class operator BigInteger.LeftShift(const Value: BigInteger; Shift: Integer): BigInteger;
+class procedure BigInteger.ShiftLeft(const Value: BigInteger; Shift: Integer; var Result: BigInteger);
 var
   LimbShift: Integer;
   LSign: Integer;
 begin
   if Value.FData = nil then
-    Exit(Zero);
+  begin
+    Result := Zero;
+    Exit;
+  end;
   LSign := SignBitOf(Value.FSize);
   LimbShift := Shift div CLimbBits;
   Shift := Shift mod CLimbBits;
-  Result.MakeSize((Value.FSize and SizeMask) + LimbShift + 1);
   if Shift > 0 then
-    InternalShiftLeft(PLimb(Value.FData), PLimb(Result.FData) + LimbShift, Shift, (Value.FSize and SizeMask))
+  begin
+    Result.MakeSize((Value.FSize and SizeMask) + LimbShift + 1);
+    InternalShiftLeft(PLimb(Value.FData), PLimb(Result.FData) + LimbShift, Shift, (Value.FSize and SizeMask));
+  end
   else
+  begin
+    Result.MakeSize((Value.FSize and SizeMask) + LimbShift);
     CopyLimbs(PLimb(Value.FData), PLimb(Result.FData) + LimbShift, (Value.FSize and SizeMask));
+  end;
   Result.FSize := (Result.FSize and SizeMask) or Integer(LSign);
   Result.Compact;
+end;
+
+class function BigInteger.ShiftLeft(const Value: BigInteger; Shift: Integer): BigInteger;
+begin
+  ShiftLeft(Value, Shift, Result);
+end;
+
+class operator BigInteger.LeftShift(const Value: BigInteger; Shift: Integer): BigInteger;
+begin
+  ShiftLeft(Value, Shift, Result);
 end;
 
 class operator BigInteger.LessThan(const Left, Right: BigInteger): Boolean;
@@ -10374,13 +10393,30 @@ begin
 end;
 {$ENDIF}
 
-class operator BigInteger.RightShift(const Value: BigInteger; Shift: Integer): BigInteger;
+
+class procedure BigInteger.ShiftRight(const Value: BigInteger; Shift: Integer; var Result: BigInteger);
+
 // Note: this emulates two's complement, more or less like the bitwise operators.
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                     //
+//  If Value is a negative BigInteger, then the following applies:                                     //                                                                        //
+//                                                                                                     //
+//  - shift magnitude as for positive value                                                            //
+//  - if (Value < 0) and (Shift > Abs(Value).LowestSetBit()) then                                      //
+//      Inc(Result.Magnitude);                                                                         //
+//  - Make Result negative if necessary.                                                               //
+//                                                                                                     //
+//  This greatly simplifies the previous code for negative results.                                    //
+//                                                                                                     //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 var
-  LSize: Integer;
+  LSize, LShift: Integer;
   ShiftOffset: Integer;
   RSize: Integer;
-  P: PLimb;
+  Lowest: Integer;
+//  P: PLimb;
 begin
   if Value.FData = nil then
   begin
@@ -10388,82 +10424,53 @@ begin
     Exit;
   end;
 
-  if Value.FSize > 0 then
+  LSize := (Value.FSize and SizeMask);
+  ShiftOffset := Shift shr 5;
+  RSize := LSize - ShiftOffset;
+
+  if RSize <= 0 then
+
+  // Shift results in 0. But for negative values, result might be -1.
+
   begin
-    LSize := (Value.FSize and SizeMask);
-    ShiftOffset := Shift shr 5;
-    RSize := LSize - ShiftOffset;
-    if RSize <= 0 then
-    begin
+    if (Value.FSize < 0) and (Shift > Value.LowestSetBit) then
+      ShallowCopy(MinusOne, Result)
+    else
       ShallowCopy(Zero, Result);
-      Exit;
-    end;
-    Shift := Shift and $1F;
-    Result.MakeSize(RSize);
-    if Shift > 0 then
-      InternalShiftRight(PLimb(Value.FData) + ShiftOffset, PLimb(Result.FData), Shift, RSize)
-    else
-      CopyLimbs(PLimb(Value.FData) + ShiftOffset, PLimb(Result.FData), RSize);
-    Result.Compact;
-  end
+    Exit;
+  end;
+
+  LShift := Shift and $1F;
+  Result.MakeSize(RSize);
+  if LShift > 0 then
+    InternalShiftRight(PLimb(Value.FData) + ShiftOffset, PLimb(Result.FData), LShift, RSize)
   else
+    CopyLimbs(PLimb(Value.FData) + ShiftOffset, PLimb(Result.FData), RSize);
+
+  // See comment box above. Handle negative values, if necessary.
+
+  if Value.FSize < 0 then
   begin
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///  This branch had to be written out completely. Using any local BigInteger, even a hidden BigInteger (to do  ///
-    ///  something like "Inc(Result);" a hidden BigInteger is allocated) will slow this down enormously.            ///
-    ///  The mere presence of a BigInteger causes InitializeArray and FinalizeArray to be compiled in,              ///
-    ///  and a hidden try-finally to be placed around the routine.                                                  ///
-    ///  Removing all local BigIntegers sped up this branch by a factor of 3 and the entire routine by a factor     ///
-    ///  of 2.                                                                                                      ///
-    ///                                                                                                             ///
-    ///  Original code:                                                                                             ///
-    ///  Result := MinusOne - ((MinusOne - Value) shr Shift);                                                       ///
-    ///                                                                                                             ///
-    ///  See: https:///community.embarcadero.com/blogs/entry/speed-problems-caused-by-code-that-never-ran-27826     ///
-    ///   or: http:///rvelthuis.blogspot.de/2015/10/speed-problems-caused-by-code-that.html                         ///
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Simulate two's complement.
 
-    LSize := (Value.FSize and SizeMask);
-    P := AllocLimbs(LSize);
-    // try
-    CopyLimbs(PLimb(Value.FData), P, LSize);
-    InternalDecrement(P, LSize);
-    while (LSize > 0) and (P[LSize - 1] = 0) do
-      Dec(LSize);
-    if LSize = 0 then
-    begin
-      ShallowCopy(MinusOne, Result);
-      FreeMem(P);
-      Exit;
-    end;
-    ShiftOffset := Shift shr 5;
-    if ShiftOffset >= LSize then
-    begin
-      ShallowCopy(MinusOne, Result);
-      FreeMem(P);
-      Exit;
-    end;
-    Shift := Shift and $1F;
-    Result.FSize := 0;
-    Result.MakeSize(LSize - ShiftOffset);
-    if Shift = 0 then
-      CopyLimbs(P + ShiftOffset, PLimb(Result.FData), LSize - ShiftOffset)
-    else
-      BigInteger.InternalShiftRight(P + ShiftOffset, PLimb(Result.FData), Shift, LSize - ShiftOffset);
-    // finally
-    FreeMem(P);
-    // end;
-
-    Result.Compact;
-    if Result.FData = nil then
-    begin
-      ShallowCopy(MinusOne, Result);
-      Exit;
-    end;
-    InternalIncrement(PLimb(Result.FData), (Result.FSize and SizeMask));
-    Result.FSize := (Result.FSize and SizeMask) or SignMask;
+    Lowest := Value.LowestSetBit;
+    if Shift > Lowest then
+      InternalIncrement(PLimb(Result.FData), RSize);
+    Result.FSize := Result.FSize or SignMask;
   end;
+
+  Result.Compact;
+end;
+
+class function BigInteger.ShiftRight(const Value: BigInteger; Shift: Integer): BigInteger;
+begin
+  ShiftRight(Value, Shift, Result);
+end;
+
+class operator BigInteger.RightShift(const Value: BigInteger; Shift: Integer): BigInteger;
+begin
+  ShiftRight(Value, Shift, Result);
 end;
 
 class operator BigInteger.Implicit(const Value: string): BigInteger;
