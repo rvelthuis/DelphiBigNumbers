@@ -939,7 +939,7 @@ public class BigIntegerTestDataGenerator
             }
         }
 
-        writeShiftResults(tw, "RightShiftResults", results, count, shiftCount, "shl");
+        writeShiftResults(tw, "RightShiftResults", results, count, shiftCount, "shr");
     }
 
     static String toExactString(final double d)

@@ -1,7 +1,7 @@
 //                                                                                                  //
 // File: BigIntegerBitwiseResults.inc                                                               //
 //                                                                                                  //
-// Test data for Velthuis.BigIntegers.pas, generated 09 Okt, 2018, 23:36:34                         //
+// Test data for Velthuis.BigIntegers.pas, generated 10 Okt, 2018, 01:32:31                         //
 //                                                                                                  //
 // Do not modify the generated data in this file.  Modify the data in the generator source file.    //
 // The source file for the generator is BigIntegerTestDataGenerator.java, in the Test subdirectory. //
