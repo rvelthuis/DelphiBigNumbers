@@ -170,7 +170,7 @@ uses
 
 // Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
 
-  {$DEFINE PUREPASCAL}
+  { $DEFINE PUREPASCAL}
 
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
