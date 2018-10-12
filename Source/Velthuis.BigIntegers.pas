@@ -160,6 +160,8 @@ unit Velthuis.BigIntegers;
 { TODO: InternalMultiply: consider algorithm by Malenkov et al. In short, this adds columns first, instead of rows. }
 { TODO: Check if old NthRoot (binary search) is perhaps better for the relatively small values tested here. It seems
         to have become slower. }
+{ TODO: Consider 64 bit limbs (i.e. TLimb = NativeUInt) for 64 bit code. This would be a considerable rewrite
+        -- different GitHub branch? }
 
 interface
 
@@ -188,7 +190,7 @@ uses
 // Experimental is set for code that tries something new without deleting the original code yet.
 // Undefine it to get the original code.
 
-  {$DEFINE Experimental}
+  { $DEFINE Experimental}
 
 
 // --- Permanent settings ---
@@ -970,6 +972,8 @@ type
     ///   <para>The unit is usually able to determine the right settings automatically.</para>
     /// </remarks>
     class procedure AvoidPartialFlagsStall(Value: Boolean); static;
+
+    class function IsExperimental: Boolean; static;
 
     // -- Array function(s) --
 
@@ -3542,14 +3546,19 @@ asm
         CLC
         JE      @MainTail
 
+
+// Intel proposal:
+//   Intel 64 and IA-32 Architectures Optimization Reference Manual
+//   3.5.2.6 Partial Flag Register Stalls -- Example 3-29
+
+        XOR     EAX,EAX
+
         .ALIGN  16
 
 @MainLoop:
 
-        // Unrolled main loop.
-
-        MOV     EAX,[ESI]
-        ADC     EAX,[EDI]
+        ADD     EAX,[ESI]       // Sets all flags, so no partial flag register stall
+        ADC     EAX,[EDI]       // ADD added in previous carry, so its result might have carry
         MOV     [EBX],EAX
 
         MOV     EAX,[ESI + CLimbSize]
@@ -3564,11 +3573,15 @@ asm
         ADC     EAX,[EDI + 3*CLimbSize]
         MOV     [EBX + 3*CLimbSize],EAX
 
-        LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
-        LEA     EDI,[EDI + CUnrollIncrement*CLimbSize]
-        LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
+        SETC    AL              // Save carry for next iteration
+        MOVZX   EAX,AL
 
-        LOOP    @Mainloop
+        ADD     ESI,CUnrollIncrement*CLimbSize  // LEA has slightly worse latency
+        ADD     EDI,CUnrollIncrement*CLimbSize
+        ADD     EBX,CUnrollIncrement*CLimbSize
+
+        DEC     ECX
+        JNZ     @MainLoop
 
 @MainTail:
 
@@ -3614,7 +3627,7 @@ asm
         MOV     EDX,ECX
         AND     EDX,CUnrollMask         // Tail counter
         SHR     ECX,CUnrollShift        // Unrolled loop counter
-        ADD     AL,255                  // Restore Carry Flag.
+        MOVZX   EAX,AL
         JECXZ   @RestLastN
 
         .ALIGN  16
@@ -3628,7 +3641,7 @@ asm
         // the code slightly SLOWER, most of the time.                     //
         /////////////////////////////////////////////////////////////////////
 
-        MOV     EAX,[ESI]
+        ADD     EAX,[ESI]
         ADC     EAX,EDI
         MOV     [EBX],EAX
 
@@ -3644,10 +3657,14 @@ asm
         ADC     EAX,EDI
         MOV     [EBX + 3*CLimbSize],EAX
 
-        LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
-        LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
+        SETC    AL
+        MOVZX   EAX,AL
 
-        LOOP    @RestLoop
+        ADD     ESI,CUnrollIncrement*CLimbSize
+        ADD     EBX,CUnrollIncrement*CLimbSize
+
+        DEC     ECX
+        JNZ     @RestLoop
 
 @RestLastN:
 
@@ -3656,6 +3673,7 @@ asm
 
         LEA     ECX,[@RestJumps]
         JMP     [ECX + EDX*TYPE Pointer]
+        ADD     AL,255                          // Restore carry
 
         .ALIGN  4
 
@@ -10627,6 +10645,15 @@ begin
   end;
 end;
 {$ENDIF}
+
+class function BigInteger.isExperimental: Boolean;
+begin
+{$IFDEF Experimental}
+  Result := True;
+{$ELSE}
+  Result := False;
+{$ENDIF}
+end;
 
 {$IFNDEF BIGINTEGERIMMUTABLE}
 function BigInteger.Multiply(const Other: BigInteger): PBigInteger;
