@@ -1193,13 +1193,11 @@ var
   // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
 
-{$HPPEMIT END '#if __BCPLUSPLUS__ <= 0x0730'}
 {$HPPEMIT END '#include "Velthuis.BigIntegers.operators.hpp"'}
-{$HPPEMIT END '#endif'}
 
 implementation
 
-// To switch PUREPASCAL for debug purposes. UNDEF PUREPASCAL before the routine and DEFINE PUREPASCAL
+// To switch PUREPASCAL for debugging purposes, $UNDEF PUREPASCAL before the routine and $DEFINE PUREPASCAL
 // after the routine, if PP was defined.
 {$IFDEF PUREPASCAL}
 {$DEFINE PP}
@@ -1211,6 +1209,7 @@ implementation
 // Routine here.
 {$IFDEF PP}
 {$DEFINE PUREPASCAL}
+{$UNDEF PP}
 {$ENDIF}
 
 uses
@@ -3653,6 +3652,9 @@ asm
         MOV     EAX,[ESI + 3*CLimbSize]
         ADC     EAX,EDI
         MOV     [EBX + 3*CLimbSize],EAX
+
+        SETC    AL
+        MOVZX   EAX,AL
 
         LEA     ESI,[ESI + CUnrollIncrement*CLimbSize]
         LEA     EBX,[EBX + CUnrollIncrement*CLimbSize]
