@@ -1184,11 +1184,6 @@ type
 /// <summary>Returns sign bit (top bit) of an integer.</summary>
 function SignBitOf(Value: Integer): Integer; inline;
 
-/// <summary>Returns the minimum of two BigIntegers.</summary>
-function Min(const A, B: BigInteger): BigInteger; overload; inline;
-/// <summary>Returns the maximum of two BigIntegers.</summary>
-function Max(const A, B: BigInteger): BigInteger; overload; inline;
-
 var
   // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
