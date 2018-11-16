@@ -26,9 +26,7 @@ package BigNumVisualizers;
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Velthuis Debug Visualizers for BigInteger and BigDecimal types'}
-
-{$INCLUDE 'LibSuffixes.inc'}
-
+{$LIBSUFFIX '260'}
 {$DESIGNONLY}
 {$IMPLICITBUILD ON}
 

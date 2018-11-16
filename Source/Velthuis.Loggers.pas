@@ -60,6 +60,9 @@ type
     procedure Log(Format: string; Args: array of const); overload;
   end;
 
+var
+  Logger: TLogger = nil;
+
 implementation
 
 uses

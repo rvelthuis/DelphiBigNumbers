@@ -26,9 +26,7 @@ package BigNumbers;
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Velthuis BigInteger and BigDecimal for Delphi'}
-
-{$INCLUDE 'LibSuffixes.inc'}
-
+{$LIBSUFFIX '260'}
 {$IMPLICITBUILD ON}
 
 requires

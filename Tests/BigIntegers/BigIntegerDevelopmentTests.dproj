@@ -65,7 +65,7 @@
         <Manifest_File>None</Manifest_File>
         <SanitizedProjectName>BigIntegerDevelopmentTests</SanitizedProjectName>
         <DCC_Define>_CONSOLE_TESTRUNNER;$(DCC_Define)</DCC_Define>
-        <DCC_UnitSearchPath>$(BDS)\Source\DUnit\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>$(BDS)\Source\DUnit\src;D:\Source\DropBox\Delphi\FastMM4-master\;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
         <DCC_DcuOutput>$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>$(Platform)\$(Config)</DCC_ExeOutput>
@@ -88,9 +88,8 @@
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
         <DCC_DebugDCUs>true</DCC_DebugDCUs>
-        <DCC_Optimize>false</DCC_Optimize>
-        <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
         <DCC_DebugInfoInExe>true</DCC_DebugInfoInExe>
+        <DCC_OutputDependencies>true</DCC_OutputDependencies>
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
@@ -111,6 +110,7 @@
         <DCC_Inlining>auto</DCC_Inlining>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_OutputXMLDocumentation>true</DCC_OutputXMLDocumentation>
+        <DCC_UnitSearchPath>D:\Source\DropBox\Delphi\FastMM4-master;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>

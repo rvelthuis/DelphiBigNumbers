@@ -48,6 +48,9 @@ info.plist.TemplateOSX.xml
 **/*.printerrors
 **/FastFibonacci/**
 ls-tree.txt
+**/XBigIntegerDevelopment*
+**/Velthuis.Magnitudes.pas
+**/X.Big*
 DataGenerators/BigIntegers/Java/BigIntegerTestDataGenerator/nbproject/private/**
 DataGenerators/BigIntegers/Java/BigIntegerTestDataGenerator/build/**
 DataGenerators/BigIntegers/Java/BigIntegerTestDataGenerator/dist/**

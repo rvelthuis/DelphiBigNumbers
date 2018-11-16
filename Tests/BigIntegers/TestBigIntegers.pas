@@ -19,8 +19,7 @@ uses
   System.SysUtils,
   System.Math,
   Velthuis.BigIntegers,
-  Velthuis.RandomNumbers,
-  Velthuis.Loggers;
+  Velthuis.RandomNumbers;
 
 {$IF BigInteger.Immutable}
 {$DEFINE IMMUTABLE}
@@ -29,6 +28,8 @@ uses
 {$IF RTLVersion >= 29.0}
 {$DEFINE HASINVARIANT}
 {$IFEND}
+
+{ $DEFINE TESTPARTIALFLAGCODE}
 
 type
   // Test methods for BigInteger records.
@@ -159,6 +160,9 @@ begin
     else
       Status('Assembler: plain code');
   end;
+{$IFDEF TESTPARTIALFLAGCODE}
+  BigInteger.AvoidPartialFlagsStall(True);
+{$ENDIF}
 end;
 
 procedure TTestBigInteger.TearDown;
