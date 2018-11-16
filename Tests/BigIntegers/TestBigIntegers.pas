@@ -19,7 +19,12 @@ uses
   System.SysUtils,
   System.Math,
   Velthuis.BigIntegers,
+<<<<<<< HEAD
   Velthuis.RandomNumbers;
+=======
+  Velthuis.RandomNumbers,
+  Velthuis.Loggers;
+>>>>>>> 3d837b2b2e7fd38487c1b3cc2f395ebac83dccb1
 
 {$IF BigInteger.Immutable}
 {$DEFINE IMMUTABLE}
@@ -29,8 +34,11 @@ uses
 {$DEFINE HASINVARIANT}
 {$IFEND}
 
+<<<<<<< HEAD
 { $DEFINE TESTPARTIALFLAGCODE}
 
+=======
+>>>>>>> 3d837b2b2e7fd38487c1b3cc2f395ebac83dccb1
 type
   // Test methods for BigInteger records.
   TTestBigInteger = class(TTestCase)
@@ -160,9 +168,12 @@ begin
     else
       Status('Assembler: plain code');
   end;
+<<<<<<< HEAD
 {$IFDEF TESTPARTIALFLAGCODE}
   BigInteger.AvoidPartialFlagsStall(True);
 {$ENDIF}
+=======
+>>>>>>> 3d837b2b2e7fd38487c1b3cc2f395ebac83dccb1
 end;
 
 procedure TTestBigInteger.TearDown;
