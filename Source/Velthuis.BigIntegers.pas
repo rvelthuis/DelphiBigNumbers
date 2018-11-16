@@ -784,7 +784,7 @@ type
 
     /// <summary>Function performing multiplication using Toom-Cook 3-way algorithm. Faster than Karatsuba, but,
     /// due to its overhead, only for very large BigIntegers.</summary>
-    class procedure MultiplyToomCook3(const Left, Right: BigInteger; var Result: BigInteger); static;
+    class function MultiplyToomCook3(const Left, Right: BigInteger): BigInteger; static;
 
     /// <summary>The function equivalent to the operators 'div' and 'mod'. Since calculation of the quotient
     ///   automatically leaves a remainder, this function allows you to get both for more or less the "price"
@@ -1203,22 +1203,32 @@ var
   // Set this to True if you want to generate debug output.
   DoDebug: Boolean = True;
 
-// Make a possibly generated C++Builder .hpp file include Velthuis.BigIntegers.operators.hpp
-// http://rvelthuis.blogspot.com/2018/09/making-delphi-operator-overloads.html
 {$HPPEMIT END '#include "Velthuis.BigIntegers.operators.hpp"'}
 
 implementation
 
+// To switch PUREPASCAL for debugging purposes, $UNDEF PUREPASCAL before the routine and $DEFINE PUREPASCAL
+// after the routine, if PP was defined.
+{$IFDEF PUREPASCAL}
+{$DEFINE PP}
+{$ENDIF}
+
+// Copy the following around the routine for which you want to switch off PUREPASCAL
+
+{$UNDEF PUREPASCAL}
+// Routine here.
+{$IFDEF PP}
+{$DEFINE PUREPASCAL}
+{$UNDEF PP}
+{$ENDIF}
+
 uses
-{$IF Defined(DEBUG) and Defined(MSWINDOWS)}
+{$IFDEF DEBUG}
+  {$IFDEF MSWINDOWS}
   Winapi.Windows,
-<<<<<<< HEAD
   {$ENDIF}
 {$ENDIF}
   System.StrUtils,
-=======
-{$IFEND}
->>>>>>> 3d837b2b2e7fd38487c1b3cc2f395ebac83dccb1
   Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils, Velthuis.StrConsts;
 
 {$POINTERMATH ON}
@@ -9517,7 +9527,7 @@ begin
 end;
 {$ENDIF !PUREPASCAL}
 
-class procedure BigInteger.MultiplyToomCook3(const Left, Right: BigInteger; var Result: BigInteger);
+class function BigInteger.MultiplyToomCook3(const Left, Right: BigInteger): BigInteger;
 var
   k, Shift: Integer;
   a, b: TArray<BigInteger>;
@@ -9549,28 +9559,28 @@ begin
   // Evaluation at x = -1, 0, 1, 2 and +inf.
 
   // Step 3: v0 <- ToomCook3(a0, b0)
-  MultiplyToomCook3(a[0], b[0], v0);
+  v0 := MultiplyToomCook3(a[0], b[0]);
 
   // Step 4a: a02 <- a0 + a2, b02 <- b0 + b2
   a02 := a[0] + a[2];
   b02 := b[0] + b[2];
 
   // Step 5: v(-1) <- ToomCook3(a02 - a1, b02 - b1) = ToomCook3(a0 + a2 - a1, b0 + b2 - b1)
-  MultiplyToomCook3(a02 - a[1], b02 - b[1], vm1);
+  vm1 := MultiplyToomCook3(a02 - a[1], b02 - b[1]);
 
   // Intermediate step: a'02 = a02 + a1, b'02 = b02 + b1
   a02 := a02 + a[1];
   b02 := b02 + b[1];
 
   // Step 4b: v1 <- ToomCook3(a02 + a1, b02 + b1) = ToomCook3(a'02, b'02)
-  MultiplyToomCook3(a02, b02, v1);
+  v1 := MultiplyToomCook3(a02, b02);
 
   // Step 6: v2 <- ToomCook3(a0 + 2*a1 + 4*a2, b0 + 2*b1 + 4*b2)
   // Note: first operand is a0 + a1 + a1 + a2 + a2 + a2 + a2 = 2*(a0 + a1 + a2 + a2) - a0 = 2*(a'02 + a2) - a0
-  MultiplyToomCook3((a02 + a[2]) shl 1 - a[0], (b02 + b[2]) shl 1 - b[0], v2);
+  v2 := MultiplyToomCook3((a02 + a[2]) shl 1 - a[0], (b02 + b[2]) shl 1 - b[0]);
 
   // Step 7: v(inf) <- ToomCook3(a2, b2)
-  MultiplyToomCook3(a[2], b[2], vinf);
+  vinf := MultiplyToomCook3(a[2], b[2]);
 
   // Step 8: t1 <- (3*v0 + 2*v(−1) + v2)/6 − 2 * v(inf), t2 <- (v1 + v(−1))/2
   t1 := DivideBy3Exactly(((v0 + vm1) shl 1 + v0 + v2) shr 1) - (vinf shl 1);
@@ -9642,7 +9652,7 @@ begin
     if ((Left.FSize and SizeMask) < ToomCook3Threshold) and ((Right.FSize and SizeMask) < ToomCook3Threshold) then
       MultiplyKaratsuba(Left, Right, Result)
     else
-      MultiplyToomCook3(Left, Right, Result);
+      Result := MultiplyToomCook3(Left, Right);
   end;
 end;
 
