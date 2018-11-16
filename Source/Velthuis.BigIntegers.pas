@@ -188,13 +188,14 @@ uses
 // Experimental is set for code that tries something new without deleting the original code yet.
 // Undefine it to get the original code.
 
-  {$DEFINE Experimental}
+  { $DEFINE Experimental}
 
 
 // --- Permanent settings ---
 
 {$OPTIMIZATION ON}
 {$STACKFRAMES OFF}
+{$INLINE ON}
 
 // For Delphi XE3 and up:
 {$IF CompilerVersion >= 24.0 }
@@ -235,11 +236,23 @@ uses
   {$ENDIF}
 {$ENDIF}
 
+// To account for bad code generation for fifth parameter in Win64 in Rio.
+// TODO: Remove, if fixed.
+{$IF (CompilerVersion = 33) and defined(WIN64)}
+  {$DEFINE RIO64}
+{$IFEND}
+
 const
 {$IFDEF PUREPASCAL}
   PurePascal = True;
 {$ELSE}
   PurePascal = False;
+{$ENDIF}
+
+{$IFDEF EXPERIMENTAL}
+  ExperimentalCode = True;
+{$ELSE}
+  ExperimentalCode = False;
 {$ENDIF}
 
   // This assumes an unroll factor of 4. Unrolling more (e.g. 8) does not improve performance anymore.
@@ -1064,7 +1077,7 @@ type
     class procedure ConvertToFloatComponents(const Value: BigInteger; SignificandSize: Integer;
       var Sign: Integer; var Significand: UInt64; var Exponent: Integer); static;
     // Internal function comparing two magnitudes.
-    class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer; static;
+    class function InternalCompare(Left, Right: PLimb; LSize, RSize: Integer): Integer; static; {$IFDEF PUREPASCAL} inline; {$ENDIF}
     // Internal function and-ing two magnitudes.
     class procedure InternalAnd(Left, Right, Result: PLimb; LSize, RSize: Integer); static;
     // Internal function or-ing two magnitudes.
@@ -1132,7 +1145,8 @@ type
     // Divides a BigInteger by 3 exactly. BigInteger is guaranteed to be a positive multiple of 3.
     class function DivideBy3Exactly(const A: BigInteger): BigInteger; static;
     // Helper function for Burnikel-Ziegler division. See explanation in implementation section.
-    class procedure DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper, RightLower: BigInteger;
+    class procedure DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper: BigInteger;
+      const {$IFDEF RIO64}[ref]{$ENDIF} RightLower: BigInteger;
       N: Integer; var Quotient, Remainder: BigInteger); static;
     // Helper function for Burnikel-Ziegler division.
     class procedure DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer;
@@ -1151,7 +1165,7 @@ type
 
     class procedure Compact(var Data: TMagnitude; var Size: Integer); overload; static;
     // Resets size thus that there are no leading zero limbs.
-    procedure Compact; overload;
+    procedure Compact; overload; inline;
     // Reallocates magnitude to ensure a given size.
     procedure EnsureSize(RequiredSize: Integer);
     // Creates a new magnitude.
@@ -1173,10 +1187,11 @@ type
 
     /// <summary>Global numeric base for BigIntegers</summary>
     class property Base: TNumberBase read FBase write SetBase;
-    /// <summary>Global flag indicating if partial flag stall is avoided</summary>
-    class property StallAvoided: Boolean read FAvoidStall;
     /// <summary>Global rounding mode used for conversion to floating point</summary>
     class property RoundingMode: TRoundingMode read FRoundingMode write FRoundingMode;
+
+    /// <summary>Global flag indicating if partial flag stall is avoided</summary>
+    class property StallAvoided: Boolean read FAvoidStall;
   {$ENDREGION}
 
   end;
@@ -1213,6 +1228,7 @@ uses
   Winapi.Windows,
   {$ENDIF}
 {$ENDIF}
+  System.StrUtils,
   Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils, Velthuis.StrConsts;
 
 {$POINTERMATH ON}
@@ -1597,7 +1613,7 @@ begin
 end;
 
 // Replacement for SetLength() only for TMagnitudes, i.e. dynamic arrays of TLimb.
-procedure AllocNewMagnitude(var FData: TMagnitude; RequiredSize: Integer);
+procedure AllocNewMagnitude(var AData: TMagnitude; RequiredSize: Integer);
 var
   NewData: PByte;
   NewSize: Integer;
@@ -1606,7 +1622,7 @@ begin
   NewData := AllocMem(NewSize * CLimbSize + SizeOf(TDynArrayRec));
   PDynArrayRec(NewData).RefCnt := 1;
   PDynArrayRec(NewData).Length := NewSize;
-  PByte(FData) := NewData + SizeOf(TDynArrayRec);
+  PByte(AData) := NewData + SizeOf(TDynArrayRec);
 end;
 
 { BigInteger }
@@ -4788,7 +4804,7 @@ var
   SaveLeft: PLimb;
   LeftSize, RightSize: Integer;
 asm
-.PUSHNV RSI
+        .PUSHNV RSI
         .PUSHNV RDI
         .PUSHNV RBX
         .PUSHNV R12
@@ -7688,30 +7704,27 @@ class function BigInteger.InternalCompare(Left, Right: PLimb; LSize, RSize: Inte
 var
   L, R: PLimb;
 begin
-  if Left = nil then
-  begin
-    if Right = nil then
-      Exit(0)
-    else
-      Exit(-1);
-  end;
-  if Right = nil then
-    Exit(1);
+  if (LSize or RSize) = 0 then
+    Exit(0);
   if LSize > RSize then
     Result := 1
   else if LSize < RSize then
     Result := -1
   else
-  // Same size, so compare values. Start at the "top" (most significant limb).
+
+  // Same size, so compare limbs. Start at the "top" (most significant limb).
   begin
     L := Left + LSize - 1;
     R := Right + LSize - 1;
     while L >= Left do
     begin
-      if L^ > R^  then
-        Exit(1)
-      else if L^ < R^ then
-        Exit(-1);
+      if L^ <> R^ then
+      begin
+        if L^ > R^ then
+          Exit(1)
+        else if L^ < R^ then
+          Exit(-1);
+      end;
       Dec(L);
       Dec(R);
     end;
@@ -9963,12 +9976,12 @@ end;
 // Assumes non-negative parameters and non-negative self.
 procedure BigInteger.AddWithOffset(const Addend: BigInteger; Offset: Integer);
 begin
-  Self.EnsureSize(IntMax(Offset + (Addend.FSize and SizeMask), Self.FSize and SizeMask));
+  Self.EnsureSize(IntMax(Offset + (Addend.FSize and SizeMask) + 1, Self.FSize and SizeMask));
 //  if Offset >= (Self.FSize and SizeMask) then
 //    CopyLimbs(PLimb(Addend.FData), PLimb(Self.FData) + Offset, Addend.FSize and SizeMask)
 //  else
     FInternalAdd(PLimb(Self.FData) + Offset, PLimb(Addend.FData), PLimb(Self.FData) + Offset,
-      (Self.FSize and SizeMask) - Offset, Addend.FSize and SizeMask);
+      (Self.FSize and SizeMask) - Offset - 1, Addend.FSize and SizeMask);
   Self.Compact;
 end;
 
@@ -11008,12 +11021,14 @@ begin
   // return (s, r)
 end;
 
-class procedure BigInteger.DivThreeHalvesByTwo(
-  const LeftUpperMid, LeftLower, Right, RightUpper, RightLower: BigInteger; N: Integer;
+class procedure BigInteger.DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper: BigInteger;
+  const {$IFDEF RIO64}[ref]{$ENDIF} RightLower: BigInteger; N: Integer;
   var Quotient, Remainder: BigInteger);
 var
   Q, R: BigInteger;
 begin
+  if RightLower.FData <> nil then
+    ;
   Q := BigInteger.Zero;
   R := BigInteger.Zero;
   if (LeftUpperMid shr N) = RightUpper then
@@ -11047,7 +11062,7 @@ var
 begin
   Quot := BigInteger.Zero;
   Rem := BigInteger.Zero;
-  if N <= BigInteger.BurnikelZieglerThreshold * 32 then
+  if N <= BigInteger.BurnikelZieglerThreshold * CLimbBits then
   begin
     BigInteger.DivModKnuth(Left, Right, Quot, Rem);
     Quotient := Quot;
@@ -11073,9 +11088,10 @@ begin
   RightUpper := RightCopy shr HalfN;
   RightLower := RightCopy and HalfMask;
 
-  DivThreeHalvesByTwo(LeftCopy shr N, (LeftCopy shr HalfN) and HalfMask, RightCopy, RightUpper, RightLower,
-    HalfN, QuotientUpper, Rem);
-  DivThreeHalvesByTwo(Rem, LeftCopy and HalfMask, RightCopy, RightUpper, RightLower, HalfN, QuotientLower, Rem);
+  DivThreeHalvesByTwo(LeftCopy shr N, (LeftCopy shr HalfN) and HalfMask, RightCopy, RightUpper,
+    RightLower, HalfN, QuotientUpper, Rem);
+  DivThreeHalvesByTwo(Rem, LeftCopy and HalfMask, RightCopy, RightUpper,
+    RightLower, HalfN, QuotientLower, Rem);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   ///                                                                                                               ///
@@ -11165,6 +11181,7 @@ class procedure BigInteger.DivModBurnikelZiegler(const Left, Right: BigInteger; 
 var
   Q, R: BigInteger;
 begin
+
   if Right.IsZero then
     raise Exception.Create('Division by zero')
   else if Right.IsNegative then
