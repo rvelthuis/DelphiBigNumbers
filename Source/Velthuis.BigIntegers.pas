@@ -1152,9 +1152,7 @@ type
     class procedure DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer;
       var Quotient, Remainder: BigInteger); static;
 
-    // Karatsuba and Toom-Cook helper functions
-    // Add Addend into current BigInteger, at given offset.
-    procedure AddWithOffset(const Addend: BigInteger; Offset: Integer);
+    // Karatsuba and Toom-Cook helper function
     // Split BigInteger into smaller BigIntegers of size BlockSize.
     function Split(BlockSize, BlockCount: Integer): TArray<BigInteger>;
 
@@ -9314,6 +9312,7 @@ var
   k, LSign: Integer;
   z0, z1, z2: BigInteger;
   x, y: TArray<BigInteger>;
+  Shift: Integer;
 begin
   if ((Left.FSize and SizeMask) < KaratsubaThreshold) or ((Right.FSize and SizeMask) < KaratsubaThreshold) then
   begin
@@ -9372,10 +9371,9 @@ begin
   MultiplyKaratsuba(x[1] - x[0], y[0] - y[1], z1);
   Add(z1, z2 + z0, z1);
 
-  Result := z0;
-  Result.AddWithOffset(z2, k * 2);
-  Result.AddWithOffset(z1, k);
+  Shift := k * CLimbBits;
 
+  Result := z0 + ((z1 + z2 shl Shift) shl Shift);
   Result.FSize := (Result.FSize and SizeMask) or LSign;
 end;
 
@@ -9588,10 +9586,8 @@ begin
 
   // Step 9: c0 <- v0, c1 <- v1 - t1, c2 <- t2 - v0 - vinf, c3 <- t1 - t2, c4 <- vinf
   Shift := k * CLimbBits;
-  // Note: The next line is slightly faster than AddWithOffset, but, more importantly,
-  //       it produces the correct result, while AddWithOffset doesn't always do that (at least in Win32).
-  Result := (((((((vinf shl Shift) + t1 - t2) shl Shift) + t2 - v0 - vinf) shl Shift) + v1 - t1) shl Shift) + v0;
 
+  Result := (((((((vinf shl Shift) + t1 - t2) shl Shift) + t2 - v0 - vinf) shl Shift) + v1 - t1) shl Shift) + v0;
   Result.FSize := (Result.FSize and SizeMask) or Sign;
 end;
 
@@ -9971,19 +9967,6 @@ asm
 end;
 {$ENDIF WIN64}
 {$ENDIF !PUREPASCAL}
-
-// Needed for Karatsuba, ToomCook and Burnikel-Ziegler
-// Assumes non-negative parameters and non-negative self.
-procedure BigInteger.AddWithOffset(const Addend: BigInteger; Offset: Integer);
-begin
-  Self.EnsureSize(IntMax(Offset + (Addend.FSize and SizeMask) + 1, Self.FSize and SizeMask));
-//  if Offset >= (Self.FSize and SizeMask) then
-//    CopyLimbs(PLimb(Addend.FData), PLimb(Self.FData) + Offset, Addend.FSize and SizeMask)
-//  else
-    FInternalAdd(PLimb(Self.FData) + Offset, PLimb(Addend.FData), PLimb(Self.FData) + Offset,
-      (Self.FSize and SizeMask) - Offset - 1, Addend.FSize and SizeMask);
-  Self.Compact;
-end;
 
 class procedure BigInteger.InternalBitwise(const Left, Right: BigInteger;
   var Result: BigInteger; PlainOp, OppositeOp, InversionOp: TBinaryOperator);
