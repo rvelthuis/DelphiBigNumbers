@@ -1,7 +1,7 @@
 #ifndef VB_OPERATORS
 #define VB_OPERATORS
 
-inline BigInteger operator +(const BigInteger& left, const BigInteger& right) {	return BigInteger::Add(left, right); }
+inline BigInteger operator +(const BigInteger& left, const BigInteger& right) { return BigInteger::Add(left, right); }
 inline BigInteger operator -(const BigInteger& left, const BigInteger& right) { return BigInteger::Subtract(left, right); }
 inline BigInteger operator *(const BigInteger& left, const BigInteger& right) { return BigInteger::Multiply(left, right); }
 inline BigInteger operator *(System::Word left, const BigInteger& right) { return BigInteger::_op_Multiply(left, right); }
