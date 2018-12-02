@@ -76,6 +76,9 @@ DataGenerators/BigRationals/BigRationalTestDataGenerator/dist/
 Docs/**
 **/TestNthRoot64.*
 **/Profiling/**
+Source/IMag.BigIntegers.pas
+Source/Velthuis.IMagnitudes.pas
+Tests/BigIntegers/IMag.TestBigIntegers.pas
 !Tests/BigNumberTests.groupproj
 *.hpp
 !**/Velthuis.BigIntegers.operators.hpp

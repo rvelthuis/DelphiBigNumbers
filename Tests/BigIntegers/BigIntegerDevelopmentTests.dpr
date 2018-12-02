@@ -21,9 +21,8 @@ program BigIntegerDevelopmentTests;
 {$WARN UNIT_EXPERIMENTAL OFF}
 
 uses
-{$IFDEF USEFASTMM4}
-  FastMM4,
-{$ENDIF }
+  {$IFDEF USEFASTMM4}
+  {$ENDIF }
   DUnitTestRunner,
   Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas',
   Velthuis.RandomNumbers in '..\..\Source\Velthuis.RandomNumbers.pas',
@@ -37,7 +36,8 @@ uses
   Velthuis.BigIntegers.Primes in '..\..\Source\Velthuis.BigIntegers.Primes.pas',
   Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas',
   Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas',
-  Velthuis.XorShifts in '..\..\Source\Velthuis.XorShifts.pas';
+  Velthuis.XorShifts in '..\..\Source\Velthuis.XorShifts.pas',
+  CompilerAndRTLVersions in '..\..\Source\CompilerAndRTLVersions.pas';
 
 {$R *.RES}
 
