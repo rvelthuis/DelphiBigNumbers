@@ -164,7 +164,7 @@ unit Velthuis.BigIntegers;
 interface
 
 uses
-  Velthuis.RandomNumbers, System.Types, System.SysUtils, System.Math;
+  CompilerAndRTLVersions, Velthuis.RandomNumbers, System.Types, System.SysUtils, System.Math;
 
 // --- User settings ---
 
@@ -185,10 +185,10 @@ uses
   {$DEFINE BIGINTEGERIMMUTABLE}
 
 
-// Experimental is set for code that tries something new without deleting the original code yet.
+// EXPERIMENTAL is set for code that tries something new without deleting the original code yet.
 // Undefine it to get the original code.
 
-  { $DEFINE Experimental}
+  {$DEFINE EXPERIMENTAL}
 
 
 // --- Permanent settings ---
@@ -197,13 +197,16 @@ uses
 {$STACKFRAMES OFF}
 {$INLINE ON}
 
-// For Delphi XE3 and up:
-{$IF CompilerVersion >= 24.0 }
+{$IF CompilerVersion >= CompilerVersionDelphiXE}
+  {$CODEALIGN 16}
+  {$ALIGN 16}
+{$IFEND}
+
+{$IF CompilerVersion >= CompilerVersionDelphiXE3}
   {$LEGACYIFEND ON}
 {$IFEND}
 
-// For Delphi versions below XE8
-{$IF CompilerVersion < 29.0}
+{$IF CompilerVersion < CompilerVersionDelphiXE8}
   {$IF (DEFINED(WIN32) OR DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
     {$DEFINE CPU32BITS}
   {$IFEND}
@@ -212,35 +215,20 @@ uses
   {$IFEND}
 {$IFEND}
 
-// For Delphi XE and up:
-{$IF CompilerVersion >= 22.0}
-  {$CODEALIGN 16}
-  {$ALIGN 16}
-{$IFEND}
-
-// For Win32:
 {$IF SizeOf(Extended) > SizeOf(Double)}
   {$DEFINE HasExtended}
 {$IFEND}
 
-// For PAnsiChar:
 {$IF NOT DECLARED(PAnsiChar)}
   {$DEFINE NoAnsi}
 {$IFEND}
 
-// Assembler is only supplied for Windows targets.
-// For other targets, PUREPASCAL must be defined.
+// Assembler is only supplied for Windows targets. For other targets, PUREPASCAL must be defined.
 {$IFNDEF PUREPASCAL}
   {$IFNDEF MSWINDOWS}
     {$DEFINE PUREPASCAL}
   {$ENDIF}
 {$ENDIF}
-
-// To account for bad code generation for fifth parameter in Win64 in Rio.
-// TODO: Remove, if fixed.
-{$IF (CompilerVersion = 33) and defined(WIN64)}
-  {$DEFINE RIO64}
-{$IFEND}
 
 const
 {$IFDEF PUREPASCAL}
@@ -1146,7 +1134,7 @@ type
     class function DivideBy3Exactly(const A: BigInteger): BigInteger; static;
     // Helper function for Burnikel-Ziegler division. See explanation in implementation section.
     class procedure DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper: BigInteger;
-      const {$IFDEF RIO64}[ref]{$ENDIF} RightLower: BigInteger;
+      const RightLower: BigInteger;
       N: Integer; var Quotient, Remainder: BigInteger); static;
     // Helper function for Burnikel-Ziegler division.
     class procedure DivTwoDigitsByOne(const Left, Right: BigInteger; N: Integer;
@@ -3380,7 +3368,6 @@ begin
   ALeft := ALeft shr Shift;
   ARight := ARight shr Shift;
 
-  // $$RV: Does this make sense? All trailing zeroes were removed already.
   while ALeft.IsEven do
     ALeft := ALeft shr 1;
 
@@ -3455,6 +3442,7 @@ var
   I: Integer;
   J: Integer;
   LPower: BigInteger;
+  LMaxPower: BigInteger;
 begin
   for I := Low(ValueCache) to High(ValueCache) do
   begin
@@ -3494,13 +3482,15 @@ begin
 {$ENDIF}
   for I := Low(TNumberBase) to High(TNumberBase) do
   begin
+    LMaxPower := CBaseInfos[I].MaxPower;
     SetLength(CBasePowers[I], 10);
     LPower := BigInteger.One;
     for J := 0 to High(CBasePowers[I]) do
     begin
       CBasePowers[I, J] := LPower;
-      LPower := LPower * CBaseInfos[I].MaxPower;
+      LPower := LPower * LMaxPower;
     end;
+//    LMaxPower := BigInteger.Zero; // $$RV Rio: leak if not set to zero.
   end;
 end;
 
@@ -11005,7 +10995,7 @@ begin
 end;
 
 class procedure BigInteger.DivThreeHalvesByTwo(const LeftUpperMid, LeftLower, Right, RightUpper: BigInteger;
-  const {$IFDEF RIO64}[ref]{$ENDIF} RightLower: BigInteger; N: Integer;
+  const RightLower: BigInteger; N: Integer;
   var Quotient, Remainder: BigInteger);
 var
   Q, R: BigInteger;
