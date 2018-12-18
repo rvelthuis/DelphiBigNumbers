@@ -102,24 +102,28 @@ unit Velthuis.BigDecimals;
   It might also make sense to make BigInteger.DivMod a lot faster for small values.
 *)
 
-{$IF CompilerVersion >= 24.0}   // Delphi XE3
-  {$LEGACYIFEND ON}
+interface
+
+uses
+  CompilerAndRTLVersions,
+  System.SysUtils,
+  System.Math,
+  Velthuis.BigIntegers;
+
+{$IF CompilerVersion >= CompilerVersionDelphi2010}   // Delphi 2010
+  {$DEFINE HasClassConstructors}
 {$IFEND}
 
-{$IF CompilerVersion >= 22.0}   // Delphi XE
+{$IF CompilerVersion >= CompilerVersionDelphiXE}
   {$CODEALIGN 16}
   {$ALIGN 16}
 {$IFEND}
 
-{$IF CompilerVersion >= 21.0}   // Delphi 2010
-  {$DEFINE HasClassConstructors}
+{$IF CompilerVersion >= CompilerVersionDelphiXE3}
+  {$LEGACYIFEND ON}
 {$IFEND}
 
-{$IF SizeOf(Extended) > SizeOf(Double)}
-  {$DEFINE HasExtended}
-{$IFEND}
-
-{$IF CompilerVersion < 29.0}
+{$IF CompilerVersion < CompilerVersionDelphiXE8}
   {$IF (DEFINED(WIN32) or DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
     {$DEFINE CPU32BITS}
   {$IFEND}
@@ -128,15 +132,12 @@ unit Velthuis.BigDecimals;
   {$IFEND}
 {$IFEND}
 
-{$DEFINE Experimental}
+{$IF SizeOf(Extended) > SizeOf(Double)}
+  {$DEFINE HasExtended}
+{$IFEND}
 
+{$DEFINE EXPERIMENTAL}
 
-interface
-
-uses
-  System.SysUtils,
-  System.Math,
-  Velthuis.BigIntegers;
 
 type
   // Note: where possible, existing exception types are used, e.g. EConvertError, EOverflow, EUnderflow,
@@ -1020,7 +1021,8 @@ end;
 // Converts Value to components for binary FP format, with Significand, binary Exponent and Sign. Significand
 // (a.k.a. mantissa) is SignificandSize bits. This can be used for conversion to Extended, Double and Single, and,
 // if desired, IEEE 754-2008 binary128 (note: binary32 is equivalent to Single and binary64 to Double).
-class procedure BigDecimal.ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer; var Sign: Integer; var Exponent: Integer; var Significand: UInt64);
+class procedure BigDecimal.ConvertToFloatComponents(const Value: BigDecimal; SignificandSize: Integer;
+  var Sign, Exponent: Integer; var Significand: UInt64);
 var
   LDivisor, LQuotient, LRemainder, LLowBit, LSignificand: BigInteger;
   LBitLen, LScale: Integer;
