@@ -188,7 +188,7 @@ uses
 // EXPERIMENTAL is set for code that tries something new without deleting the original code yet.
 // Undefine it to get the original code.
 
-  {$DEFINE EXPERIMENTAL}
+  { $DEFINE EXPERIMENTAL}
 
 
 // --- Permanent settings ---
@@ -10938,6 +10938,9 @@ begin
 end;
 
 // Richard P. Brent and Paul Zimmermann, "Modern Computer Arithmetic", Algorithm 1.12
+// Produces square root and square root remainder in one go.
+// Extremely fast, much faster than Newton-Raphson (as used in BaseCaseSqrtRemainder), even for relatively
+// small sizes.
 class procedure BigInteger.SqrtRemainder(const Radicand: BigInteger; var Root, Remainder: BigInteger);
 var
   RadCopy: BigInteger;
@@ -10947,7 +10950,8 @@ var
   RootQ, RemQ: BigInteger;
   Quot, Rem: BigInteger;
 begin
-  if Radicand.Size < 22 then
+  // Note: if the threshold is too small, a stack overflow will occur.
+  if Radicand.Size < 10 then
   begin
     BaseCaseSqrtRemainder(Radicand, Root, Remainder);
     Exit;
