@@ -220,6 +220,9 @@ type
       // Default precision (number of significant digits) used for e.g. division.
       FDefaultPrecision: Integer;
 
+      // Set this to False if trailing zeroes should not be reduced to the preferred scale after a division.
+      FReduceTrailingZeros: Boolean;
+
       // Default character used to indicate exponent in scientific notation output. Either 'E' or 'e'. Default 'e'.
       FExponentDelimiter: Char;
 
@@ -756,8 +759,12 @@ type
 
     /// <summary>The (maximum) precision to be used for e.g. division if the operation would otherwise result in a
     /// non-terminating decimal expansion, i.e. if there is no exact representable decimal result, e.g. when
-    /// dividing <code>     BigDecimal(1) / BigDecimal(3) (= 0.3333333...)</code></summary>
+    /// dividing <code>BigDecimal(1) / BigDecimal(3) (= 0.3333333...)</code></summary>
     class property DefaultPrecision: Integer read FDefaultPrecision write FDefaultPrecision;
+
+    /// <summary>If set to False, division will not try to reduce the trailing zeros to match the
+    /// preferred scale. That is faster, but usually produces bigger decimals</summary>
+    class property ReduceTrailingZeros: Boolean read FReduceTrailingZeros write FReduceTrailingZeros;
 
     /// <summary>The string to be used to delimit the exponent part in scientific notation output.</summary>
     /// <remarks>Currently, only 'e' and 'E' are allowed. Setting any other value will be ignored. The default is 'e',
@@ -1299,7 +1306,8 @@ begin
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
   // This should be optional, as it is slower.
-  InPlaceRemoveTrailingZeros(Result, TargetScale);
+  if FReduceTrailingZeros then
+    InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
@@ -1654,6 +1662,9 @@ begin
 
   // The most used rounding mode in Delphi, AFAIK.
   BigDecimal.FDefaultRoundingMode := rmNearestEven;
+
+  // Reduce trialing zeros to target scale after division by default.
+  BigDecimal.FReduceTrailingZeros := True;
 
   // I prefer the lower case 'e', because it is more visible between a number of decimal digits.
   // IOW, the 'e' in 1.23456789e+345 has, IMO, a little higher visibility than in the 'E' in 1.23456789E+345
