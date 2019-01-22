@@ -1299,8 +1299,7 @@ begin
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
   // This should be optional, as it is slower.
-
-  //  InPlaceRemoveTrailingZeros(Result, TargetScale);
+  InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
