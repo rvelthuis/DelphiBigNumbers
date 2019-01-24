@@ -173,6 +173,10 @@ uses
   { $DEFINE PUREPASCAL}
 
 
+{$IF (CompilerVersion = CompilerVersionDelphi103) and defined(WIN64) and not defined(PUREPASCAL)}
+{$MESSAGE FATAL 'Can''t be compiled in version 10.3 with Win64 assembler -- use PUREPASCAL define'}
+{$IFEND}
+
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
 // This can slow down code a little.
 
@@ -9652,7 +9656,8 @@ begin
     Exit;
   end;
 
-  LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 1);
+//$$RV  LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 1);
+  LResult.MakeSize((Left.FSize and SizeMask) + (Right.FSize and SizeMask) + 256);
   InternalMultiply(PLimb(Left.FData), PLimb(Right.FData), PLimb(LResult.FData), Left.FSize and SizeMask,
     Right.FSize and SizeMask);
   LResult.Compact;
