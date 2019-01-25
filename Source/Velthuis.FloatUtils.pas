@@ -208,7 +208,8 @@ end;
 
 function GetExponent(const AValue: Single): Integer; overload;
 var
-  M, E: UInt32;
+  M: UInt32;
+  E: Int32;
 begin
   M := GetRawSignificand(AValue);
   E := GetRawExponent(AValue);
@@ -229,7 +230,7 @@ end;
 function GetExponent(const AValue: Double): Integer; overload;
 var
   M: UInt64;
-  E: UInt32;
+  E: Int32;
 begin
   M := GetRawSignificand(AValue);
   E := GetRawExponent(AValue);
@@ -250,7 +251,7 @@ end;
 function GetExponent(const AValue: Extended): Integer; overload;
 var
   M: UInt64;
-  E: UInt32;
+  E: Int32;
 begin
   M := PUInt64(@AValue)^;
   E := GetRawExponent(AValue);
