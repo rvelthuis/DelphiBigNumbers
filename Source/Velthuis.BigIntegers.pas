@@ -7465,7 +7465,7 @@ begin
     ecNegativeExponent:
       raise EInvalidArgument.CreateFmt(SNegativeExponent, ErrorInfo);
     ecNegativeRadicand:
-      raise EInvalidArgument.Create(SNegativeRadicand);
+      raise EInvalidArgument.Create(SNegativeRadicand, ErrorInfo);
   else
     raise EInvalidOp.Create(SInvalidOperation);
   end;
