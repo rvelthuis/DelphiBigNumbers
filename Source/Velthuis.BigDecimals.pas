@@ -1306,8 +1306,8 @@ begin
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
   // This should be optional, as it is slower.
-  if FReduceTrailingZeros then
-    InPlaceRemoveTrailingZeros(Result, TargetScale);
+//$$RV  if FReduceTrailingZeros then
+//$$RV    InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
@@ -1920,13 +1920,16 @@ type
 const
   // 1292913986 is Log10(2) * 1^32.
   CMultiplier = Int64(1292913986);
+var
+  Full: Int64;
 begin
   Result := FPrecision;
   if Result = 0 then
   begin
     //Note: Both 9999 ($270F) and 10000 ($2710) have a bitlength of 14, but 9999 has a precision of 4, while 10000 has a precision of 5.
     //      In other words: BitLength is not a good enough measure for precision. The test with the power of ten is necessary.
-    Result := CardRec((FValue.BitLength + 1) * CMultiplier).Hi;
+    Full := Int64(FValue.BitLength + 1) * CMultiplier;
+    Result := CardRec(Full).Hi;
     if (GetPowerOfTen(Result) <= Abs(FValue)) or (Result = 0) then
       Inc(Result);
     FPrecision := Result;
@@ -2082,12 +2085,12 @@ end;
 
 class function BigDecimal.Sqrt(const Value: BigDecimal; Precision: Integer): BigDecimal;
 begin
-  Result := Value.Sqrt(Precision);
+  Result := Value.Sqrt(System.Math.Max(Precision, DefaultPrecision));
 end;
 
 class function BigDecimal.Sqrt(const Value: BigDecimal): BigDecimal;
 begin
-  Result := Value.Sqrt(DefaultPrecision);
+  Result := Value.Sqrt(System.Math.Max(DefaultPrecision, Value.Precision));
 end;
 
 function BigDecimal.Sqrt(Precision: Integer): BigDecimal;
@@ -2100,12 +2103,13 @@ begin
   // Note: the following self-devised algorithm works. I don't yet know if it can be optimized.
   // With "works", I mean that if A := B.Sqrt, then (A*A).RoundToScale(B.Scale) = B.
   Result.Init;
+  Precision := System.Math.Max(Precision, 2 * Self.Precision);
   LScale := 0;
 
   // Determine a suitable factor to multiply FValue by to get a useful precision
   LMultiplier := RangeCheckedScale(Precision - Self.Precision + 1);
   if Odd(LMultiplier + Self.Scale) then
-    Dec(LMultiplier);
+    Inc(LMultiplier);
 
   // If the factor > 0, then multiply and use BigInteger.Sqrt and adjust scale accordingly
   if LMultiplier > 0 then
@@ -2126,7 +2130,7 @@ begin
     Result := Half * (Result + BigDecimal.Divide(Self, Result, Precision * 2));
 
   // Round the result and remove any unnecessary trailing zeroes.
-  Result := Result.RoundToScale(RangeCheckedScale(Result.FScale + Precision - Result.Precision), DefaultRoundingMode);
+  Result := Result.RoundToScale(RangeCheckedScale(Result.FScale + Precision div 2 - Result.Precision - 1), DefaultRoundingMode);
   InPlaceRemoveTrailingZeros(Result, System.Math.Min(Self.Scale, Self.Scale div 2));
 end;
 
