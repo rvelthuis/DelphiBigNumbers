@@ -173,8 +173,8 @@ uses
   { $DEFINE PUREPASCAL}
 
 
-{$IF (CompilerVersion = CompilerVersionDelphi103) and defined(WIN64) and not defined(PUREPASCAL)}
-{$MESSAGE FATAL 'Can''t be compiled in version 10.3 with Win64 assembler -- use PUREPASCAL define'}
+{$IF not defined(PUREPASCAL) and (CompilerVersion = CompilerVersionDelphi103) and defined(WIN64)}
+  {$DEFINE PUREPASCAL}
 {$IFEND}
 
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
