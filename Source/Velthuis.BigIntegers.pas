@@ -10042,7 +10042,7 @@ begin
   begin
     if (Left.FSize > 0) then
     begin
-      if @PlainOp = @InternalAnd then
+      if Addr(PlainOp) = Addr(InternalAnd) then
         Result.MakeSize(MinSize)
       else
         Result.MakeSize(MaxSize);
@@ -10059,7 +10059,7 @@ begin
       Result.FSize := 0;
       Result.MakeSize(MaxSize);
       OppositeOp(LPtr, RPtr, PLimb(Result.FData), LSize, RSize); // Opposite op: AND --> OR, OR --> AND, XOR --> XOR
-      if @PlainOp = @InternalXor then
+      if Addr(PlainOp) = Addr(InternalXor) then
         Result.FSize := Result.FSize and SizeMask               // Make positive.
       else
       begin
@@ -10077,13 +10077,13 @@ begin
       CopyLimbs(PLimb(Right.FData), RPtr, RSize);
       InternalDecrement(RPtr, RSize);
       Result.FSize := 0;
-      if @PlainOp = @InternalOr then
+      if Addr(PlainOp) = Addr(InternalOr) then
         Result.MakeSize(RSize)
       else
         Result.MakeSize(MaxSize);
       // Inversion op: AND --> AND NOT, OR --> NOT AND, XOR --> XOR
       InversionOp(PLimb(Left.FData), RPtr, PLimb(Result.FData), LSize, RSize);
-      if @PlainOp = @InternalAnd then
+      if Addr(PlainOp) = Addr(InternalAnd) then
         Result.FSize := Result.FSize and SizeMask               // Make positive.
       else
       begin
@@ -10098,12 +10098,12 @@ begin
       CopyLimbs(PLimb(Left.FData), LPtr, LSize);
       InternalDecrement(LPtr, LSize);
       Result.FSize := 0;
-      if @PlainOp = @InternalOr then
+      if Addr(PlainOp) = Addr(InternalOr) then
         Result.MakeSize(LSize)
       else
         Result.MakeSize(MaxSize);
       InversionOp(PLimb(Right.FData), LPtr, PLimb(Result.FData), RSize, LSize);
-      if @PlainOp = @InternalAnd then
+      if Addr(PlainOp) = Addr(InternalAnd) then
         Result.FSize := Result.FSize and SizeMask
       else
       begin
