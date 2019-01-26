@@ -50,6 +50,7 @@ type
     procedure TestRound;
     procedure TestFloor;
     procedure TestCeil;
+    procedure TestSqrt;
     procedure TestImplicitDouble;
     procedure TestImplicitSingle;
     procedure TestImplicitString;
@@ -280,6 +281,21 @@ begin
       Inc(N);
       Check(D = C, Format('(%d,%d,%d) %s + %s = %s (%s)', [I, J, N - 1, string(A), string(B), string(C), SD]));
     end;
+  end;
+end;
+
+procedure TestBigDecimal.TestSqrt;
+var
+  A, B, C: BigDecimal;
+  I: Integer;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    A := Arguments[I];
+    A := A.Abs();
+    B := A.Sqrt();
+    C := (B * B).RoundToScale(A.Scale, BigDecimal.DefaultRoundingMode);
+    Check(C = A, Format('(%d) Sqrt(%s) = %s, squared = %s', [I, A.ToPlainString, B.ToPlainString, C.ToPlainString]));
   end;
 end;
 
