@@ -1306,8 +1306,8 @@ begin
   // remove as many trailing zeroes as possible to get as close as possible to the target scale without
   // changing the value.
   // This should be optional, as it is slower.
-//$$RV  if FReduceTrailingZeros then
-//$$RV    InPlaceRemoveTrailingZeros(Result, TargetScale);
+  if FReduceTrailingZeros then
+    InPlaceRemoveTrailingZeros(Result, TargetScale);
 
   // Finally, set the sign of the result.
   Result.FValue.Sign := LSign;
@@ -2098,39 +2098,31 @@ var
   LMultiplier: Integer;
   LValue: BigInteger;
   LScale: Integer;
-  Epsilon: BigDecimal;
 begin
   // Note: the following self-devised algorithm works. I don't yet know if it can be optimized.
   // With "works", I mean that if A := B.Sqrt, then (A*A).RoundToScale(B.Scale) = B.
   Result.Init;
-  Precision := System.Math.Max(Precision, 2 * Self.Precision);
+  Precision := System.Math.Max(Precision, 2 * Self.Precision); //$$RV doesn't work well if Precision > 2 * Self.Prec.
   LScale := 0;
 
   // Determine a suitable factor to multiply FValue by to get a useful precision
-  LMultiplier := RangeCheckedScale(Precision - Self.Precision + 1);
+  LMultiplier := RangeCheckedScale(Precision - Self.Precision + 30);
   if Odd(LMultiplier + Self.Scale) then
     Inc(LMultiplier);
 
-  // If the factor > 0, then multiply and use BigInteger.Sqrt and adjust scale accordingly
+  // If the multiplier > 0, then multiply BigInteger by 10^LMultiplier
   if LMultiplier > 0 then
-  begin
-    LValue := BigInteger.Sqrt(Self.FValue * GetPowerOfTen(LMultiplier));
-    LScale := RangeCheckedScale(Self.Scale + LMultiplier) shr 1;
-  end;
+    LValue := Self.FValue * GetPowerOfTen(LMultiplier);
+
+  LValue := BigInteger.Sqrt(LValue);
+  LScale := RangeCheckedScale(Self.Scale + LMultiplier) div 2;
 
   // Using BigInteger.Sqrt should already be pretty close to the desired result.
   Result.FValue := LValue;
   Result.FScale := LScale;
 
-  // Determine an epsilon for loop termination.
-  Epsilon := Half * BigDecimal.Create(BigInteger(1), Precision);
-
-  // Newton-Raphson kind of loop to refine the result, until a difference below the determined epsilon is reached.
-  while ((Result * Result - Self).Abs >= Epsilon) and not Result.IsZero do
-    Result := Half * (Result + BigDecimal.Divide(Self, Result, Precision * 2));
-
   // Round the result and remove any unnecessary trailing zeroes.
-  Result := Result.RoundToScale(RangeCheckedScale(Result.FScale + Precision div 2 - Result.Precision - 1), DefaultRoundingMode);
+  Result := Result.RoundToScale(RangeCheckedScale(Result.FScale + Precision div 2 - Result.Precision + 1), DefaultRoundingMode);
   InPlaceRemoveTrailingZeros(Result, System.Math.Min(Self.Scale, Self.Scale div 2));
 end;
 
