@@ -2097,29 +2097,26 @@ function BigDecimal.Sqrt(Precision: Integer): BigDecimal;
 var
   LMultiplier: Integer;
   LValue: BigInteger;
-  LScale: Integer;
 begin
   // Note: the following self-devised algorithm works. I don't yet know if it can be optimized.
   // With "works", I mean that if A := B.Sqrt, then (A*A).RoundToScale(B.Scale) = B.
   Result.Init;
   Precision := System.Math.Max(Precision, 2 * Self.Precision); //$$RV doesn't work well if Precision > 2 * Self.Prec.
-  LScale := 0;
 
   // Determine a suitable factor to multiply FValue by to get a useful precision
-  LMultiplier := RangeCheckedScale(Precision - Self.Precision + 30);
+  LMultiplier := RangeCheckedScale(Precision - Self.Precision + 1);
   if Odd(LMultiplier + Self.Scale) then
     Inc(LMultiplier);
 
   // If the multiplier > 0, then multiply BigInteger by 10^LMultiplier
   if LMultiplier > 0 then
-    LValue := Self.FValue * GetPowerOfTen(LMultiplier);
-
-  LValue := BigInteger.Sqrt(LValue);
-  LScale := RangeCheckedScale(Self.Scale + LMultiplier) div 2;
+    LValue := Self.FValue * GetPowerOfTen(LMultiplier)
+  else
+    LValue := Self.FValue;
 
   // Using BigInteger.Sqrt should already be pretty close to the desired result.
-  Result.FValue := LValue;
-  Result.FScale := LScale;
+  Result.FValue := BigInteger.Sqrt(LValue);
+  Result.FScale := RangeCheckedScale(Self.Scale + LMultiplier) div 2;
 
   // Round the result and remove any unnecessary trailing zeroes.
   Result := Result.RoundToScale(RangeCheckedScale(Result.FScale + Precision div 2 - Result.Precision + 1), DefaultRoundingMode);
