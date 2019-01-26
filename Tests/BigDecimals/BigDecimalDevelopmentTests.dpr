@@ -25,7 +25,8 @@ uses
   Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas',
   Velthuis.Loggers in '..\..\Source\Velthuis.Loggers.pas',
   Velthuis.BigIntegers in '..\..\Source\Velthuis.BigIntegers.pas',
-  Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas';
+  Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas',
+  CompilerAndRTLVersions in '..\..\Source\CompilerAndRTLVersions.pas';
 
 {$R *.RES}
 

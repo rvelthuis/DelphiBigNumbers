@@ -107,6 +107,7 @@
         <DCCReference Include="..\Source\Velthuis.RandomNumbers.pas"/>
         <DCCReference Include="..\Source\Velthuis.Sizes.pas"/>
         <DCCReference Include="..\Source\Velthuis.XorShifts.pas"/>
+        <DCCReference Include="..\Source\CompilerAndRTLVersions.pas"/>
         <None Include="LibSuffixes.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>
@@ -146,7 +147,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\..\..\..\..\Public\Documents\Embarcadero\Studio\19.0\Bpl\BigNumbers250.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="..\..\..\..\..\Public\Documents\Embarcadero\Studio\20.0\Bpl\BigNumbers260.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>BigNumbers.bpl</RemoteName>
                         <Overwrite>true</Overwrite>

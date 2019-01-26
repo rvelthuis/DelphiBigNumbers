@@ -43,8 +43,10 @@ contains
   Velthuis.Numerics in '..\Source\Velthuis.Numerics.pas',
   Velthuis.RandomNumbers in '..\Source\Velthuis.RandomNumbers.pas',
   Velthuis.Sizes in '..\Source\Velthuis.Sizes.pas',
-  Velthuis.XorShifts in '..\Source\Velthuis.XorShifts.pas';
+  Velthuis.XorShifts in '..\Source\Velthuis.XorShifts.pas',
+  CompilerAndRTLVersions in '..\Source\CompilerAndRTLVersions.pas';
 
 end.
+
 
 

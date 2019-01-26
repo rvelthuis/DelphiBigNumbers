@@ -5,7 +5,7 @@
         <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Debug</Config>
-        <Platform Condition="'$(Platform)'==''">Win32</Platform>
+        <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <TargetedPlatforms>3</TargetedPlatforms>
         <AppType>Console</AppType>
         <MainSource>BigIntegerDevelopmentTests.dpr</MainSource>
@@ -111,6 +111,7 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_OutputXMLDocumentation>true</DCC_OutputXMLDocumentation>
         <DCC_UnitSearchPath>D:\Source\DropBox\Delphi\FastMM4-master;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_TypedAtParameter>true</DCC_TypedAtParameter>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -142,8 +143,8 @@
         <DCCReference Include="..\..\Source\Velthuis.BigIntegers.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.StrConsts.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.XorShifts.pas"/>
-        <DCCReference Include="..\..\Source\CompilerAndRTLVersions.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.BigIntegers.Primes.pas"/>
+        <DCCReference Include="..\..\Source\CompilerAndRTLVersions.pas"/>
         <None Include="BigIntegerDevelopmentTests.todo"/>
         <None Include="BigIntegerArithmeticResults.inc"/>
         <None Include="BigIntegerBitwiseResults.inc"/>
@@ -173,10 +174,12 @@
                     <Source Name="MainSource">BigIntegerDevelopmentTests.dpr</Source>
                 </Source>
                 <Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\bcboffice2k250.bpl">Embarcadero C++Builder Office 2000 Servers Package</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\bcbofficexp250.bpl">Embarcadero C++Builder Office XP Servers Package</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k250.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
-                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp250.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl\dclusr260.bpl">CodeGear User Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\bcboffice2k260.bpl">Embarcadero C++Builder Office 2000 Servers Package</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\bcbofficexp260.bpl">Embarcadero C++Builder Office XP Servers Package</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\DataExplorerDBXPluginEnt260.bpl">DBExpress Enterprise Data Explorer Integration</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dcloffice2k260.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
+                    <Excluded_Packages Name="$(BDSBIN)\dclofficexp260.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
                 </Excluded_Packages>
                 <VersionInfo>
                     <VersionInfo Name="IncludeVerInfo">False</VersionInfo>
