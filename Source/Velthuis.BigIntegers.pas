@@ -1177,9 +1177,10 @@ type
 
     /// <summary>Global numeric base for BigIntegers</summary>
     class property Base: TNumberBase read FBase write SetBase;
+    /// <summary>A pure alias for Base</summary>
+    class property Radix: TNumberBase read FBase write SetBase;
     /// <summary>Global rounding mode used for conversion to floating point</summary>
     class property RoundingMode: TRoundingMode read FRoundingMode write FRoundingMode;
-
     /// <summary>Global flag indicating if partial flag stall is avoided</summary>
     class property StallAvoided: Boolean read FAvoidStall;
   {$ENDREGION}
