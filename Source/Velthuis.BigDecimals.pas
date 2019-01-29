@@ -807,6 +807,8 @@ type
     property UnscaledValue: BigInteger read FValue;
   end;
 
+{$HPPEMIT END '#include "Velthuis.BigDecimals.operators.hpp"'}
+
 implementation
 
 {$RANGECHECKS OFF}
@@ -2101,7 +2103,7 @@ begin
   // Note: the following self-devised algorithm works. I don't yet know if it can be optimized.
   // With "works", I mean that if A := B.Sqrt, then (A*A).RoundToScale(B.Scale) = B.
   Result.Init;
-  Precision := System.Math.Max(Precision, 2 * Self.Precision); //$$RV doesn't work well if Precision > 2 * Self.Prec.
+  Precision := System.Math.Max(Precision, 2 * Self.Precision);
 
   // Determine a suitable factor to multiply FValue by to get a useful precision
   LMultiplier := RangeCheckedScale(Precision - Self.Precision + 1);
