@@ -168,25 +168,33 @@ uses
 
 // --- User settings ---
 
-// Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.
+//------------------------------------------------------------------------------------------------------------------//
+// Setting PUREPASCAL forces the use of plain Object Pascal for all routines, i.e. no assembler is used.            //
+//------------------------------------------------------------------------------------------------------------------//
 
   { $DEFINE PUREPASCAL}
 
 
-// Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
-// This can slow down code a little.
+//------------------------------------------------------------------------------------------------------------------//
+// Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.                  //
+// This can slow down code a little.                                                                                //
+//------------------------------------------------------------------------------------------------------------------//
 
   { $DEFINE RESETSIZE}
 
 
-// If set, none of the public methods modifies the instance it is called upon.
-// If necessary, a new instance is returned.
+//------------------------------------------------------------------------------------------------------------------//
+// If set, none of the public methods modifies the instance it is called upon.                                      //
+// If necessary, a new instance is returned.                                                                        //
+//------------------------------------------------------------------------------------------------------------------//
 
   {$DEFINE BIGINTEGERIMMUTABLE}
 
 
-// EXPERIMENTAL is set for code that tries something new without deleting the original code yet.
-// Undefine it to get the original code.
+//------------------------------------------------------------------------------------------------------------------//
+// EXPERIMENTAL is set for code that tries something new without deleting the original code yet.                    //
+// Undefine it to get the original code.                                                                            //
+//------------------------------------------------------------------------------------------------------------------//
 
   { $DEFINE EXPERIMENTAL}
 
