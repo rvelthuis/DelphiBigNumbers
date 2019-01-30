@@ -173,10 +173,6 @@ uses
   { $DEFINE PUREPASCAL}
 
 
-{$IF not defined(PUREPASCAL) and (CompilerVersion = CompilerVersionDelphi103) and defined(WIN64)}
-  {$DEFINE PUREPASCAL}
-{$IFEND}
-
 // Setting RESETSIZE forces the Compact routine to shrink the dynamic array when that makes sense.
 // This can slow down code a little.
 
