@@ -17,6 +17,7 @@ Tests/BigRationals/Win64/**
 Tests/BigRationals/OSX32/**
 Tests/BigRationals/out/**
 Tests/BigIntegers/__history/**
+Tests/BigIntegers/TestPP*.*
 **/ModelSupport_bigintegerdevelopmenttests/**
 Tests/BigDecimals/__history/**
 Tests/BigRationals/__history/**
