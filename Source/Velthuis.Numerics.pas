@@ -52,7 +52,7 @@ interface
 {$INLINE AUTO}
 
 uses
-  System.Math, System.Types;
+  System.Math;
 
 // Return the number of set (1) bits in the given integers.
 function BitCount(U: UInt8): Integer; overload;

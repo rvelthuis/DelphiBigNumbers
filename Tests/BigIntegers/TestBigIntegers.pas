@@ -14,13 +14,10 @@ interface
 
 uses
   TestFramework,
-  System.Types,
-  System.Generics.Defaults,
   System.SysUtils,
   System.Math,
   Velthuis.BigIntegers,
-  Velthuis.RandomNumbers,
-  Velthuis.Loggers;
+  Velthuis.RandomNumbers;
 
 {$IF BigInteger.Immutable}
 {$DEFINE IMMUTABLE}
@@ -35,8 +32,6 @@ uses
 type
   // Test methods for BigInteger records.
   TTestBigInteger = class(TTestCase)
-//  strict private
-//    A, B, C, D, E, F: BigInteger;
   public
     procedure Error(const Msg: string);
     procedure SetUp; override;

@@ -94,6 +94,8 @@
         <DCCReference Include="..\..\Source\Velthuis.BigRationals.pas"/>
         <DCCReference Include="TestBigRationals.pas"/>
         <DCCReference Include="..\..\Source\Velthuis.Sizes.pas"/>
+        <DCCReference Include="..\..\Source\CompilerAndRTLVersions.pas"/>
+        <DCCReference Include="..\..\Source\Velthuis.StrConsts.pas"/>
         <None Include="BigRationalTestData.inc"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
@@ -580,7 +582,6 @@
                 <ProjectRoot Platform="iOSSimulator" Name="$(PROJECTNAME).app"/>
             </Deployment>
             <Platforms>
-                <Platform value="Linux64">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">False</Platform>
             </Platforms>
