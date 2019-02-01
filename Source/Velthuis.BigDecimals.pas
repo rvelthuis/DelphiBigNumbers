@@ -510,6 +510,19 @@ type
     /// <para>Only the low 8 bits of myUInt64 are copied to the byte.</para></remarks>
     class operator Explicit(const Value: BigDecimal): Int64;
 
+    // -- Conversion functions --
+
+  {$IFDEF HasExtended}
+    function AsExtended: Extended;
+  {$ENDIF}
+    function AsDouble: Double;
+    function AsSingle: Single;
+    function AsBigInteger: BigInteger;
+    function AsUInt64: UInt64;
+    function AsInt64: Int64;
+    function AsUInt32: UInt32;
+    function AsInt32: Int32;
+
 
     // -- Mathematical functions --
 
@@ -941,6 +954,82 @@ begin
         Error(ecRounding, []);
     end;
 end;
+
+  {$IFDEF HasExtended}
+    function BigDecimal.AsExtended: Extended;
+    begin
+
+    end;
+  {$ENDIF}
+
+    function BigDecimal.AsDouble: Double;
+    begin
+      Result := Double(Self);
+      if IsInfinite(Result) then
+        Error(ecConversion, ['BigDecimal', 'Double']);
+    end;
+
+    function BigDecimal.AsSingle: Single;
+    begin
+      Result := Single(Self);
+      if IsInfinite(Result) then
+        Error(ecConversion, ['BigDecimal', 'Single']);
+    end;
+
+    function BigDecimal.AsBigInteger: BigInteger;
+    begin
+      Result := BigInteger(Self);
+      if Self.Scale > 0 then
+        Error(ecRounding, []);
+    end;
+
+    function BigDecimal.AsUInt64: UInt64;
+    var
+      D: BigDecimal;
+    begin
+      D := Self.RoundToScale(0, rmUnnecessary); // Throws if rounding necessary
+      try
+        Result := D.UnscaledValue.AsUInt64;                   // Throws if too big
+      except
+        Error(ecConversion, ['BigDecimal', 'UInt64']);
+      end;
+    end;
+
+    function BigDecimal.AsInt64: Int64;
+    var
+      D: BigDecimal;
+    begin
+      D := Self.RoundToScale(0, rmUnnecessary);
+      try
+        Result := D.UnscaledValue.AsInt64;
+      finally
+        Error(ecConversion, ['BigDecimal', 'Int64']);
+      end;
+    end;
+
+    function BigDecimal.AsUInt32: UInt32;
+    var
+      D: BigDecimal;
+    begin
+      D := Self.RoundToScale(0, rmUnnecessary);
+      try
+        Result := D.UnscaledValue.AsCardinal;
+      finally
+        Error(ecConversion, ['BigDecimal', 'UInt32']);
+      end;
+    end;
+
+    function BigDecimal.AsInt32: Int32;
+    var
+      D: BigDecimal;
+    begin
+      D := Self.RoundToScale(0, rmUnnecessary);
+      try
+        Result := D.UnscaledValue.AsInteger;
+      finally
+        Error(ecConversion, ['BigDecimal', 'Int32']);
+      end;
+    end;
 
 // Does a "binary search" to remove trailing zeros. This is much faster (10 times or more) than repeatedly
 // dividing by BigInteger.Ten until there is a remainder, even for relatively small numbers of trailing zeros.
