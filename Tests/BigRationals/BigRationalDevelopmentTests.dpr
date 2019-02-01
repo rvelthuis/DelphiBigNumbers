@@ -25,7 +25,9 @@ uses
   DUnitTestRunner,
   Velthuis.BigRationals in '..\..\Source\Velthuis.BigRationals.pas',
   TestBigRationals in 'TestBigRationals.pas',
-  Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas';
+  Velthuis.Sizes in '..\..\Source\Velthuis.Sizes.pas',
+  CompilerAndRTLVersions in '..\..\Source\CompilerAndRTLVersions.pas',
+  Velthuis.StrConsts in '..\..\Source\Velthuis.StrConsts.pas';
 
 {$R *.RES}
 
