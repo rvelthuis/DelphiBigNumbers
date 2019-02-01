@@ -164,7 +164,7 @@ unit Velthuis.BigIntegers;
 interface
 
 uses
-  CompilerAndRTLVersions, Velthuis.RandomNumbers, System.Types, System.SysUtils, System.Math;
+  CompilerAndRTLVersions, Velthuis.RandomNumbers, System.SysUtils, System.Math;
 
 // --- User settings ---
 
@@ -1223,7 +1223,6 @@ uses
   Winapi.Windows,
   {$ENDIF}
 {$ENDIF}
-  System.StrUtils,
   Velthuis.Sizes, Velthuis.Numerics, Velthuis.FloatUtils, Velthuis.StrConsts;
 
 {$POINTERMATH ON}
@@ -1364,7 +1363,6 @@ asm
         MOV     [R8+4],EDX
 end;
 {$ENDIF}
-{$ENDREGION}
 
 class procedure BigInteger.DetectPartialFlagsStall;
 var
@@ -1391,6 +1389,7 @@ begin
   until False;
 end;
 {$ENDIF !PUREPASCAL}
+{$ENDREGION}
 
 {$RANGECHECKS OFF}
 {$OVERFLOWCHECKS OFF}
