@@ -25,6 +25,7 @@ type
   published
     procedure TestCtorNumDenom;
     procedure TestCtorDouble;
+    procedure TestCtorDouble2;
     procedure TestCtorBigDecimal;
     procedure TestAdd;
     procedure TestSubtract;
@@ -134,6 +135,37 @@ begin
       InvalidArgumentRaised := True;
   end;
   Check(InvalidArgumentRaised, 'Expected exception on BigRational.Create(NaN)');
+end;
+
+procedure TestBigRational.TestCtorDouble2;
+var
+  Dbl: Double;
+  Reslt: BigRational;
+  I, J: Integer;
+  X, Y, XR, YR: Int64;
+begin
+  for I := 0 to High(CtorTestData) do
+  begin
+    X := Int64(BigInteger(CtorTestData[I])) and $0000FFFFFFFFFFFF;
+    if X <> 0 then
+    begin
+      for J := 0 to High(CtorTestData) do
+      begin
+        Y := Int64(BigInteger(CtorTestData[J])) and $0000FFFFFFFFFFFF;
+        Dbl := Y / X;
+        try
+          Reslt := BigRational.Create(Dbl, 1e-15, 15);
+        except
+          on E: EOverflow do
+            Continue;
+        end;
+        XR := Int64(Reslt.Denominator);
+        YR := Int64(Reslt.Numerator);
+        Check(((XR = X) and (YR = Y)) or (Abs(YR / XR - Dbl) <= BigRational.MinEpsilon),
+          Format('(%d,%d) %d / %d (%.15g) --> %d / %d, (%.15g)', [I, J, Y, X, Y/X, YR, XR, YR/XR]));
+      end;
+    end;
+  end;
 end;
 
 procedure TestBigRational.TestAdd;
@@ -359,7 +391,6 @@ end;
 
 procedure TestBigRational.TestCompare;
 var
-  ReturnValue: Integer;
   Right: BigRational;
   Left: BigRational;
 begin

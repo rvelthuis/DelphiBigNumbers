@@ -462,6 +462,12 @@ type
     /// <summary>Returns a BigDecimal with the value of the given signed 64 bit integer parameter.</summary>
     class operator Implicit(const I: Int64): BigDecimal;
 
+    /// <summary>Returns a BigDecimal with the value of the given unsigned 64 bit integer parameter.</summary>
+    class operator Implicit(const U: UInt32): BigDecimal;
+
+    /// <summary>Returns a BigDecimal with the value of the given signed 64 bit integer parameter.</summary>
+    class operator Implicit(const I: Int32): BigDecimal;
+
 
     // -- Explicit conversion operators --
 
@@ -509,6 +515,25 @@ type
     /// <code>    myByte := Byte(MyUInt64);</code>
     /// <para>Only the low 8 bits of myUInt64 are copied to the byte.</para></remarks>
     class operator Explicit(const Value: BigDecimal): Int64;
+
+    /// <summary>Returns an unsigned 32 bit integer with the rounded value of the given BigDecimal value.
+    /// The conversion uses the default rounding mode rmDown, i.e. it truncates.</summary>
+    /// <remarks><para>If the value of the rounded down BigDecimal does not fit in an UInt32, only the low
+    /// 32 bits of that value are used to form the result.</para>
+    /// <para>This is analogue to</para>
+    /// <code>    myByte := Byte(MyUInt32);</code>
+    /// <para>Only the low 8 bits of myUInt32 are copied to the byte.</para></remarks>
+    class operator Explicit(const Value: BigDecimal): UInt32;
+
+    /// <summary>Returns a signed 32 bit integer with the rounded value of the given BigDecimal value.
+    /// The conversion uses the default rounding mode rmDown, i.e. it truncates.</summary>
+    /// <remarks><para>If the value of the rounded down BigDecimal does not fit in an Int32, only the low
+    /// 32 bits of that value are used to form the result.</para>
+    /// <para>This is analogue to</para>
+    /// <code>    myByte := Byte(MyUInt32);</code>
+    /// <para>Only the low 8 bits of myUInt32 are copied to the byte.</para></remarks>
+    class operator Explicit(const Value: BigDecimal): Int32;
+
 
     // -- Conversion functions --
 
@@ -644,6 +669,12 @@ type
 
     /// <summary>Returns true if the current BigDecimal's value equals zero.</summary>
     function IsZero: Boolean;
+
+    /// <summary>Returns true if the current BigDecimal's value is positive.</summary>
+    function IsPositive: Boolean;
+
+    /// <summary>Returns true if the current BigDecimal's value is negative.</summary>
+    function IsNegative: Boolean;
 
     /// <summary>Returns the sign of the current BigDecimal: -1 if negative, 0 if zero, 1 if positive.</summary>
     function Sign: TValueSign;
@@ -958,7 +989,9 @@ end;
   {$IFDEF HasExtended}
     function BigDecimal.AsExtended: Extended;
     begin
-
+      Result := Extended(Self);
+      if IsInfinite(Result) then
+        Error(ecConversion, ['BigDecimal', 'Extended']);
     end;
   {$ENDIF}
 
@@ -989,9 +1022,10 @@ end;
     begin
       D := Self.RoundToScale(0, rmUnnecessary); // Throws if rounding necessary
       try
-        Result := D.UnscaledValue.AsUInt64;                   // Throws if too big
+        Result := D.UnscaledValue.AsUInt64;     // Throws if too big
       except
         Error(ecConversion, ['BigDecimal', 'UInt64']);
+        Result := 0;
       end;
     end;
 
@@ -1002,8 +1036,9 @@ end;
       D := Self.RoundToScale(0, rmUnnecessary);
       try
         Result := D.UnscaledValue.AsInt64;
-      finally
+      except
         Error(ecConversion, ['BigDecimal', 'Int64']);
+        Result := 0;
       end;
     end;
 
@@ -1014,8 +1049,9 @@ end;
       D := Self.RoundToScale(0, rmUnnecessary);
       try
         Result := D.UnscaledValue.AsCardinal;
-      finally
+      except
         Error(ecConversion, ['BigDecimal', 'UInt32']);
+        Result := 0;
       end;
     end;
 
@@ -1026,8 +1062,9 @@ end;
       D := Self.RoundToScale(0, rmUnnecessary);
       try
         Result := D.UnscaledValue.AsInteger;
-      finally
+      except
         Error(ecConversion, ['BigDecimal', 'Int32']);
+        Result := 0;
       end;
     end;
 
@@ -1622,6 +1659,22 @@ begin
   Result := Int64(Rounded.FValue);
 end;
 
+class operator BigDecimal.Explicit(const Value: BigDecimal): UInt32;
+var
+  Rounded: BigDecimal;
+begin
+  Rounded := Value.RoundToScale(0, rmDown);
+  Result := UInt32(Rounded.FValue and High(UInt64));
+end;
+
+class operator BigDecimal.Explicit(const Value: BigDecimal): Int32;
+var
+  Rounded: BigDecimal;
+begin
+  Rounded := Value.RoundToScale(0, rmDown);
+  Result := Int32(Rounded.FValue);
+end;
+
 function BigDecimal.Frac: BigDecimal;
 begin
   Result := BigDecimal.Abs(Self - Self.Int());
@@ -1716,6 +1769,16 @@ begin
 end;
 
 class operator BigDecimal.Implicit(const I: Int64): BigDecimal;
+begin
+  Result.Create(I);
+end;
+
+class operator BigDecimal.Implicit(const U: UInt32): BigDecimal;
+begin
+  Result.Create(U);
+end;
+
+class operator BigDecimal.Implicit(const I: Int32): BigDecimal;
 begin
   Result.Create(I);
 end;
@@ -1894,6 +1957,16 @@ end;
 function BigDecimal.IsZero: Boolean;
 begin
   Result := FValue.IsZero;
+end;
+
+function BigDecimal.IsPositive: Boolean;
+begin
+  Result := FValue.IsPositive;
+end;
+
+function BigDecimal.IsNegative: Boolean;
+begin
+  Result := FValue.IsNegative;
 end;
 
 class operator BigDecimal.LessThan(const left, Right: BigDecimal): Boolean;
