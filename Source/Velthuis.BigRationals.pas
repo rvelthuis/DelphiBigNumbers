@@ -568,7 +568,7 @@ var
   H, K: array[0..2] of Int64;
   X, D, N: Int64;
   I: Integer;
-  Neg: Boolean;
+  LNegative: Boolean;
   MustBreak: Boolean;
 begin
   H[0] := 0; H[1] := 1; H[2] := 0;
@@ -582,8 +582,8 @@ begin
     Exit;
   end;
 
-  Neg := F < 0;
-  if Neg then
+  LNegative := F < 0;
+  if LNegative then
     F := -F;
 
   while (F <> System.Trunc(F)) and (N < (High(Int64) shr 1)) do
@@ -627,7 +627,7 @@ begin
       Break;
   end;
   FDenominator := K[1];
-  if Neg then
+  if LNegative then
     FNumerator := -H[1]
   else
     FNumerator := H[1];
@@ -691,90 +691,117 @@ constructor BigRational.Create(Value, Epsilon: Double; MaxIterations: Integer);
 //                                                                                                                  //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+(*
+function ConvertDoubleToRational(Value, Epsilon: Double; MaxIterations: Integer; var FNumerator, FDenominator: Int64): Double; overload;
+*)
 var
   LNegative: Boolean;
+  LQuot: Double;
   LError: Double;
   I: Integer;
-  LRatio, LRatioM1: Double;
-  A, N, Nm1, Nm2, D, Dm1, Dm2: Int64;
-  LRest, LInverse, LInverseM1: Double;
+  NewRatio, Ratio: Double;
+  Rest, Rest0, Inverse, Inverse0: Double;
+  K, H: array[0..2] of Int64;
+  A: Int64;
+  LNum, LDenom: BigInteger;
 begin
-  if IsInfinite(Value) or IsNan(Value) or
-     IsInfinite(Epsilon) or IsNan(Epsilon) then
-    Error(ecInvalidArg, ['Double']); // Do not translate!
+  LQuot := 0.0;
+
+  if IsInfinite(Value) or IsNaN(Value) then
+    Error(ecInvalidArg, ['Double']);
+
   LNegative := Value < 0;
   if LNegative then
     Value := -Value;
+
   if Value > MaxInt then
-    raise EOverflow.CreateFmt(SOverflowInteger, [Value]);
-  Epsilon := System.Math.Max(System.Abs(Epsilon), MinEpsilon);
-  if Value < Epsilon then
   begin
-    Self := Zero;
+    // reduce Value to range [0..MaxInt)
+    LQuot := Int(Value / MaxInt) * MaxInt;
+    Value := Value - LQuot;
+    // Hmmm... turn it into a suitable range
+    // FloatMod(Value, MaxInt, Quot, Rem);
+    // Quot := Int(Value / MaxInt);
+    // Value := Value - Quot * MaxInt;
+    // work on rem --> value, remember quot;
+    // raise EOverflow.CreateFmt('Value %g cannot be converted to an integer ratio', [Value]);
+  end;
+
+  if Value = 0.0 then
+  begin
+    FNumerator := BigInteger.Zero;
+    FDenominator := BigInteger.One;
     Exit;
   end;
-  Nm1 := 1;
-  Dm1 := 1;
-  Nm2 := 1;
-  Dm2 := 1;
-  LInverseM1 := 1;
-  LRatioM1 := 1;
-  for I := 0 to MaxIterations -1 do
+
+  if Epsilon = 0 then
+    Epsilon := 5e-10;
+
+  I := 0;
+  while I < MaxIterations do
   begin
     if I = 0 then
     begin
       A := Trunc(Value);
-      LRest := Value - A;
-      if LRest = 0.0 then
+      Rest := Value - A;
+      if Rest = 0.0 then
       begin
         FNumerator := A;
         FDenominator := 1;
         Exit;
       end;
-      LInverse := 1.0 / LRest;
-      N := A;
-      D := 1;
-      LRatio := N / D;
-      LError := System.Abs(Value - LRatio);
+      Inverse := 1.0 / Rest;
+      K[2] := A;
+      H[2] := 1;
+      NewRatio := K[2] / H[2];
+      LError := System.Abs(Value - NewRatio);
     end
     else
     begin
-      A := Trunc(LInverseM1);
-      LRest := LInverseM1 - A;
-      if LRest = 0.0 then
-        LRest := Epsilon;
-      LInverse := 1.0 / LRest;
+      A := Trunc(Inverse0);
+      Rest := Inverse0 - A;
+      if Rest = 0.0 then
+        Rest := Epsilon;
+      Inverse := 1.0 / Rest;
       if I = 1 then
       begin
-        N := A * Nm1 + 1;
-        D := A * Dm1;
+        K[2] := A * K[1] + 1;
+        H[2] := A * H[1];
       end
       else
       begin
-        if (A > MaxInt) or (Nm1 >= MaxInt) or (Dm1 >= MaxInt) then
+        if (A > MaxInt) or (K[1] > MaxInt) or (H[1] > MaxInt) then
           Break;
-        N := A * Nm1 + Nm2;
-        D := A * Dm1 + Dm2;
+        K[2] := A * K[1] + K[0];
+        H[2] := A * H[1] + H[0];
       end;
-      LRatio := N / D;
-      LError := System.Abs(LRatio - LRatioM1);
+      NewRatio := K[2] / H[2];
+      LError := System.Abs(NewRatio - Ratio);
     end;
     if LError < Epsilon then
+      Break
+    else
+      Ratio := NewRatio;
+    Inc(I);
+    K[0] := K[1];
+    K[1] := K[2];
+    H[0] := H[1];
+    H[1] := H[2];
+    Inverse0 := Inverse;
+    Rest0 := Rest;
+    if Inverse0 > MaxInt then
       Break;
-    LRatioM1 := LRatio;
-    Nm2 := Nm1;
-    Nm1 := N;
-    Dm2 := Dm1;
-    Dm1 := D;
-    LInverseM1 := LInverse;
-    if LInverseM1 > MaxInt then
-      Break;
-  end; // for
+  end;
+  LNum := K[1];
+  LDenom := H[1];
+  if LQuot > 0.0 then
+    LNum := LNum + BigInteger(LQuot) * LDenom;
   if LNegative then
-    FNumerator := -Nm1
-  else
-    FNumerator := Nm1;
-  FDenominator := Dm1;
+    LNum := -LNum;
+
+  FNumerator := LNum;
+  FDenominator := LDenom;
+  Normalize;
 end;
 
 class function BigRational.Compare(const Left, Right: BigRational): Integer;
