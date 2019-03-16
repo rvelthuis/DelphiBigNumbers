@@ -199,6 +199,10 @@ uses
   { $DEFINE EXPERIMENTAL}
 
 
+{$IFDEF BIGINTEGERIMMUTABLE}
+  {$UNDEF RESETSIZE}
+{$ENDIF}
+
 // --- Permanent settings ---
 
 {$OPTIMIZATION ON}
