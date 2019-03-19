@@ -560,10 +560,10 @@ var
   BaseFactor, Factor, Product, BaseCaseProduct: BigInteger;
 begin
   R := TDelphiRandom.Create($123456);
-  BaseFactor := BigInteger.Create((BigInteger.ToomCook3Threshold + Random(100)) * 32, R);
+  BaseFactor := BigInteger.Create(1073 * BigInteger.ToomCook3Threshold, R);
   for I := 1 to 20 do
   begin
-    Factor := BigInteger.Create((BigInteger.ToomCook3Threshold + Random(100)) * 32, R);
+    Factor := BigInteger.Create(976 * BigInteger.ToomCook3Threshold, R);
     Product := BigInteger.MultiplyToomCook3(BaseFactor, Factor);
 
     // It is safe to assume that result given by MultiplyBaseCase is correct.
