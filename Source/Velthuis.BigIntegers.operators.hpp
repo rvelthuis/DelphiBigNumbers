@@ -1,5 +1,5 @@
-#ifndef VB_OPERATORS
-#define VB_OPERATORS
+#ifndef VBI_OPERATORS
+#define VBI_OPERATORS
 
 inline BigInteger operator +(const BigInteger& left, const BigInteger& right) { return BigInteger::Add(left, right); }
 inline BigInteger operator -(const BigInteger& left, const BigInteger& right) { return BigInteger::Subtract(left, right); }

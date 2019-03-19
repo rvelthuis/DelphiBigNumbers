@@ -248,7 +248,7 @@ public class BigRationalTestDataGenerator
         writeln(bw, "// Do not modify the generated data in this file. Modify the data in the generator.");
         writeln(bw, "// The generator is in BigRationalTestDataGenerator.java, below the Test directory.");
         writeln(bw, "//");
-        writeln(bw, "// The generator was written in Java, using NetBeans 8.0.2.");
+        writeln(bw, "// The generator was written in Java, using NetBeans 8.2.");
         writeln(bw, "//");
         writeln(bw);
 
@@ -396,7 +396,7 @@ public class BigRationalTestDataGenerator
                  res.val = "Invalid argument";
              }
 
-             formatResult(bw, res, (i == count - 1), String.format(Locale.ROOT, "(%2d) %4d: BigRational.Create(%g)", i, n, DOUBLEDATA[i]));
+             formatResult(bw, res, (i == count - 1), String.format(Locale.ROOT, "(%2d) %4d: BigRational.Create(%.20g)", i, n, DOUBLEDATA[i]));
              n++;
         }
         writeln(bw, "  );");

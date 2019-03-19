@@ -48,6 +48,7 @@ resourcestring
   SInvalidArgumentFloatFmt = '%s parameter may not be NaN or +/- Infinity';
   SInvalidArgumentBase     = 'Base parameter must be in the range 2..36';
   SInvalidArgumentFmt      = 'Invalid argument: %s';
+  SOverflowInteger  = 'Value %g cannot be converted to an integer ratio';
   SNegativeRadicand        = '%s: Negative radicand not allowed';
   SNoInverse               = 'No modular inverse possible';
   SNegativeExponent        = 'Negative exponent %s not allowed';

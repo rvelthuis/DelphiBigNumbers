@@ -21,6 +21,9 @@
         <Projects Include="..\Visualizers\BigNumVisualizers.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="D:\Documents\Documents\Embarcadero\Studio\Projects\ConvertDoubleToFraction.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -83,14 +86,23 @@
     <Target Name="BigNumVisualizers:Make">
         <MSBuild Projects="..\Visualizers\BigNumVisualizers.dproj" Targets="Make"/>
     </Target>
+    <Target Name="ConvertDoubleToFraction">
+        <MSBuild Projects="D:\Documents\Documents\Embarcadero\Studio\Projects\ConvertDoubleToFraction.dproj"/>
+    </Target>
+    <Target Name="ConvertDoubleToFraction:Clean">
+        <MSBuild Projects="D:\Documents\Documents\Embarcadero\Studio\Projects\ConvertDoubleToFraction.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ConvertDoubleToFraction:Make">
+        <MSBuild Projects="D:\Documents\Documents\Embarcadero\Studio\Projects\ConvertDoubleToFraction.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="BigIntegerDevelopmentTests;BigDecimalDevelopmentTests;BigRationalDevelopmentTests;BigNumberVisualizers;BigNumbers;BigNumVisualizers"/>
+        <CallTarget Targets="BigIntegerDevelopmentTests;BigDecimalDevelopmentTests;BigRationalDevelopmentTests;BigNumberVisualizers;BigNumbers;BigNumVisualizers;ConvertDoubleToFraction"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="BigIntegerDevelopmentTests:Clean;BigDecimalDevelopmentTests:Clean;BigRationalDevelopmentTests:Clean;BigNumberVisualizers:Clean;BigNumbers:Clean;BigNumVisualizers:Clean"/>
+        <CallTarget Targets="BigIntegerDevelopmentTests:Clean;BigDecimalDevelopmentTests:Clean;BigRationalDevelopmentTests:Clean;BigNumberVisualizers:Clean;BigNumbers:Clean;BigNumVisualizers:Clean;ConvertDoubleToFraction:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make;BigNumberVisualizers:Make;BigNumbers:Make;BigNumVisualizers:Make"/>
+        <CallTarget Targets="BigIntegerDevelopmentTests:Make;BigDecimalDevelopmentTests:Make;BigRationalDevelopmentTests:Make;BigNumberVisualizers:Make;BigNumbers:Make;BigNumVisualizers:Make;ConvertDoubleToFraction:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

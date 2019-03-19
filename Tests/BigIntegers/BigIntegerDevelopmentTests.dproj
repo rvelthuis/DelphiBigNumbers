@@ -113,6 +113,7 @@
         <DCC_OutputXMLDocumentation>true</DCC_OutputXMLDocumentation>
         <DCC_UnitSearchPath>D:\Source\DropBox\Delphi\FastMM4-master;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_TypedAtParameter>true</DCC_TypedAtParameter>
+        <DCC_AdditionalSwitches>--symbol-report</DCC_AdditionalSwitches>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>

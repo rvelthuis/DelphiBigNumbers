@@ -199,19 +199,23 @@ uses
   { $DEFINE EXPERIMENTAL}
 
 
+{$IFDEF BIGINTEGERIMMUTABLE}
+  {$UNDEF RESETSIZE}
+{$ENDIF}
+
 // --- Permanent settings ---
 
 {$OPTIMIZATION ON}
 {$STACKFRAMES OFF}
 {$INLINE ON}
 
+{$IF CompilerVersion >= CompilerVersionDelphiXE3}
+  {$LEGACYIFEND ON}
+{$IFEND}
+
 {$IF CompilerVersion >= CompilerVersionDelphiXE}
   {$CODEALIGN 16}
   {$ALIGN 16}
-{$IFEND}
-
-{$IF CompilerVersion >= CompilerVersionDelphiXE3}
-  {$LEGACYIFEND ON}
 {$IFEND}
 
 {$IF CompilerVersion < CompilerVersionDelphiXE8}
@@ -232,11 +236,9 @@ uses
 {$IFEND}
 
 // Assembler is only supplied for Windows targets. For other targets, PUREPASCAL must be defined.
-{$IFNDEF PUREPASCAL}
-  {$IFNDEF MSWINDOWS}
-    {$DEFINE PUREPASCAL}
-  {$ENDIF}
-{$ENDIF}
+{$IF not defined(PUREPASCAL) and not defined(MSWINDOWS)}
+  {$DEFINE PUREPASCAL}
+{$IFEND}
 
 const
 {$IFDEF PUREPASCAL}

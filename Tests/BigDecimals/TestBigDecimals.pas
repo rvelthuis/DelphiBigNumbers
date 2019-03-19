@@ -56,11 +56,13 @@ type
     procedure TestImplicitString;
     procedure TestImplicitBigInteger;
     procedure TestImplicitUInt64;
+    procedure TestImplicitUInt32;
     procedure TestExplicitDouble;
     procedure TestExplicitSingle;
     procedure TestExplicitString;
     procedure TestExplicitBigInteger;
     procedure TestExplicitUInt64;
+    procedure TestExplicitUInt32;
     procedure TestDivideFunc;
     procedure TestNegate;
     procedure TestRemainder;
@@ -584,6 +586,22 @@ begin
   end;
 end;
 
+procedure TestBigDecimal.TestImplicitUInt32;
+var
+  ReturnValue: BigDecimal;
+  Unscaled: BigInteger;
+  U: UInt32;
+  I: Integer;
+begin
+  for I := 0 to High(DoubleValueResults) do
+  begin
+    U := DoubleValueResults[I];
+    ReturnValue := U;
+    Unscaled := ReturnValue.UnscaledValue;
+    Check(U = Unscaled);
+  end;
+end;
+
 procedure TestBigDecimal.TestImplicitUInt64;
 var
   ReturnValue: BigDecimal;
@@ -661,6 +679,22 @@ begin
     Result1 := BigInteger(Argument);
     Result2 := Argument.RoundTo(0, rmDown).UnscaledValue;
     Check(Result1 = Result2);
+  end;
+end;
+
+procedure TestBigDecimal.TestExplicitUInt32;
+var
+  ReturnValue: UInt32;
+  Value: BigDecimal;
+  I: Integer;
+  ReturnValue2: BigInteger;
+begin
+  for I := 0 to High(Arguments) do
+  begin
+    Value := Arguments[I];
+    ReturnValue := UInt32(Value);
+    ReturnValue2 := Value.RoundTo(0, rmDown).UnscaledValue and High(UInt32);
+    Check(ReturnValue = ReturnValue2, Format('UInt32(%s) = %19x (%s)', [string(Value), ReturnValue, string(ReturnValue2)]));
   end;
 end;
 

@@ -41,36 +41,55 @@ unit Velthuis.BigRationals experimental;
 //$$RV comments are internal comments by RV, denoting a problem. Should be all removed as soon as problem solved.
 // TODO: handle extended properly, e.g. in Create(Extended)
 
+// To implement:
+// Create(Value: Double; MaxDenominator: Integer); -- see below
+// AsSingle
+// AsDouble
+// AsExtended
+// AsBigDecimal()
+// AsBigDecimal(RoundingMode)
+// AsBigDecimal(Scale, RoundingMode)
+// AsInteger
+// AsInt64
+// Add(BigRational, BigRational)
+// Add(BigRational, Integer)
+// Add(BigRational, Int64)
+// Add(BigRational, BigInteger)
+// same for Subtract, Multiply and Divide
+// Negate
+// PercentageValue ?
+// Pow(Exponent: Integer)
+// Pow(Exponent: Int64);
+// Pow(Exponent: BigInteger);
+// Pow(Exponent: Double): Double;
+// My own:
+// ToMixedString (returns "97/15" as "6 7/15")
+// IsProper (proper fraction is when num < denom)
+
 interface
 
 uses
-  Velthuis.BigIntegers, Velthuis.BigDecimals, System.Math, System.SysUtils;
+  Velthuis.BigIntegers, Velthuis.BigDecimals, System.Math, System.SysUtils, CompilerAndRTLVersions;
 
-// For Delphi versions below XE8
-{$IF CompilerVersion < 29.0}
+{$IF CompilerVersion < CompilerVersionDelphiXE8}
   {$IF (DEFINED(WIN32) OR DEFINED(CPUX86)) AND NOT DEFINED(CPU32BITS)}
-    { $MESSAGE HINT 'Defining CPU32BITS'}
     {$DEFINE CPU32BITS}
   {$IFEND}
   {$IF (DEFINED(WIN64) OR DEFINED(CPUX64)) AND NOT DEFINED(CPU64BITS)}
-    { $MESSAGE HINT 'Defining CPU64BITS'}
     {$DEFINE CPU64BITS}
   {$IFEND}
 {$IFEND}
 
-// For Delphi XE3 and up:
-{$IF CompilerVersion >= 24.0 }
+{$IF CompilerVersion >= CompilerVersionDelphiXE3}
   {$LEGACYIFEND ON}
 {$IFEND}
 
-// For Delphi XE and up:
-{$IF CompilerVersion >= 22.0}
+{$IF CompilerVersion >= CompilerVersionDelphiXE}
   {$CODEALIGN 16}
   {$ALIGN 16}
 {$IFEND}
 
-// For Delphi 2010 and up.
-{$IF CompilerVersion >= 21.0}
+{$IF CompilerVersion >= CompilerVersionDelphi2010}
   {$DEFINE HasClassConstructors}
 {$IFEND}
 
@@ -107,14 +126,16 @@ type
     function GetSign: Integer;
 
     // Checks for invalid values, simplifies the fraction by eliminating common factors in numerator and denominator,
-    // and moves sign to numerator.
+    // and moves sign to numerator. In other words, turns a BigRational into its canonical form.
     procedure Normalize(Forced: Boolean = False);
 
     // Raises exception using error code and additional data to decide which and how.
     procedure Error(Code: TErrorCode; ErrorInfo: array of const);
   public
-    class var
+    const
+      MinEpsilon = 5e-10;
 
+    class var
       /// <summary>Predefined BigRational value 0.</summary>
       Zero: BigRational;
 
@@ -168,7 +189,26 @@ type
     ///   double. This means that the numerator and denominator values can be rather big.</remarks>
     constructor Create(const Value: Double); overload;
 
-//{$IFDEF HasExtended}
+    /// <summary>Creates a new BigRational with the same value as the given Double value. For this, it uses
+    ///  at most MaxIterations and the error is at most Epsilon.</summary>
+    /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the Double represents a positive or
+    ///  negative infinity or a NaN.</exception>
+    /// <exception cref="EOverflow">EOverflow is raised when the Double represents a value that is not representable
+    ///  as a fraction of Integers.</exception>
+    /// <remarks><para>Note that this conversion creates enumerator and denominator that are at most Integer
+    ///  values.</para>
+    /// <para>This uses a conversion to a finite continued fraction combined with the unfolding to a simple fraction
+    ///  in one loop, steadily refining the fraction. MaxIterations and Epsilon determine when the loop ends.
+    //   MaxIterations governs the maximum number of iterations in the loop, and Epsilon governs the maximum difference
+    //   between the double and the fraction.</para>
+    /// <para>Typical values are MaxIterations = 15 and Epsilon = 4e-10 (which is close to 1/MaxInt).</para></remarks>
+    constructor Create(Value, Epsilon: Double; MaxIterations: Integer); overload;
+
+    /// <summary>Creates a new BigRational with the best matching value, with a denominator value of at most
+    ///  MaxDenominator</summary>
+    constructor Create(F: Double; MaxDenominator: Cardinal); overload;
+
+    //{$IFDEF HasExtended}
 //    /// <summary>Creates a new BigRational with the exact same value as the given Extended value.</summary>
 //    /// <exception cref="EInvalidArgument">EInvalidArgument is raised if the Extended represents a positive or
 //    ///   negative infinity or a NaN.</exception>
@@ -238,7 +278,16 @@ type
     /// <summary>Returns the negation of the given BigRational value.</summary>
     class operator Negative(const Value: BigRational): BigRational;
 
-    /// <summary>Returns the negation of the current BigRational value.</summary>
+    // Instance functions
+
+    function IsNegative: Boolean; inline;
+    function IsPositive: Boolean; inline;
+    function IsZero: Boolean; inline;
+
+    /// <summary>Returns the absolute value of the current BigRational.</summary>
+    function Abs: BigRational;
+
+    /// <summary>Returns the negation of the current BigRational.</summary>
     function Negate: BigRational;
 
     /// <summary>Returns the multiplicative inverse of the current BigRational value by swapping numerator and
@@ -343,6 +392,14 @@ uses
 
 { BigRational }
 
+function BigRational.Abs: BigRational;
+begin
+  if Self.FNumerator.IsNegative then
+    Result := Self.Negate
+  else
+    Result := Self;
+end;
+
 class operator BigRational.Add(const Left, Right: BigRational): BigRational;
 begin
   if Left.FDenominator = Right.FDenominator then
@@ -394,19 +451,19 @@ https://rosettacode.org/wiki/Convert_decimal_number_to_rational#Ada
 
 procedure Real_To_Rational (R: Real;
                             Bound: Positive;
-                            Nominator: out Integer;
+                            Numerator: out Integer;
                             Denominator: out  Positive) is
    Error: Real;
    Best: Positive := 1;
    Best_Error: Real := Real'Last;
 begin
    if R = 0.0 then
-      Nominator := 0;
+      Numerator := 0;
       Denominator := 1;
       return;
    elsif R < 0.0 then
-      Real_To_Rational(-R, Bound, Nominator, Denominator);
-      Nominator := - Nominator;
+      Real_To_Rational(-R, Bound, Numerator, Denominator);
+      Numerator := - Numerator;
       return;
    else
       for I in 1 .. Bound loop
@@ -418,11 +475,11 @@ begin
       end loop;
    end if;
    Denominator := Best;
-   Nominator   := Integer(Real'Rounding(Real(Denominator) * R));
+   Numerator   := Integer(Real'Rounding(Real(Denominator) * R));
 
 end Real_To_Rational;
 
-procedure RealToRational(R: Extended; Bound: Cardinal; out Nominator: Integer; Denominator: Cardinal);
+procedure RealToRational(R: Extended; Bound: Cardinal; out Numerator: Integer; out Denominator: Cardinal);
 var
   Error: Extended;
   Best: Cardinal;
@@ -434,19 +491,19 @@ begin
 
   if R = 0.0 then
   begin
-    Nominator := 0;
+    Numerator := 0;
     Denominator := 1;
   end
   else if R < 0.0 then
   begin
-    RealToRational(-R, Bound, Nominator, Denominator);
-    Nominator := -Nominator;
+    RealToRational(-R, Bound, Numerator, Denominator);
+    Numerator := -Numerator;
   end
   else
   begin
     for I := 1 to Bound do
     begin
-      Error := Abs(I * R - Round(I * R));
+      Error := Abs(I * R - Round(I * R)); // Abs(Frac(I * R));
       if Error < BestError then
       begin
         Best := I;
@@ -455,7 +512,7 @@ begin
     end; // for
   end; // if
   Denominator := Best;
-  Nominator := Round(Denominator * R);
+  Numerator := Round(Denominator * R);
 end;
 
 // --------------------------------------
@@ -502,6 +559,80 @@ end Convert_Decimal_To_Rational;
 
 *)
 
+constructor BigRational.Create(F: Double; MaxDenominator: Cardinal);
+
+// https://rosettacode.org/wiki/Convert_decimal_number_to_rational#C
+
+var
+  A: Int64;
+  H, K: array[0..2] of Int64;
+  X, D, N: Int64;
+  I: Integer;
+  LNegative: Boolean;
+  MustBreak: Boolean;
+begin
+  H[0] := 0; H[1] := 1; H[2] := 0;
+  K[0] := 1; K[1] := 0; K[2] := 0;
+  N := 1;
+
+  if MaxDenominator <= 1 then
+  begin
+    FDenominator := 1;
+    FNumerator := Trunc(F);
+    Exit;
+  end;
+
+  LNegative := F < 0;
+  if LNegative then
+    F := -F;
+
+  while (F <> System.Trunc(F)) and (N < (High(Int64) shr 1)) do
+  begin
+    N := N shl 1;
+    F := F * 2;
+  end;
+  D := System.Trunc(F);
+
+  // Continued fraction and check denominator each step
+  for I := 0 to 63 do
+  begin
+    MustBreak := False;
+    if N <> 0 then
+      A := D div N
+    else
+      A := 0;
+
+    if (I <> 0) and (A = 0) then
+      Break;
+
+    if N = 0 then
+      Break;
+
+    X := D;
+    D := N;
+    N := X mod N;
+
+    X := A;
+    if K[1] * A + K[0] >= MaxDenominator then
+    begin
+      X := (MaxDenominator - K[0]) div K[1];
+      if (X * 2 >= A) or (K[1] >= MaxDenominator) then
+        MustBreak := True
+      else
+        Break;
+    end;
+    H[2] := X * H[1] + H[0]; H[0] := H[1]; H[1] := H[2];
+    K[2] := X * K[1] + K[0]; K[0] := K[1]; K[1] := K[2];
+    if MustBreak then
+      Break;
+  end;
+  FDenominator := K[1];
+  if LNegative then
+    FNumerator := -H[1]
+  else
+    FNumerator := H[1];
+end;
+
 constructor BigRational.Create(const Value: Double);
 var
   Exponent: Integer;
@@ -539,12 +670,147 @@ begin
   Normalize;
 end;
 
+constructor BigRational.Create(Value, Epsilon: Double; MaxIterations: Integer);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                                  //
+//  One way to solve this is to convert the Value into a (finite) continous fraction, i.e. a fraction in the form   //
+//  a0 + 1/(a1 + 1/(a2 + 1/(a3 + ...))) or, often also written as [a0; a1, a2, a3 ...].                             //
+//  If we reverse this using numerator and denominator, we can easily construct a suitable normal fraction.         //
+//                                                                                                                  //
+//  This constructor does something similar, except that the loop to construct a continued fraction and the loop    //
+//  to decompose the continued fraction into a simple fraction are folded together. This repeatedly refines the     //
+//  fraction, until the maximum number of iterations is reached, or the difference between fraction and Value is    //
+//  less than the given epsilon, whichever comes first.                                                             //
+//                                                                                                                  //
+//  This uses numerators and denominators as much as possible in the Integer range. A tested version using          //
+//  BigDecimals and BigIntegers was far too precise and did not stop early enough.                                  //
+//                                                                                                                  //
+//  There is a MinEpsilon constant of value 5e-10, which is slightly above 1/MaxInt. Smaller values could cause     //
+//  invalid  results.                                                                                               //
+//                                                                                                                  //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+(*
+function ConvertDoubleToRational(Value, Epsilon: Double; MaxIterations: Integer; var FNumerator, FDenominator: Int64): Double; overload;
+*)
+var
+  LNegative: Boolean;
+  LQuot: Double;
+  LError: Double;
+  I: Integer;
+  NewRatio, Ratio: Double;
+  Rest, Rest0, Inverse, Inverse0: Double;
+  K, H: array[0..2] of Int64;
+  A: Int64;
+  LNum, LDenom: BigInteger;
+begin
+  LQuot := 0.0;
+
+  if IsInfinite(Value) or IsNaN(Value) then
+    Error(ecInvalidArg, ['Double']);
+
+  LNegative := Value < 0;
+  if LNegative then
+    Value := -Value;
+
+  if Value > MaxInt then
+  begin
+    // reduce Value to range [0..MaxInt)
+    LQuot := Int(Value / MaxInt) * MaxInt;
+    Value := Value - LQuot;
+    // Hmmm... turn it into a suitable range
+    // FloatMod(Value, MaxInt, Quot, Rem);
+    // Quot := Int(Value / MaxInt);
+    // Value := Value - Quot * MaxInt;
+    // work on rem --> value, remember quot;
+    // raise EOverflow.CreateFmt('Value %g cannot be converted to an integer ratio', [Value]);
+  end;
+
+  if Value = 0.0 then
+  begin
+    FNumerator := BigInteger.Zero;
+    FDenominator := BigInteger.One;
+    Exit;
+  end;
+
+  if Epsilon = 0 then
+    Epsilon := 5e-10;
+
+  I := 0;
+  while I < MaxIterations do
+  begin
+    if I = 0 then
+    begin
+      A := Trunc(Value);
+      Rest := Value - A;
+      if Rest = 0.0 then
+      begin
+        FNumerator := A;
+        FDenominator := 1;
+        Exit;
+      end;
+      Inverse := 1.0 / Rest;
+      K[2] := A;
+      H[2] := 1;
+      NewRatio := K[2] / H[2];
+      LError := System.Abs(Value - NewRatio);
+    end
+    else
+    begin
+      A := Trunc(Inverse0);
+      Rest := Inverse0 - A;
+      if Rest = 0.0 then
+        Rest := Epsilon;
+      Inverse := 1.0 / Rest;
+      if I = 1 then
+      begin
+        K[2] := A * K[1] + 1;
+        H[2] := A * H[1];
+      end
+      else
+      begin
+        if (A > MaxInt) or (K[1] > MaxInt) or (H[1] > MaxInt) then
+          Break;
+        K[2] := A * K[1] + K[0];
+        H[2] := A * H[1] + H[0];
+      end;
+      NewRatio := K[2] / H[2];
+      LError := System.Abs(NewRatio - Ratio);
+    end;
+    if LError < Epsilon then
+      Break
+    else
+      Ratio := NewRatio;
+    Inc(I);
+    K[0] := K[1];
+    K[1] := K[2];
+    H[0] := H[1];
+    H[1] := H[2];
+    Inverse0 := Inverse;
+    Rest0 := Rest;
+    if Inverse0 > MaxInt then
+      Break;
+  end;
+  LNum := K[1];
+  LDenom := H[1];
+  if LQuot > 0.0 then
+    LNum := LNum + BigInteger(LQuot) * LDenom;
+  if LNegative then
+    LNum := -LNum;
+
+  FNumerator := LNum;
+  FDenominator := LDenom;
+  Normalize;
+end;
+
 class function BigRational.Compare(const Left, Right: BigRational): Integer;
 begin
   if Left.FDenominator = Right.FDenominator then
     Result := BigInteger.Compare(Left.FNumerator, Right.FNumerator)
   else
-    Result := BigInteger.Compare(Left.FNumerator * Right.FDenominator, Right.FNumerator * Left.FDenominator);
+    Result := BigInteger.Compare(Left.FNumerator * Right.FDenominator,
+                                 Right.FNumerator * Left.FDenominator);
 end;
 
 constructor BigRational.Create(const Numerator: Int64; const Denominator: UInt64);
@@ -612,7 +878,8 @@ begin
   Result.Normalize;
 end;
 
-class procedure BigRational.DivMod(const Left, Right: BigRational; var Quotient: BigInteger; var Remainder: BigRational);
+class procedure BigRational.DivMod(const Left, Right: BigRational;
+  var Quotient: BigInteger; var Remainder: BigRational);
 var
   AD, BC: BigInteger;
 begin
@@ -774,6 +1041,21 @@ begin
   Result := (Left.FNumerator * Right.FDenominator) div (Left.FDenominator * Right.FNumerator);
 end;
 
+function BigRational.IsNegative: Boolean;
+begin
+  Result := Self.FNumerator.IsNegative;
+end;
+
+function BigRational.IsPositive: Boolean;
+begin
+  Result := Self.FNumerator.IsPositive;
+end;
+
+function BigRational.IsZero: Boolean;
+begin
+  Result := Self.FNumerator.IsZero;
+end;
+
 function BigRational.Reciprocal: BigRational;
 begin
   if FNumerator.IsZero then
@@ -931,16 +1213,17 @@ begin
   if S = '' then
     Exit(False);
 
+  Value := Zero;
   LSlash := Pos('/', S);
   if LSlash < 1 then
   begin
-    Result := BigInteger.TryParse(S, Num);
+    Result := BigInteger.TryParse(Trim(S), Num);
     Denom := BigInteger.One;
   end
   else
   begin
-    Result := BigInteger.TryParse(Copy(S, 1, LSlash - 1), Num);
-    Result := BigInteger.TryParse(Copy(S, LSlash + 1, MaxInt), Denom) or Result;
+    Result := BigInteger.TryParse(Trim(Copy(S, 1, LSlash - 1)), Num);
+    Result := BigInteger.TryParse(Trim(Copy(S, LSlash + 1, MaxInt)), Denom) or Result;
   end;
   if Result then
     Value := BigRational.Create(Num, Denom);
