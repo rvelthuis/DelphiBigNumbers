@@ -262,6 +262,10 @@ const
 type
   TNumberBase = 2..36;                          // Number base or radix.
 
+{$IF not declared(TRandom32Proc)}
+  TRandom32Proc = function: UInt32;
+  TRandomizeProc = procedure(NewSeed: UInt64);{$IFEND}
+
   PLimb = ^TLimb;                               // Knuth calls them "limbs".
   TLimb = type UInt32;                          // FWIW, I also like the recently spotted term "bigit".
   TMagnitude = TArray<TLimb>;                   // These BigIntegers use sign-magnitude format, hence the name.
@@ -392,6 +396,10 @@ type
     /// <summary>Creates a new random BigInteger of the given size. Uses the given IRandom to
     ///   generate the random value.</summary>
     constructor Create(NumBits: Integer; const Random: IRandom); overload;
+
+    /// <summary>Creates a new random BigInteger of the given size. Uses the given Random32Proc function to
+    ///   generate the random value.</summary>
+    constructor Create(NumBits: Integer; Random: TRandom32Proc); overload;
 
 
     // -- Global numeric base related functions --
@@ -3142,6 +3150,27 @@ begin
   end
   else
     FSize := 0;
+end;
+
+constructor BigInteger.Create(NumBits: Integer; Random: TRandom32Proc);
+var
+  I: Integer;
+begin
+  if NumBits <= 0 then
+  begin
+    FSize := 0;
+    FData := nil;
+    Exit;
+  end;
+
+  FSize := (NumBits + CLimbBits - 1) div CLimbBits;
+  SetLength(FData, (FSize + CLimbSize - 1) div CLimbSize);
+  for I := 0 to FSize - 1 do
+    FData[I] := Random();
+
+  // At most Numbits bits, so mask top limb.
+  FData[FSize - 1] := FData[FSize - 1] and (1 shl (NumBits and CLimbBits) - 1);
+  Compact;
 end;
 
 constructor BigInteger.Create(NumBits: Integer; const Random: IRandom);
