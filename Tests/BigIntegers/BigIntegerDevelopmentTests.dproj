@@ -93,7 +93,7 @@
         <DCC_RemoteDebug>true</DCC_RemoteDebug>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-        <DCC_ExeOutput>.\$(Platform)\$(Config)\T</DCC_ExeOutput>
+        <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_GenerateStackFrames>false</DCC_GenerateStackFrames>
         <DCC_UnitSearchPath>$(BDSLIB)/$(Platform)/$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_Locale>1033</VerInfo_Locale>
