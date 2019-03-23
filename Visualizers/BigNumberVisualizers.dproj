@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{82F7D428-1B82-4DC7-A2A3-E6FC570D13D4}</ProjectGuid>
-        <ProjectVersion>18.5</ProjectVersion>
+        <ProjectVersion>18.6</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <MainSource>BigNumberVisualizers.dpr</MainSource>
         <Base>True</Base>

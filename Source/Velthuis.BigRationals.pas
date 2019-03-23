@@ -447,116 +447,17 @@ begin
 end;
 
 (*
-https://rosettacode.org/wiki/Convert_decimal_number_to_rational#Ada
+   Test with e.g.
 
-procedure Real_To_Rational (R: Real;
-                            Bound: Positive;
-                            Numerator: out Integer;
-                            Denominator: out  Positive) is
-   Error: Real;
-   Best: Positive := 1;
-   Best_Error: Real := Real'Last;
-begin
-   if R = 0.0 then
-      Numerator := 0;
-      Denominator := 1;
-      return;
-   elsif R < 0.0 then
-      Real_To_Rational(-R, Bound, Numerator, Denominator);
-      Numerator := - Numerator;
-      return;
-   else
-      for I in 1 .. Bound loop
-         Error := abs(Real(I) * R - Real'Rounding(Real(I) * R));
-         if Error < Best_Error then
-            Best := I;
-            Best_Error := Error;
-         end if;
-      end loop;
-   end if;
-   Denominator := Best;
-   Numerator   := Integer(Real'Rounding(Real(Denominator) * R));
-
-end Real_To_Rational;
-
-procedure RealToRational(R: Extended; Bound: Cardinal; out Numerator: Integer; out Denominator: Cardinal);
-var
-  Error: Extended;
-  Best: Cardinal;
-  BestError: Extended;
-  I: Integer;
-begin
-  Best := 1;
-  BestError := Math.MaxExtended;
-
-  if R = 0.0 then
-  begin
-    Numerator := 0;
-    Denominator := 1;
-  end
-  else if R < 0.0 then
-  begin
-    RealToRational(-R, Bound, Numerator, Denominator);
-    Numerator := -Numerator;
-  end
-  else
-  begin
-    for I := 1 to Bound do
-    begin
-      Error := Abs(I * R - Round(I * R)); // Abs(Frac(I * R));
-      if Error < BestError then
-      begin
-        Best := I;
-        BestError := Error;
-      end; // if
-    end; // for
-  end; // if
-  Denominator := Best;
-  Numerator := Round(Denominator * R);
-end;
-
-// --------------------------------------
-
-with Ada.Text_IO; With Real_To_Rational;
-
-procedure Convert_Decimal_To_Rational is
-
-   type My_Real is new Long_Float; -- change this for another "Real" type
-
-   package FIO is new Ada.Text_IO.Float_IO(My_Real);
-   procedure R2R is new Real_To_Rational(My_Real);
-
-   Nom, Denom: Integer;
-   R: My_Real;
-
-begin
-   loop
-      Ada.Text_IO.New_Line;
-      FIO.Get(R);
-      FIO.Put(R, Fore => 2, Aft => 9, Exp => 0);
-      exit when R = 0.0;
-      for I in 0 .. 4 loop
-         R2R(R, 10**I, Nom, Denom);
-         Ada.Text_IO.Put("  " & Integer'Image(Nom) &
-                         " /" & Integer'Image(Denom));
-      end loop;
-   end loop;
-end Convert_Decimal_To_Rational;
-
-// Output: -----------------------------
-
-> ./convert_decimal_to_rational < input.txt
-
- 0.750000000   1 / 1   3 / 4   3 / 4   3 / 4   3 / 4
- 0.518518000   1 / 1   1 / 2   14 / 27   14 / 27   14 / 27
- 0.905405400   1 / 1   9 / 10   67 / 74   67 / 74   67 / 74
- 0.142857143   0 / 1   1 / 7   1 / 7   1 / 7   1 / 7
- 3.141592654   3 / 1   22 / 7   22 / 7   355 / 113   355 / 113
- 2.718281828   3 / 1   19 / 7   193 / 71   1457 / 536   25946 / 9545
--0.423310825   0 / 1  -3 / 7  -11 / 26  -69 / 163  -1253 / 2960
-31.415926536   31 / 1   157 / 5   377 / 12   3550 / 113   208696 / 6643
- 0.000000000
-
+   0.750000000   1 / 1   3 / 4   3 / 4   3 / 4   3 / 4
+   0.518518000   1 / 1   1 / 2   14 / 27   14 / 27   14 / 27
+   0.905405400   1 / 1   9 / 10   67 / 74   67 / 74   67 / 74
+   0.142857143   0 / 1   1 / 7   1 / 7   1 / 7   1 / 7
+   3.141592654   3 / 1   22 / 7   22 / 7   355 / 113   355 / 113
+   2.718281828   3 / 1   19 / 7   193 / 71   1457 / 536   25946 / 9545
+  -0.423310825   0 / 1  -3 / 7  -11 / 26  -69 / 163  -1253 / 2960
+  31.415926536   31 / 1   157 / 5   377 / 12   3550 / 113   208696 / 6643
+   0.000000000
 *)
 
 constructor BigRational.Create(F: Double; MaxDenominator: Cardinal);
