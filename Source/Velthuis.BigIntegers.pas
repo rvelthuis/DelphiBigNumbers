@@ -267,7 +267,6 @@ type
   TRandomizeProc = procedure(NewSeed: UInt64);
 {$IFEND}
 
-
   PLimb = ^TLimb;                               // Knuth calls them "limbs".
   TLimb = type UInt32;                          // FWIW, I also like the recently spotted term "bigit".
   TMagnitude = TArray<TLimb>;                   // These BigIntegers use sign-magnitude format, hence the name.
