@@ -3164,7 +3164,7 @@ begin
   end;
 
   FSize := (NumBits + CLimbBits - 1) div CLimbBits;
-  SetLength(FData, (FSize + CLimbSize - 1) div CLimbSize);
+  SetLength(FData, (4 * FSize + 3) div 4);
   for I := 0 to FSize - 1 do
     FData[I] := Random();
 
