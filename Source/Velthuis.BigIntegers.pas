@@ -264,7 +264,9 @@ type
 
 {$IF not declared(TRandom32Proc)}
   TRandom32Proc = function: UInt32;
-  TRandomizeProc = procedure(NewSeed: UInt64);{$IFEND}
+  TRandomizeProc = procedure(NewSeed: UInt64);
+{$IFEND}
+
 
   PLimb = ^TLimb;                               // Knuth calls them "limbs".
   TLimb = type UInt32;                          // FWIW, I also like the recently spotted term "bigit".
