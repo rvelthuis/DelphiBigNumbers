@@ -561,10 +561,20 @@ asm
 end;
 {$ELSE PUREPASCAL}
 begin
+{$IFOPT Q+}
+  {$DEFINE OVERFLOW_ON}
+  {$Q-}
+{$ELSE}
+  {$UNDEF OVERFLOW_ON}
+{$ENDIF}  
   if U = 0 then
     Result := 32
   else
     Result := NTZDeBruijn32[((U and (-Integer(U))) * NTZDeBruijn32Mult) shr 27];
+{$IFDEF OVERFLOW_ON}
+  {$Q+}
+  {$UNDEF OVERFLOW_ON}
+{$ENDIF}
 end;
 {$IFEND PUREPASCAL}
 
