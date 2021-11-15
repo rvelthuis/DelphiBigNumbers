@@ -745,11 +745,9 @@ type
     ///   value of the BigInteger is too large.</summary>
     function AsDouble: Double;
 
-  {$IFDEF HasExtended}
     /// <summary>Converts the specified BigInteger to an Extended, if this is possible. Returns an infinity if the
     ///   value of the BigInteger is too large.</summary>
     function AsExtended: Extended;
-  {$ENDIF}
 
     /// <summary>Converts the specified BigInteger to an Integer, if this is possible. Returns an exception if the
     ///   value of the BigInteger is too large.</summary>
@@ -7697,6 +7695,11 @@ begin
     // No need to check for denormals.
   else
     Result := Velthuis.FloatUtils.MakeExtended(LSign, LMantissa, LExponent);
+end;
+{$ELSE}
+function BigInteger.AsExtended: Extended;
+begin
+  Result := AsDouble();
 end;
 {$ENDIF}
 
